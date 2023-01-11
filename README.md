@@ -1,4 +1,12 @@
-### Commento
+### Comentario
+
+**Comentario** is a fork of [Commento](https://gitlab.com/commento/commento) by Adhityaa Chandrasekar, an open source web comment server that has been discontinued.
+
+---
+
+NB: There are numerous references to the original Commento, which will stay for a while.
+
+---
 
 ##### [Homepage](https://commento.io) &nbsp;&ndash;&nbsp; [Demo](https://demo.commento.io) &nbsp;&ndash;&nbsp; [Documentation](https://docs.commento.io) &nbsp;&ndash;&nbsp; [Contributing](https://docs.commento.io/contributing/) &nbsp;&ndash;&nbsp; [#commento on Freenode](http://webchat.freenode.net/?channels=%23commento)
 

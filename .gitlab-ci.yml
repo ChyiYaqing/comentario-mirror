@@ -30,7 +30,7 @@ build-docker:
     - master
     - tags
   script:
-    - docker build -t commento .
+    - docker build -t comentario .
 
 go-test:
   stage: go-test
@@ -40,8 +40,8 @@ go-test:
   variables:
     POSTGRES_USER: postgres
     POSTGRES_PASSWORD: postgres
-    POSTGRES_DB: commento_test
-    COMMENTO_POSTGRES: postgres://postgres:postgres@postgres/commento_test?sslmode=disable
+    POSTGRES_DB: comentario_test
+    COMMENTO_POSTGRES: postgres://postgres:postgres@postgres/comentario_test?sslmode=disable
   except:
     - master
     - tags
@@ -70,13 +70,13 @@ docker-registry-master:
   services:
     - docker:dind
   only:
-    - master@commento/commento
+    - master@comentario/comentario
   before_script:
     - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN registry.gitlab.com
   script:
-    - docker pull registry.gitlab.com/commento/commento:latest || true
-    - docker build --cache-from registry.gitlab.com/commento/commento:latest --tag registry.gitlab.com/commento/commento:latest .
-    - docker push registry.gitlab.com/commento/commento:latest
+    - docker pull registry.gitlab.com/comentario/comentario:latest || true
+    - docker build --cache-from registry.gitlab.com/comentario/comentario:latest --tag registry.gitlab.com/comentario/comentario:latest .
+    - docker push registry.gitlab.com/comentario/comentario:latest
 
 docker-registry-tags:
   stage: docker-registry-tags
@@ -89,5 +89,5 @@ docker-registry-tags:
     - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN registry.gitlab.com
   script:
     - apk add git
-    - docker build --tag registry.gitlab.com/commento/commento:$(git describe --tags) .
-    - docker push registry.gitlab.com/commento/commento:$(git describe --tags)
+    - docker build --tag registry.gitlab.com/comentario/comentario:$(git describe --tags) .
+    - docker push registry.gitlab.com/comentario/comentario:$(git describe --tags)
