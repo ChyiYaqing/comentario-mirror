@@ -1,7 +1,5 @@
 package main
 
-import ()
-
 func emailNotificationModerator(d domain, path string, title string, commenterHex string, commentHex string, html string, state string) {
 	if d.EmailNotificationPolicy == "none" {
 		return
@@ -47,11 +45,7 @@ func emailNotificationModerator(d domain, path string, title string, commenterHe
 			continue
 		}
 
-		statement := `
-			SELECT name
-			FROM commenters
-			WHERE email = $1;
-		`
+		statement := `select name from commenters where email = $1;`
 		row := db.QueryRow(statement, m.Email)
 		var name string
 		if err := row.Scan(&name); err != nil {
@@ -78,11 +72,7 @@ func emailNotificationReply(d domain, path string, title string, commenterHex st
 		return
 	}
 
-	statement := `
-		SELECT commenterHex
-		FROM comments
-		WHERE commentHex = $1;
-	`
+	statement := `select commenterHex from comments where commentHex = $1;`
 	row := db.QueryRow(statement, parentHex)
 
 	var parentCommenterHex string

@@ -1,7 +1,5 @@
 package main
 
-import ()
-
 type emailNotification struct {
 	Email         string
 	CommenterName string

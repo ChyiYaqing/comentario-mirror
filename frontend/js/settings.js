@@ -1,54 +1,56 @@
 (function (global, document) {
-  "use strict";
+    'use strict';
 
-  (document);
+    // TODO No-op statement to prevent the IDE from complaining about unused function argument
+    // noinspection BadExpressionStatementJS
+    (document);
 
-  global.vueConstruct = function(callback) {
-    var reactiveData = {
-      hasSource: global.owner.hasSource,
-      lastFour: global.owner.lastFour,
+    global.vueConstruct = function (callback) {
+        const reactiveData = {
+            hasSource: global.owner.hasSource,
+            lastFour: global.owner.lastFour,
+        };
+
+        global.settings = new Vue({
+            el: '#settings',
+            data: reactiveData,
+        });
+
+        if (callback !== undefined) {
+            callback();
+        }
     };
 
-    global.settings = new Vue({
-      el: "#settings",
-      data: reactiveData,
-    });
+    global.settingShow = function (setting) {
+        $('.pane-setting').removeClass('selected');
+        $('.view').hide();
+        $('#' + setting).addClass('selected');
+        $('#' + setting + '-view').show();
+    };
 
-    if (callback !== undefined) {
-      callback();
-    }
-  };
+    global.deleteOwnerHandler = function () {
+        if (!confirm('Are you absolutely sure you want to delete your account?')) {
+            return;
+        }
 
-  global.settingShow = function(setting) {
-    $(".pane-setting").removeClass("selected");
-    $(".view").hide();
-    $("#" + setting).addClass("selected");
-    $("#" + setting + "-view").show();
-  };
+        const json = {
+            'ownerToken': global.cookieGet('commentoOwnerToken'),
+        };
+        const delBtn = $('#delete-owner-button');
+        delBtn.prop('disabled', true);
+        delBtn.text('Deleting...');
+        global.post(global.origin + '/api/owner/delete', json, function (resp) {
+            if (!resp.success) {
+                delBtn.prop('disabled', false);
+                delBtn.text('Delete Account');
+                global.globalErrorShow(resp.message);
+                $('#error-message').text(resp.message);
+                return;
+            }
 
-  global.deleteOwnerHandler = function() {
-    if (!confirm("Are you absolutely sure you want to delete your account?")) {
-      return;
-    }
+            global.cookieDelete('commentoOwnerToken');
+            document.location = global.origin + '/login?deleted=true';
+        });
+    };
 
-    var json = {
-      "ownerToken": global.cookieGet("commentoOwnerToken"),
-    }
-
-    $("#delete-owner-button").prop("disabled", true);
-    $("#delete-owner-button").text("Deleting...");
-    global.post(global.origin + "/api/owner/delete", json, function(resp) {
-      if (!resp.success) {
-        $("#delete-owner-button").prop("disabled", false);
-        $("#delete-owner-button").text("Delete Account");
-        global.globalErrorShow(resp.message);
-        $("#error-message").text(resp.message);
-        return;
-      }
-
-      global.cookieDelete("commentoOwnerToken");
-      document.location = global.origin + "/login?deleted=true";
-    });
-  };
-
-} (window.commento, document));
+}(window.commento, document));

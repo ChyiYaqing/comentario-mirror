@@ -1,7 +1,5 @@
 package main
 
-import ()
-
 func pageTitleUpdate(domain string, path string) (string, error) {
 	title, err := htmlTitleGet("http://" + domain + path)
 	if err != nil {
@@ -13,11 +11,7 @@ func pageTitleUpdate(domain string, path string) (string, error) {
 		title = domain
 	}
 
-	statement := `
-		UPDATE pages
-		SET title = $3
-		WHERE domain = $1 AND path = $2;
-	`
+	statement := `update pages set title = $3 where domain = $1 and path = $2;`
 	_, err = db.Exec(statement, domain, path, title)
 	if err != nil {
 		logger.Errorf("cannot update pages table with title: %v", err)

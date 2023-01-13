@@ -3,7 +3,7 @@
 .commento-card {
   @import "commento-options.scss"; // SVG buttons to the right of each comment
 
-  padding: 12px 0px 0px 12px;
+  padding: 12px 0 0 12px;
   margin-top: 16px;
   border-top: 1px solid #f0f0f0;
 
@@ -129,7 +129,7 @@
   font-size: 22px;
   float: left;
   margin-right: 10px;
-  border: 0px transparent;
+  border: 0 transparent;
 }
 
 .commento-avatar-img {

@@ -12,11 +12,7 @@ func commenterTokenNew() (string, error) {
 		return "", errorInternal
 	}
 
-	statement := `
-		INSERT INTO
-		commenterSessions (commenterToken, creationDate)
-		VALUES            ($1,             $2          );
-	`
+	statement := `insert into commenterSessions(commenterToken, creationDate) values($1, $2);`
 	_, err = db.Exec(statement, commenterToken, time.Now().UTC())
 	if err != nil {
 		logger.Errorf("cannot insert new commenterToken: %v", err)
@@ -26,7 +22,7 @@ func commenterTokenNew() (string, error) {
 	return commenterToken, nil
 }
 
-func commenterTokenNewHandler(w http.ResponseWriter, r *http.Request) {
+func commenterTokenNewHandler(w http.ResponseWriter, _ *http.Request) {
 	commenterToken, err := commenterTokenNew()
 	if err != nil {
 		bodyMarshal(w, response{"success": false, "message": err.Error()})

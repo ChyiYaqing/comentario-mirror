@@ -1,17 +1,11 @@
 package main
 
-import ()
-
 func commentDomainPathGet(commentHex string) (string, string, error) {
 	if commentHex == "" {
 		return "", "", errorMissingField
 	}
 
-	statement := `
-		SELECT domain, path
-		FROM comments
-		WHERE commentHex = $1;
-	`
+	statement := `select domain, path from comments where commentHex = $1;`
 	row := db.QueryRow(statement, commentHex)
 
 	var domain string

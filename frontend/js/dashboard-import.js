@@ -1,62 +1,62 @@
 (function (global, document) {
-  "use strict";
+    'use strict';
 
-  (document);
+    // TODO No-op statement to prevent the IDE from complaining about unused function argument
+    // noinspection BadExpressionStatementJS
+    (document);
 
-  // Opens the import window.
-  global.importOpen = function() {
-    $(".view").hide();
-    $("#import-view").show();
-  }
-
-  global.importDisqus = function() {
-    var url = $("#disqus-url").val();
-    var data = global.dashboard.$data;
-
-    var json = {
-      "ownerToken": global.cookieGet("commentoOwnerToken"),
-      "domain": data.domains[data.cd].domain,
-      "url": url,
+    // Opens the import window.
+    global.importOpen = function () {
+        $('.view').hide();
+        $('#import-view').show();
     }
 
-    global.buttonDisable("#disqus-import-button");
-    global.post(global.origin + "/api/domain/import/disqus", json, function(resp) {
-      global.buttonEnable("#disqus-import-button");
+    global.importDisqus = function () {
+        const url = $('#disqus-url').val();
+        const data = global.dashboard.$data;
+        const json = {
+            'ownerToken': global.cookieGet('commentoOwnerToken'),
+            'domain': data.domains[data.cd].domain,
+            'url': url,
+        };
 
-      if (!resp.success) {
-        global.globalErrorShow(resp.message);
-        return;
-      }
+        global.buttonDisable('#disqus-import-button');
+        global.post(global.origin + '/api/domain/import/disqus', json, function (resp) {
+            global.buttonEnable('#disqus-import-button');
 
-      $("#disqus-import-button").hide();
+            if (!resp.success) {
+                global.globalErrorShow(resp.message);
+                return;
+            }
 
-      global.globalOKShow("Imported " + resp.numImported + " comments!");
-    });
-  }
+            $('#disqus-import-button').hide();
 
-  global.importCommento = function() {
-    var url = $("#commento-url").val();
-    var data = global.dashboard.$data;
-
-    var json = {
-      "ownerToken": global.cookieGet("commentoOwnerToken"),
-      "domain": data.domains[data.cd].domain,
-      "url": url,
+            global.globalOKShow('Imported ' + resp.numImported + ' comments!');
+        });
     }
 
-    global.buttonDisable("#commento-import-button");
-    global.post(global.origin + "/api/domain/import/commento", json, function(resp) {
-      global.buttonEnable("#commento-import-button");
+    global.importCommento = function () {
+        const url = $('#commento-url').val();
+        const data = global.dashboard.$data;
+        const json = {
+            'ownerToken': global.cookieGet('commentoOwnerToken'),
+            'domain': data.domains[data.cd].domain,
+            'url': url,
+        };
 
-      if (!resp.success) {
-        global.globalErrorShow(resp.message);
-        return;
-      }
+        global.buttonDisable('#commento-import-button');
+        global.post(global.origin + '/api/domain/import/commento', json, function (resp) {
+            global.buttonEnable('#commento-import-button');
 
-      $("#commento-import-button").hide();
+            if (!resp.success) {
+                global.globalErrorShow(resp.message);
+                return;
+            }
 
-      global.globalOKShow("Imported " + resp.numImported + " comments!");
-    });
-  }
+            $('#commento-import-button').hide();
 
-} (window.commento, document));
+            global.globalOKShow('Imported ' + resp.numImported + ' comments!');
+        });
+    }
+
+}(window.commento, document));

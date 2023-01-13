@@ -11,7 +11,7 @@ type domainExportErrorPlugs struct {
 	Domain string
 }
 
-func smtpDomainExportError(to string, toName string, domain string) error {
+func smtpDomainExportError(to string, toName string, _ string) error {
 	var header bytes.Buffer
 	headerTemplate.Execute(&header, &headerPlugs{FromAddress: os.Getenv("SMTP_FROM_ADDRESS"), ToAddress: to, ToName: toName, Subject: "Commento Data Export"})
 

@@ -53,7 +53,6 @@ textarea {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: center;
   justify-content: space-between;
   will-change: transform;
 }
@@ -93,7 +92,7 @@ textarea {
 
 .commento-markdown-button {
   color: $gray-6;
-  margin: 0px 16px;
+  margin: 0 16px;
   font-size: 12px;
   text-transform: uppercase;
   border: none;
@@ -112,7 +111,7 @@ textarea {
 
   tr {
     td {
-      padding: 0px 6px;
+      padding: 0 6px;
       pre {
         display: inline;
         font-family: monospace;

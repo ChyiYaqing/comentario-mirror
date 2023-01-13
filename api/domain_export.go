@@ -6,11 +6,10 @@ import (
 	"time"
 )
 
-func domainExportBeginError(email string, toName string, domain string, err error) {
+func domainExportBeginError(email string, toName string, domain string, _ error) {
 	// we're not using err at the moment because it's all errorInternal
 	if err2 := smtpDomainExportError(email, toName, domain); err2 != nil {
 		logger.Errorf("cannot send domain export error email for %s: %v", domain, err2)
-		return
 	}
 }
 
@@ -18,9 +17,9 @@ func domainExportBegin(email string, toName string, domain string) {
 	e := commentoExportV1{Version: 1, Comments: []comment{}, Commenters: []commenter{}}
 
 	statement := `
-		SELECT commentHex, domain, path, commenterHex, markdown, parentHex, score, state, creationDate
-		FROM comments
-		WHERE domain = $1;
+		select commentHex, domain, path, commenterHex, markdown, parentHex, score, state, creationDate
+		from comments
+		where domain = $1;
 	`
 	rows1, err := db.Query(statement, domain)
 	if err != nil {
@@ -42,9 +41,9 @@ func domainExportBegin(email string, toName string, domain string) {
 	}
 
 	statement = `
-		SELECT commenters.commenterHex, commenters.email, commenters.name, commenters.link, commenters.photo, commenters.provider, commenters.joinDate
-		FROM commenters, comments
-		WHERE comments.domain = $1 AND commenters.commenterHex = comments.commenterHex;
+		select commenters.commenterHex, commenters.email, commenters.name, commenters.link, commenters.photo, commenters.provider, commenters.joinDate
+		from commenters, comments
+		where comments.domain = $1 and commenters.commenterHex = comments.commenterHex;
 	`
 	rows2, err := db.Query(statement, domain)
 	if err != nil {
@@ -87,9 +86,9 @@ func domainExportBegin(email string, toName string, domain string) {
 	}
 
 	statement = `
-		INSERT INTO
+		insert into
 		exports (exportHex, binData, domain, creationDate)
-		VALUES  ($1,        $2,      $3    , $4          );
+		values  ($1,        $2,      $3    , $4          );
 	`
 	_, err = db.Exec(statement, exportHex, gje, domain, time.Now().UTC())
 	if err != nil {

@@ -1,7 +1,5 @@
 package main
 
-import ()
-
 var commentsRowColumns = `
 	comments.commentHex,
 	comments.commenterHex,

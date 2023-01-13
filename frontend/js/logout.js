@@ -1,9 +1,9 @@
 (function (global, document) {
-  "use strict";
+    'use strict';
 
-  global.logout = function() {
-    global.cookieDelete("commentoOwnerToken");
-    document.location = global.origin + "/login";
-  }
+    global.logout = function () {
+        global.cookieDelete('commentoOwnerToken');
+        document.location = global.origin + '/login';
+    }
 
-} (window.commento, document));
+}(window.commento, document));

@@ -2,7 +2,6 @@ package main
 
 import (
 	"github.com/gorilla/mux"
-	"io/ioutil"
 	"mime"
 	"net/http"
 	"os"
@@ -20,13 +19,13 @@ type staticPlugs struct {
 	Footer    string
 }
 
-var asset map[string][]byte = make(map[string][]byte)
-var contentType map[string]string = make(map[string]string)
+var asset = make(map[string][]byte)
+var contentType = make(map[string]string)
 var footer string
 var compress bool
 
 func fileDetemplate(f string) ([]byte, error) {
-	contents, err := ioutil.ReadFile(f)
+	contents, err := os.ReadFile(f)
 	if err != nil {
 		logger.Errorf("cannot read file %s: %v", f, err)
 		return []byte{}, err
@@ -77,7 +76,7 @@ func staticRouterInit(router *mux.Router) error {
 	}
 
 	for _, dir := range []string{"/js", "/css", "/images", "/fonts"} {
-		files, err := ioutil.ReadDir(os.Getenv("STATIC") + dir)
+		files, err := os.ReadDir(os.Getenv("STATIC") + dir)
 		if err != nil {
 			logger.Errorf("cannot read directory %s%s: %v", os.Getenv("STATIC"), dir, err)
 			return err
@@ -87,7 +86,7 @@ func staticRouterInit(router *mux.Router) error {
 			f := dir + "/" + file.Name()
 			asset[subdir+f], err = fileLoad(os.Getenv("STATIC") + f)
 			if err != nil {
-				logger.Errorf("cannot detemplate %s%s: %v", os.Getenv("STATIC"), f, err)
+				logger.Errorf("cannot un-template %s%s: %v", os.Getenv("STATIC"), f, err)
 				return err
 			}
 		}
@@ -115,7 +114,7 @@ func staticRouterInit(router *mux.Router) error {
 		}
 	}
 
-	for p, _ := range asset {
+	for p := range asset {
 		if path.Ext(p) != "" {
 			contentType[p] = mime.TypeByExtension(path.Ext(p))
 		} else {

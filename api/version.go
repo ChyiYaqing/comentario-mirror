@@ -3,7 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"time"
@@ -27,20 +27,22 @@ func versionCheckStart() error {
 				"version": {version},
 			}
 
-			resp, err := http.Post("https://version.commento.io/api/check", "application/x-www-form-urlencoded", bytes.NewBufferString(data.Encode()))
-			if err != nil {
-				errorCount++
-				// print the error only once; we don't want to spam the logs with this
-				// every five minutes
-				if !printedError && errorCount > 5 {
-					logger.Errorf("error checking version: %v", err)
-					printedError = true
+			var body []byte
+			var err error
+			func() {
+				var resp *http.Response
+				resp, err = http.Post("https://version.commento.io/api/check", "application/x-www-form-urlencoded", bytes.NewBufferString(data.Encode()))
+				if err != nil {
+					// Print the error only once; we don't want to spam the logs with this every five minutes
+					if !printedError && errorCount > 5 {
+						logger.Errorf("error checking version: %v", err)
+						printedError = true
+					}
+				} else {
+					defer resp.Body.Close()
+					body, err = io.ReadAll(resp.Body)
 				}
-				continue
-			}
-			defer resp.Body.Close()
-
-			body, err := ioutil.ReadAll(resp.Body)
+			}()
 			if err != nil {
 				errorCount++
 				if !printedError && errorCount > 5 {
@@ -59,7 +61,7 @@ func versionCheckStart() error {
 
 			r := response{}
 			json.Unmarshal(body, &r)
-			if r.Success == false {
+			if !r.Success {
 				errorCount++
 				if !printedError && errorCount > 5 {
 					logger.Errorf("error checking version: %s", r.Message)
@@ -77,6 +79,5 @@ func versionCheckStart() error {
 			printedError = false
 		}
 	}()
-
 	return nil
 }

@@ -5,8 +5,8 @@
 
 .global-error, .global-ok {
   position: absolute;
-  bottom: 0px;
-  left: 0px;
+  bottom: 0;
+  left: 0;
   margin: 30px;
   padding: 5px;
   border: 1px solid $red-6;
@@ -27,8 +27,8 @@ body {
 
 .tabs-container {
   ul.tabs {
-    margin: 0px;
-    padding: 0px;
+    margin: 0;
+    padding: 0;
     list-style: none;
     border-bottom: 1px solid $gray-1;
 
@@ -64,7 +64,7 @@ body {
       color: $gray-6;
       margin-bottom: 24px;
       line-height: 22px;
-      
+
       a       { color: $blue-6; }
       a:hover { color: $blue-6; }
     }
@@ -116,9 +116,9 @@ body {
 
   .content {
     display: block;
-    padding: 0px;
+    padding: 0;
     border: 1px solid $gray-2;
-    border-top: 0px solid transparent;
+    border-top: 0 solid transparent;
     min-width: 550px;
 
     .mod-email {
@@ -131,7 +131,7 @@ body {
       .email {
         display: flex;
         align-items: center;
-        margin: 0px 12px;
+        margin: 0 12px;
         height: 100%;
       }
 
@@ -166,7 +166,7 @@ body {
   .pane-left {
     padding-top: 20px;
     position: absolute;
-    left: 0px;
+    left: 0;
     border-right: 1px solid $gray-1;
     width: 240px;
     height: 100%;
@@ -208,8 +208,7 @@ body {
     }
 
     .view {
-      padding: 25px;
-      padding-top: 35px;
+      padding: 35px 25px 25px;
     }
 
     .view-inside {
@@ -287,7 +286,6 @@ body {
       display: flex;
 
       .super-setting-title {
-        display: inline;
         display: flex;
         align-items: center;
         font-size: 24px;
@@ -375,8 +373,8 @@ body {
 }
 
 .question {
-  padding: 8px 0px 8px 0px;
-  margin: 8px 0px 8px 0px;
+  padding: 8px 0 8px 0;
+  margin: 8px 0 8px 0;
   display: flex;
   width: 100%;
 
@@ -479,11 +477,10 @@ body {
   margin-bottom: 25px;
 
   .box-title {
-    padding: 6px;
-    padding-top: 0px;
+    padding: 0 6px 6px;
     font-size: 19px;
   }
-  
+
   .box-subtitle {
     font-size: 14px;
     padding: 6px;
@@ -493,7 +490,7 @@ body {
 
   .gray {
     position: absolute;
-    bottom: 0px;
+    bottom: 0;
     color: $gray-6;
     opacity: 0.8;
 
@@ -555,7 +552,7 @@ body {
 }
 
 .indent {
-  margin-top: 0px;
+  margin-top: 0;
   padding-left: 35px;
 }
 
@@ -612,6 +609,7 @@ body {
   line-height: 25px;
 }
 
+// TODO invalid type selector
 foreignObject {
   white-space: nowrap;
 }
@@ -718,7 +716,7 @@ foreignObject {
         float: left;
         margin-right: 12px;
       }
-      
+
       .names {
         margin-left: 50px;
 
@@ -728,7 +726,7 @@ foreignObject {
             font-weight: bold;
           }
         }
-        
+
         .time {
           color: $gray-4;
         }

@@ -1,8 +1,6 @@
 package main
 
-import ()
-
-var ownersRowColumns string = `
+var ownersRowColumns = `
 	owners.ownerHex,
 	owners.email,
 	owners.name,

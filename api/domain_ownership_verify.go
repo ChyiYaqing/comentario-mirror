@@ -1,19 +1,11 @@
 package main
 
-import ()
-
 func domainOwnershipVerify(ownerHex string, domain string) (bool, error) {
 	if ownerHex == "" || domain == "" {
 		return false, errorMissingField
 	}
 
-	statement := `
-		SELECT EXISTS (
-			SELECT 1
-			FROM domains
-			WHERE ownerHex=$1 AND domain=$2
-		);
-	`
+	statement := `select EXISTS (select 1 from domains where ownerHex=$1 and domain=$2);`
 	row := db.QueryRow(statement, ownerHex, domain)
 
 	var exists bool

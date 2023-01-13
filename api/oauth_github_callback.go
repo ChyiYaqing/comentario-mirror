@@ -1,10 +1,10 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
-	"golang.org/x/oauth2"
-	"io/ioutil"
+	"io"
 	"net/http"
 )
 
@@ -12,7 +12,7 @@ func githubGetPrimaryEmail(accessToken string) (string, error) {
 	resp, err := http.Get("https://api.github.com/user/emails?access_token=" + accessToken)
 	defer resp.Body.Close()
 
-	contents, err := ioutil.ReadAll(resp.Body)
+	contents, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", errorCannotReadResponse
 	}
@@ -44,7 +44,7 @@ func githubCallbackHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := githubConfig.Exchange(oauth2.NoContext, code)
+	token, err := githubConfig.Exchange(context.TODO(), code)
 	if err != nil {
 		fmt.Fprintf(w, "Error: %s", err.Error())
 		return
@@ -63,7 +63,7 @@ func githubCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer resp.Body.Close()
 
-	contents, err := ioutil.ReadAll(resp.Body)
+	contents, err := io.ReadAll(resp.Body)
 	if err != nil {
 		fmt.Fprintf(w, "Error: %s", errorCannotReadResponse.Error())
 		return

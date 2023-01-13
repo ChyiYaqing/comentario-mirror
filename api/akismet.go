@@ -23,7 +23,7 @@ func isSpam(domain string, userIp string, userAgent string, name string, email s
 	}, akismetKey)
 
 	if err != nil {
-		logger.Errorf("error: cannot validate commenet using Akismet: %v", err)
+		logger.Errorf("error: cannot validate comment using Akismet: %v", err)
 		return true
 	}
 

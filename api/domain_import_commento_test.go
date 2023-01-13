@@ -113,9 +113,9 @@ func TestImportCommento(t *testing.T) {
 }
 
 func timeParse(t *testing.T, s string) time.Time {
-	time, err := time.Parse(time.RFC3339Nano, s)
+	tm, err := time.Parse(time.RFC3339Nano, s)
 	if err != nil {
 		t.Errorf("couldn't parse time: %v", err)
 	}
-	return time
+	return tm
 }

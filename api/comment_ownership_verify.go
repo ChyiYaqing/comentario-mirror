@@ -1,19 +1,11 @@
 package main
 
-import ()
-
 func commentOwnershipVerify(commenterHex string, commentHex string) (bool, error) {
 	if commenterHex == "" || commentHex == "" {
 		return false, errorMissingField
 	}
 
-	statement := `
-		SELECT EXISTS (
-			SELECT 1
-			FROM comments
-			WHERE commenterHex=$1 AND commentHex=$2
-		);
-	`
+	statement := `select EXISTS(select 1 from comments where commenterHex=$1 and commentHex=$2);`
 	row := db.QueryRow(statement, commenterHex, commentHex)
 
 	var exists bool

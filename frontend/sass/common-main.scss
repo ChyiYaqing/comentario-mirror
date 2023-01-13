@@ -12,7 +12,7 @@ html {
 }
 
 body {
-  margin: 0px;
+  margin: 0;
 }
 
 a {
@@ -29,12 +29,12 @@ a:hover {
 
 .footer {
   position: relative;
-  bottom: 0px;
+  bottom: 0;
   width: 100%;
   margin-top: 72px;
 
   .copyright {
-    align-items: none;
+    align-items: initial;
     color: $gray-3;
     background: $white;
     text-align: center;

@@ -1,7 +1,5 @@
 package main
 
-import ()
-
 var domainsRowColumns = `
 	domains.domain,
 	domains.ownerHex,

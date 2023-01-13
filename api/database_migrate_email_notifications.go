@@ -1,17 +1,12 @@
 package main
 
-import ()
-
 func migrateEmails() error {
 	statement := `
-		SELECT commenters.email
-		FROM commenters
-		UNION
-		SELECT owners.email
-		FROM owners
-		UNION
-		SELECT moderators.email
-		FROM moderators;
+		select commenters.email from commenters
+		union
+		select owners.email from owners
+		union
+		select moderators.email from moderators;
 	`
 	rows, err := db.Query(statement)
 	if err != nil {

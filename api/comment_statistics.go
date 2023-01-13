@@ -1,18 +1,18 @@
 package main
 
-import ()
-
 func commentStatistics(domain string) ([]int64, error) {
 	statement := `
-		SELECT COUNT(comments.creationDate)
-		FROM (
-			SELECT to_char(date_trunc('day', (current_date - offs)), 'YYYY-MM-DD') AS date
-			FROM generate_series(0, 30, 1) AS offs
-		) gen LEFT OUTER JOIN comments
-		ON gen.date = to_char(date_trunc('day', comments.creationDate), 'YYYY-MM-DD') AND
-		   comments.domain=$1
-		GROUP BY gen.date
-		ORDER BY gen.date;
+		select COUNT(comments.creationDate)
+		from (
+			select to_char(date_trunc('day', (current_date - offs)), 'YYYY-MM-DD') as date
+			from generate_series(0, 30, 1) as offs
+		) gen 
+		    left outer join comments
+			on 
+				gen.date = to_char(date_trunc('day', comments.creationDate), 'YYYY-MM-DD') and
+				comments.domain=$1
+		group by gen.date
+		order by gen.date;
 	`
 	rows, err := db.Query(statement, domain)
 	if err != nil {

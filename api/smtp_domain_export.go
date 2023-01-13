@@ -12,7 +12,7 @@ type domainExportPlugs struct {
 	ExportHex string
 }
 
-func smtpDomainExport(to string, toName string, domain string, exportHex string) error {
+func smtpDomainExport(to string, toName string, _ string, exportHex string) error {
 	var header bytes.Buffer
 	headerTemplate.Execute(&header, &headerPlugs{FromAddress: os.Getenv("SMTP_FROM_ADDRESS"), ToAddress: to, ToName: toName, Subject: "Commento Data Export"})
 

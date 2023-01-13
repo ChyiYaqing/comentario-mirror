@@ -12,11 +12,11 @@
   </head>
 
   <div id="navbar" class="navbar">
-    <a href="[[[.Origin]]]/" class="navbar-item navbar-logo-text"><img src="[[[.CdnPrefix]]]/images/logo.svg" class="navbar-logo">Commento</a>
+    <a href="[[[.Origin]]]/" class="navbar-item navbar-logo-text"><img src="[[[.CdnPrefix]]]/images/logo.svg" class="navbar-logo" alt="">Commento</a>
     <div class="navbar-item">
       <a href="[[[.Origin]]]/settings" class="navbar-item">Settings</a>
       <a href="[[[.Origin]]]/logout" class="navbar-item">Logout</a>
-      <div class="float-right"><b><div id="owner-name"></div></b></div>
+      <div class="float-right"><b><span id="owner-name"></span></b></div>
     </div>
   </div>
 
@@ -28,7 +28,7 @@
         window.commento.domainRefresh();
         $(document).ready(function(){
           $("ul.tabs li").click(function(){
-            var tab_id = $(this).attr("data-tab");
+            const tab_id = $(this).attr("data-tab");
 
             $("ul.tabs li").removeClass("current");
             $(".content").removeClass("current");
@@ -47,8 +47,8 @@
 
   <div id="dashboard" class="dashboard-container">
     <div class="pane-left">
-      <div class="tree" v-if="domains.length == 0 || domains[0].show == false">
-        <img class="tree-svg" src="[[[.CdnPrefix]]]/images/tree.svg">
+      <div class="tree" v-if="domains.length === 0 || domains[0].show === false">
+        <img class="tree-svg" src="[[[.CdnPrefix]]]/images/tree.svg" alt="">
         It's so quiet in here.
       </div>
 
@@ -99,7 +99,7 @@
                   <div class="normal-text">
                     And that's it. All your settings, themes, and comments would be automagically loaded. Commento is mobile-responsive too, as it simply fills the container it is put in.
                   </div>
-                  
+
                   <br>
 
                   <div class="normal-text">
@@ -320,7 +320,7 @@
                       <div class="indent" v-if="domains[cd].ssoProvider">
                         <div class="row">
                           <div class="label">HMAC shared secret key</div>
-                          <input class="input gray-input monospace" id="sso-secret" readonly="true" type="text" placeholder="Loading..." v-model="domains[cd].ssoSecret">
+                          <input class="input gray-input monospace" id="sso-secret" readonly type="text" placeholder="Loading..." v-model="domains[cd].ssoSecret">
                         </div>
                         <div class="row">
                           <div class="label">Redirect URL</div>
@@ -427,7 +427,7 @@
                       <li>
                         Commento will automatically download this file, extract it, parse it and import comments into Commento. URL information, comment authors, text formatting, and nested replies will be preserved.
                       </li>
-                        
+
                       <li>
                         It is strongly recommended you do this only once. Importing multiple times may have unintended effects.
                       </li>
@@ -461,7 +461,7 @@
                       <li>
                         Commento will automatically download this file, extract it, parse it and import comments into Commento. URL information, comment authors, text formatting, and nested replies will be preserved.
                       </li>
-                        
+
                       <li>
                         It is strongly recommended you do this only once. Importing multiple times may have unintended effects.
                       </li>
@@ -486,7 +486,7 @@
 
             <div class="action-buttons-container">
               <div class="action-buttons">
-                <div class="action-button" v-if="domains[cd].state != 'frozen'">
+                <div class="action-button" v-if="domains[cd].state !== 'frozen'">
                   <div class="left">
                     <div class="title">
                       Freeze Domain
@@ -500,7 +500,7 @@
                             class="button orange-button">Freeze</button>
                   </div>
                 </div>
-                <div class="action-button" v-if="domains[cd].state == 'frozen'">
+                <div class="action-button" v-if="domains[cd].state === 'frozen'">
                   <div class="left">
                     <div class="title">
                       Unfreeze Domain

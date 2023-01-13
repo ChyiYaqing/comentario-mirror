@@ -6,7 +6,7 @@
 
 .commento-root {
   overflow-x: hidden;
-  padding: 0px;
+  padding: 0;
   width: 100%;
   font-family: inherit;
 
@@ -59,7 +59,7 @@
   }
 
   .commento-sort-policy-buttons-container {
-    padding: 12px 0px;
+    padding: 12px 0;
     font-weight: 400;
 
     .commento-sort-policy-buttons {
@@ -68,7 +68,7 @@
       .commento-sort-policy-button {
         color: $gray-6;
         font-size: 13px;
-        padding: 0px 7px;
+        padding: 0 7px;
       }
 
       .commento-sort-policy-button:hover {

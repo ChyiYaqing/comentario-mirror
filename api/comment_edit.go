@@ -11,15 +11,11 @@ func commentEdit(commentHex string, markdown string) (string, error) {
 
 	html := markdownToHtml(markdown)
 
-	statement := `
-		UPDATE comments
-		SET markdown = $2, html = $3
-		WHERE commentHex=$1;
-	`
+	statement := `update comments set markdown = $2, html = $3 where commentHex=$1;`
 	_, err := db.Exec(statement, commentHex, markdown, html)
 
 	if err != nil {
-		// TODO: make sure this is the error is actually non-existant commentHex
+		// TODO: make sure this is the error is actually nonexistent commentHex
 		return "", errorNoSuchComment
 	}
 

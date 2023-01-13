@@ -11,20 +11,20 @@ func commentDelete(commentHex string, deleterHex string) error {
 	}
 
 	statement := `
-		UPDATE comments
-		SET
+		update comments
+		set
 			deleted = true,
 			markdown = '[deleted]',
 			html = '[deleted]',
 			commenterHex = 'anonymous',
 			deleterHex = $2,
 			deletionDate = $3
-		WHERE commentHex = $1;
+		where commentHex = $1;
 	`
 	_, err := db.Exec(statement, commentHex, deleterHex, time.Now().UTC())
 
 	if err != nil {
-		// TODO: make sure this is the error is actually non-existant commentHex
+		// TODO: make sure this is the error is actually nonexistent commentHex
 		return errorNoSuchComment
 	}
 
