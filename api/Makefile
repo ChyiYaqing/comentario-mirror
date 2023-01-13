@@ -25,15 +25,15 @@ clean:
 # later down the line).
 
 devel-go:
-	go mod vendor
-	go build -mod=vendor -v -o $(GO_DEVEL_BUILD_BINARY) -ldflags "-X main.version=$(shell git describe --tags)"
+	go mod tidy
+	go build -v -o $(GO_DEVEL_BUILD_BINARY) -ldflags "-X main.version=$(shell git describe --tags)"
 
 prod-go:
-	go mod vendor
-	go build -mod=vendor -v -o $(GO_PROD_BUILD_BINARY) -ldflags "-X main.version=$(shell git describe --tags)"
+	go mod tidy
+	go build -v -o $(GO_PROD_BUILD_BINARY) -ldflags "-w -s -X main.version=$(shell git describe --tags)"
 
 test-go:
-	go mod vendor
+	go mod tidy
 	go test -v .
 
 $(shell mkdir -p $(GO_DEVEL_BUILD_DIR) $(GO_PROD_BUILD_DIR))

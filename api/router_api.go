@@ -45,9 +45,6 @@ func apiRouterInit(router *mux.Router) error {
 	router.HandleFunc("/api/oauth/github/redirect", githubRedirectHandler).Methods("GET")
 	router.HandleFunc("/api/oauth/github/callback", githubCallbackHandler).Methods("GET")
 
-	router.HandleFunc("/api/oauth/twitter/redirect", twitterRedirectHandler).Methods("GET")
-	router.HandleFunc("/api/oauth/twitter/callback", twitterCallbackHandler).Methods("GET")
-
 	router.HandleFunc("/api/oauth/gitlab/redirect", gitlabRedirectHandler).Methods("GET")
 	router.HandleFunc("/api/oauth/gitlab/callback", gitlabCallbackHandler).Methods("GET")
 

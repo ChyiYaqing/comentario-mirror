@@ -195,7 +195,6 @@ func commentListHandler(w http.ResponseWriter, r *http.Request) {
 			"configuredOauths": map[string]bool{
 				"commento": d.CommentoProvider,
 				"google":   googleConfigured && d.GoogleProvider,
-				"twitter":  twitterConfigured && d.TwitterProvider,
 				"github":   githubConfigured && d.GithubProvider,
 				"gitlab":   gitlabConfigured && d.GitlabProvider,
 				"sso":      d.SsoProvider,

@@ -19,7 +19,6 @@ type domain struct {
 	EmailNotificationPolicy string      `json:"emailNotificationPolicy"`
 	CommentoProvider        bool        `json:"commentoProvider"`
 	GoogleProvider          bool        `json:"googleProvider"`
-	TwitterProvider         bool        `json:"twitterProvider"`
 	GithubProvider          bool        `json:"githubProvider"`
 	GitlabProvider          bool        `json:"gitlabProvider"`
 	SsoProvider             bool        `json:"ssoProvider"`

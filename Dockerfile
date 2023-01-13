@@ -3,7 +3,7 @@ FROM golang:1.19-alpine AS api-build
 RUN apk add --no-cache --update bash make git curl g++
 
 ARG RELEASE=prod
-COPY ./api /go/src/commento/api/
+COPY . /go/src/commento/
 WORKDIR /go/src/commento/api
 RUN make ${RELEASE} -j$(($(nproc) + 1))
 

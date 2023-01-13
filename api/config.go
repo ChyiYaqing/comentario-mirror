@@ -51,9 +51,6 @@ func configParse() error {
 		"GITHUB_KEY":    "",
 		"GITHUB_SECRET": "",
 
-		"TWITTER_KEY":    "",
-		"TWITTER_SECRET": "",
-
 		"GITLAB_KEY":    "",
 		"GITLAB_SECRET": "",
 		"GITLAB_URL":    "https://gitlab.com",

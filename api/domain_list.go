@@ -69,10 +69,9 @@ func domainListHandler(w http.ResponseWriter, r *http.Request) {
 			"success": true,
 			"domains": domains,
 			"configuredOauths": map[string]bool{
-				"google":  googleConfigured,
-				"twitter": twitterConfigured,
-				"github":  githubConfigured,
-				"gitlab":  gitlabConfigured,
+				"google": googleConfigured,
+				"github": githubConfigured,
+				"gitlab": gitlabConfigured,
 			},
 		})
 }

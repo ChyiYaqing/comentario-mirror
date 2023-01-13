@@ -21,12 +21,11 @@ func domainUpdate(d domain) error {
 			emailNotificationPolicy=$8,
 			commentoProvider=$9,
 			googleProvider=$10,
-			twitterProvider=$11,
-			githubProvider=$12,
-			gitlabProvider=$13,
-			ssoProvider=$14,
-			ssoUrl=$15,
-			defaultSortPolicy=$16
+			githubProvider=$11,
+			gitlabProvider=$12,
+			ssoProvider=$13,
+			ssoUrl=$14,
+			defaultSortPolicy=$15
 		where domain=$1;
 	`
 
@@ -41,7 +40,6 @@ func domainUpdate(d domain) error {
 		d.EmailNotificationPolicy,
 		d.CommentoProvider,
 		d.GoogleProvider,
-		d.TwitterProvider,
 		d.GithubProvider,
 		d.GitlabProvider,
 		d.SsoProvider,

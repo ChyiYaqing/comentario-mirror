@@ -297,11 +297,6 @@
                         <label for="google-provider">Google login</label>
                       </div>
 
-                      <div class="row no-border commento-round-check" v-if="configuredOauths.twitter">
-                        <input type="checkbox" v-model="domains[cd].twitterProvider" id="twitter-provider">
-                        <label for="twitter-provider">Twitter login</label>
-                      </div>
-
                       <div class="row no-border commento-round-check" v-if="configuredOauths.github">
                         <input type="checkbox" v-model="domains[cd].githubProvider" id="github-provider">
                         <label for="github-provider">GitHub login</label>
@@ -335,7 +330,7 @@
                         </div>
                       </div>
 
-                      <div class="warning" v-if="!domains[cd].allowAnonymous && !domains[cd].commentoProvider && (!configuredOauths.google || !domains[cd].googleProvider) && (!configuredOauths.twitter || !domains[cd].twitterProvider) && (!configuredOauths.github || !domains[cd].githubProvider) && (!configuredOauths.gitlab || !domains[cd].gitlabProvider) && !domains[cd].ssoProvider">
+                      <div class="warning" v-if="!domains[cd].allowAnonymous && !domains[cd].commentoProvider && (!configuredOauths.google || !domains[cd].googleProvider) && (!configuredOauths.github || !domains[cd].githubProvider) && (!configuredOauths.gitlab || !domains[cd].gitlabProvider) && !domains[cd].ssoProvider">
                         You have disabled all authentication options. Your readers will not be able to login, create comments, or vote.
                       </div>
                     </div>
