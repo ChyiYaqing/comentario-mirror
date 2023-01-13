@@ -684,7 +684,7 @@
         return msg;
     }
 
-    global.commentNew = function (id, commenterToken, callback) {
+    global.commentNew = function (id, commenterToken, appendCard, callback) {
         const textareaSuperContainer = $(ID_SUPER_CONTAINER + id);
         const textarea = $(ID_TEXTAREA + id);
         const replyButton = $(ID_REPLY + id);
@@ -747,21 +747,24 @@
             }, 'root');
 
             commentsMap[resp.commentHex] = comment;
+            if (appendCard) {
+                if (id !== 'root') {
+                    textareaSuperContainer.replaceWith(newCard);
 
-            if (id !== 'root') {
-                textareaSuperContainer.replaceWith(newCard);
+                    shownReply[id] = false;
 
-                shownReply[id] = false;
+                    classAdd(replyButton, 'option-reply');
+                    classRemove(replyButton, 'option-cancel');
 
-                classAdd(replyButton, 'option-reply');
-                classRemove(replyButton, 'option-cancel');
+                    replyButton.title = 'Reply to this comment';
 
-                replyButton.title = 'Reply to this comment';
-
-                onclick(replyButton, global.replyShow, id)
-            } else {
+                    onclick(replyButton, global.replyShow, id)
+                } else {
+                    textarea.value = '';
+                    insertAfter($(ID_PRE_COMMENTS_AREA), newCard);
+                }
+            } else if (id === 'root') {
                 textarea.value = '';
-                insertAfter($(ID_PRE_COMMENTS_AREA), newCard);
             }
 
             call(callback);
@@ -1422,7 +1425,7 @@
 
     function submitAuthenticated(id) {
         if (isAuthenticated) {
-            global.commentNew(id, commenterTokenGet());
+            global.commentNew(id, commenterTokenGet(), true);
             return;
         }
 
@@ -1431,7 +1434,7 @@
 
     function submitAnonymous(id) {
         chosenAnonymous = true;
-        global.commentNew(id, 'anonymous');
+        global.commentNew(id, 'anonymous', true);
     }
 
     function submitAccountDecide(id) {
@@ -1490,7 +1493,7 @@
                         }
 
                         if (id !== null) {
-                            global.commentNew(id, resp.commenterToken, function () {
+                            global.commentNew(id, resp.commenterToken, false, function () {
                                 global.loginBoxClose();
                                 commentsGet(commentsRender);
                             });
@@ -1717,7 +1720,7 @@
 
             remove($(ID_LOGIN));
             if (id !== null) {
-                global.commentNew(id, resp.commenterToken, function () {
+                global.commentNew(id, resp.commenterToken, true, function () {
                     global.loginBoxClose();
                     commentsGet(commentsRender);
                 });
