@@ -356,10 +356,10 @@
         classAdd(a, 'logo');
         classAdd(text, 'logo-text');
 
-        attrSet(a, 'href', 'https://commento.io');
+        attrSet(a, 'href', 'https://yktoo.com');
         attrSet(a, 'target', '_blank');
 
-        text.innerText = 'Commento';
+        text.innerText = 'Comentario';
 
         append(a, text);
         append(aContainer, a);

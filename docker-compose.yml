@@ -1,6 +1,19 @@
 version: '3'
 
 services:
+  server:
+    image: registry.gitlab.com/comentario/comentario
+    environment:
+      COMMENTO_ORIGIN: http://localhost:8080
+      COMMENTO_PORT: 8080
+      COMMENTO_POSTGRES: postgres://postgres:postgres@db:5432/commento?sslmode=disable
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+    networks:
+      - comentario_network
+
   db:
     image: postgres:11
     environment:
@@ -9,6 +22,18 @@ services:
       POSTGRES_PASSWORD: postgres
     ports:
       - "5432:5432"
+    networks:
+      - comentario_network
     volumes:
       - type: tmpfs
         target: /var/lib/postgresql/data
+
+  http:
+    image: nginx
+    ports:
+        - '8100:80'
+    volumes:
+        - $PWD/etc/comment-test:/usr/share/nginx/html:ro
+
+networks:
+  comentario_network:
