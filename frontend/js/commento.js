@@ -1720,7 +1720,7 @@
 
             remove($(ID_LOGIN));
             if (id !== null) {
-                global.commentNew(id, resp.commenterToken, true, function () {
+                global.commentNew(id, resp.commenterToken, false, function () {
                     global.loginBoxClose();
                     commentsGet(commentsRender);
                 });
