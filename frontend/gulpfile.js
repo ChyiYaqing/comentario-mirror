@@ -6,7 +6,7 @@ const sass = require('gulp-sass')(require('sass'));
 const sourcemaps = require('gulp-sourcemaps');
 const cleanCss = require('gulp-clean-css');
 const htmlMinifier = require('gulp-html-minifier');
-const uglify = require('gulp-uglify');
+const terser = require('gulp-terser');
 const concat = require('gulp-concat');
 const rename = require('gulp-rename');
 const eslint = require('gulp-eslint');
@@ -178,7 +178,7 @@ gulp.task('js-prod', function (done) {
         gulp.src(jsCompileMap[outputFile])
             .pipe(concat(outputFile))
             .pipe(rename(outputFile))
-            .pipe(uglify())
+            .pipe(terser())
             .pipe(gulp.dest(prodPath))
     }
     done();
