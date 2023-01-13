@@ -13,7 +13,17 @@ build-src:
         - master
         - tags
     before_script:
-        - bash $CI_PROJECT_DIR/scripts/gitlab-ci-build-prescript
+        - mkdir -p /go/src /go/bin /go/pkg
+        - ln -s $CI_PROJECT_DIR /go/src/$CI_PROJECT_NAME
+
+        - apt-get update
+        - apt-get install -y curl gnupg git make golang python
+        - export GOPATH=/go
+        - export PATH=$PATH:/go/bin
+
+        - curl -sL https://deb.nodesource.com/setup_18.x | bash -
+        - apt install -y nodejs
+        - npm install -g yarn@1.22.19
     script:
         - export GOPATH=/go
         - export PATH=$PATH:/go/bin
@@ -62,7 +72,7 @@ go-fmt:
         - tags
     script:
         - cd api
-        - test -z $(go fmt)
+        - test -z "$(go fmt)"
 
 docker-registry-master:
     stage: docker-registry-master
