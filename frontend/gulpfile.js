@@ -16,11 +16,11 @@ const prodPath = 'build/prod/';
 const scssSrc = './sass/*.scss';
 const cssDir = 'css/';
 const fontsDir = 'fonts/';
-const fontsGlob = fontsDir + '**/*';
+const fontsGlob = `${fontsDir}**/*`;
 const imagesDir = 'images/';
-const imagesGlob = imagesDir + '**/*';
+const imagesGlob = `${imagesDir}**/*`;
 const jsDir = 'js/';
-const jsGlob = jsDir + '*.js';
+const jsGlob = `${jsDir}*.js`;
 const htmlGlob = './*.html';
 
 const jsCompileMap = {

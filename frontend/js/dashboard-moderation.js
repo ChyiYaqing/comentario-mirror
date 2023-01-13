@@ -16,9 +16,9 @@
         const data = global.dashboard.$data;
         const email = $('#new-mod').val();
         const json = {
-            'ownerToken': global.cookieGet('commentoOwnerToken'),
-            'domain': data.domains[data.cd].domain,
-            'email': email,
+            ownerToken: global.cookieGet('commentoOwnerToken'),
+            domain: data.domains[data.cd].domain,
+            email: email,
         };
 
         let idx = -1;
@@ -30,9 +30,9 @@
         }
 
         if (idx === -1) {
-            data.domains[data.cd].moderators.push({'email': email, 'timeAgo': 'just now'});
+            data.domains[data.cd].moderators.push({email: email, timeAgo: 'just now'});
             global.buttonDisable('#new-mod-button');
-            global.post(global.origin + '/api/domain/moderator/new', json, function (resp) {
+            global.post(`${global.origin}/api/domain/moderator/new`, json, function (resp) {
                 global.buttonEnable('#new-mod-button');
 
                 if (!resp.success) {
@@ -55,9 +55,9 @@
         const data = global.dashboard.$data;
 
         const json = {
-            'ownerToken': global.cookieGet('commentoOwnerToken'),
-            'domain': data.domains[data.cd].domain,
-            'email': email,
+            ownerToken: global.cookieGet('commentoOwnerToken'),
+            domain: data.domains[data.cd].domain,
+            email: email,
         };
 
         let idx = -1;
@@ -70,7 +70,7 @@
 
         if (idx !== -1) {
             data.domains[data.cd].moderators.splice(idx, 1);
-            global.post(global.origin + '/api/domain/moderator/delete', json, function (resp) {
+            global.post(`${global.origin}/api/domain/moderator/delete`, json, function (resp) {
                 if (!resp.success) {
                     global.globalErrorShow(resp.message);
                     return

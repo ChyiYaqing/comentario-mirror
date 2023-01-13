@@ -14,7 +14,7 @@
 
         global.domainDelete(data.domains[data.cd].domain, function (success) {
             if (success) {
-                document.location = global.origin + '/dashboard';
+                document.location = `${global.origin}/dashboard`;
             }
         });
     }
@@ -26,7 +26,7 @@
 
         global.domainClear(data.domains[data.cd].domain, function (success) {
             if (success) {
-                document.location = global.origin + '/dashboard';
+                document.location = `${global.origin}/dashboard`;
             }
         });
     }

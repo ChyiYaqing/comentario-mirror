@@ -54,8 +54,8 @@
 
     // Gets the value of a cookie.
     global.cookieGet = function (name) {
-        const c = '; ' + document.cookie;
-        const x = c.split('; ' + name + '=');
+        const c = `; ${document.cookie}`;
+        const x = c.split(`; ${name}=`);
         if (x.length === 2) {
             return x.pop().split(';').shift();
         }
@@ -74,7 +74,7 @@
 
     // Deletes a cookie.
     global.cookieDelete = function (name) {
-        document.cookie = name + '=;expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+        document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:01 GMT;`;
     }
 
     // Converts a date in the past to a human-friendly duration relative to now.
@@ -83,31 +83,31 @@
         let interval = Math.floor(seconds / 31536000);
 
         if (interval > 1) {
-            return interval + ' years ago';
+            return `${interval} years ago`;
         }
 
         interval = Math.floor(seconds / 2592000);
         if (interval > 1) {
-            return interval + ' months ago';
+            return `${interval} months ago`;
         }
 
         interval = Math.floor(seconds / 86400);
         if (interval > 1) {
-            return interval + ' days ago';
+            return `${interval} days ago`;
         }
 
         interval = Math.floor(seconds / 3600);
         if (interval > 1) {
-            return interval + ' hours ago';
+            return `${interval} hours ago`;
         }
 
         interval = Math.floor(seconds / 60);
         if (interval > 1) {
-            return interval + ' minutes ago';
+            return `${interval} minutes ago`;
         }
 
         if (seconds > 5) {
-            return Math.floor(seconds) + ' seconds ago';
+            return `${Math.floor(seconds)} seconds ago`;
         } else {
             return 'just now';
         }

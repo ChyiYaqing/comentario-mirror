@@ -20,12 +20,12 @@
         }
 
         const json = {
-            'resetHex': global.paramGet('hex'),
-            'password': pwd.val(),
+            resetHex: global.paramGet('hex'),
+            password: pwd.val(),
         };
 
         global.buttonDisable('#reset-button');
-        global.post(global.origin + '/api/reset', json, function (resp) {
+        global.post(`${global.origin}/api/reset`, json, function (resp) {
             global.buttonEnable('#reset-button');
 
             global.textSet('#err', '');
@@ -35,7 +35,7 @@
             }
 
             if (resp.entity === 'owner') {
-                document.location = global.origin + '/login?changed=true';
+                document.location = `${global.origin}/login?changed=true`;
             } else {
                 $('#msg').html('Your password has been reset. You may close this window and try logging in again.');
             }

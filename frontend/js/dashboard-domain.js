@@ -38,13 +38,13 @@
     // Creates a new domain.
     global.domainNewHandler = function () {
         const json = {
-            'ownerToken': global.cookieGet('commentoOwnerToken'),
-            'name': $('#new-domain-name').val(),
-            'domain': $('#new-domain-domain').val(),
+            ownerToken: global.cookieGet('commentoOwnerToken'),
+            name: $('#new-domain-name').val(),
+            domain: $('#new-domain-domain').val(),
         };
 
         global.buttonDisable('#add-site-button');
-        global.post(global.origin + '/api/domain/new', json, function (resp) {
+        global.post(`${global.origin}/api/domain/new`, json, function (resp) {
             global.buttonEnable('#add-site-button');
 
             $('#new-domain-name').val('');
@@ -68,10 +68,10 @@
     // Refreshes the list of domains.
     global.domainRefresh = function (callback) {
         const json = {
-            'ownerToken': global.cookieGet('commentoOwnerToken'),
+            ownerToken: global.cookieGet('commentoOwnerToken'),
         };
 
-        global.post(global.origin + '/api/domain/list', json, function (resp) {
+        global.post(`${global.origin}/api/domain/list`, json, function (resp) {
             if (!resp.success) {
                 global.globalErrorShow(resp.message);
                 return;
@@ -116,11 +116,11 @@
     global.domainUpdate = function (domain, callback) {
         domain.requireIdentification = !domain.allowAnonymous;
         const json = {
-            'ownerToken': global.cookieGet('commentoOwnerToken'),
-            'domain': domain,
+            ownerToken: global.cookieGet('commentoOwnerToken'),
+            domain: domain,
         };
 
-        global.post(global.origin + '/api/domain/update', json, function (resp) {
+        global.post(`${global.origin}/api/domain/update`, json, function (resp) {
             if (!resp.success) {
                 global.globalErrorShow(resp.message);
                 return;
@@ -136,11 +136,11 @@
     // Deletes a domain.
     global.domainDelete = function (domain, callback) {
         const json = {
-            'ownerToken': global.cookieGet('commentoOwnerToken'),
-            'domain': domain,
+            ownerToken: global.cookieGet('commentoOwnerToken'),
+            domain: domain,
         };
 
-        global.post(global.origin + '/api/domain/delete', json, function (resp) {
+        global.post(`${global.origin}/api/domain/delete`, json, function (resp) {
             if (!resp.success) {
                 global.globalErrorShow(resp.message);
                 return;
@@ -156,11 +156,11 @@
     // Clears the comments in a domain.
     global.domainClear = function (domain, callback) {
         const json = {
-            'ownerToken': global.cookieGet('commentoOwnerToken'),
-            'domain': domain,
+            ownerToken: global.cookieGet('commentoOwnerToken'),
+            domain: domain,
         };
 
-        global.post(global.origin + '/api/domain/clear', json, function (resp) {
+        global.post(`${global.origin}/api/domain/clear`, json, function (resp) {
             if (!resp.success) {
                 global.globalErrorShow(resp.message);
                 return;

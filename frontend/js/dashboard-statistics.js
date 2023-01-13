@@ -7,23 +7,19 @@
 
     global.numberify = function (x) {
         if (x === 0) {
-            return {'zeros': '000', 'num': '', 'units': ''}
+            return {zeros: '000', num: '', units: ''}
         }
-
         if (x < 10) {
-            return {'zeros': '00', 'num': x, 'units': ''}
+            return {zeros: '00', num: x, units: ''}
         }
-
         if (x < 100) {
-            return {'zeros': '0', 'num': x, 'units': ''}
+            return {zeros: '0', num: x, units: ''}
         }
-
         if (x < 1000) {
-            return {'zeros': '', 'num': x, 'units': ''}
+            return {zeros: '', num: x, units: ''}
         }
 
         let res;
-
         if (x < 1000000) {
             res = global.numberify((x / 1000).toFixed(0))
             res.units = 'K'
@@ -45,12 +41,12 @@
     global.statisticsOpen = function () {
         const data = global.dashboard.$data;
         const json = {
-            'ownerToken': global.cookieGet('commentoOwnerToken'),
-            'domain': data.domains[data.cd].domain,
+            ownerToken: global.cookieGet('commentoOwnerToken'),
+            domain: data.domains[data.cd].domain,
         };
 
         $('.view').hide();
-        global.post(global.origin + '/api/domain/statistics', json, function (resp) {
+        global.post(`${global.origin  }/api/domain/statistics`, json, function (resp) {
             $('#statistics-view').show();
 
             if (!resp.success) {
@@ -83,7 +79,7 @@
             for (let i = 0; i < views.length; i++) {
                 if ((views.length - i) % 7 === 0) {
                     const x = (views.length - i) / 7;
-                    labels.push(x + ' week' + (x > 1 ? 's' : '') + ' ago');
+                    labels.push(`${x  } week${  x > 1 ? 's' : ''  } ago`);
                 } else {
                     labels.push('');
                 }

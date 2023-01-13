@@ -6,7 +6,7 @@
     // cookie is deleted.
     global.loggedInRedirect = function () {
         if (global.cookieGet('commentoOwnerToken') !== undefined) {
-            document.location = global.origin + '/dashboard';
+            document.location = `${global.origin}/dashboard`;
         }
     }
 

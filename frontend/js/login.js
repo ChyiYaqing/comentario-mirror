@@ -66,12 +66,12 @@
         }
 
         const json = {
-            'email': $('#email').val(),
-            'password': $('#password').val(),
+            email: $('#email').val(),
+            password: $('#password').val(),
         };
 
         global.buttonDisable('#login-button');
-        global.post(global.origin + '/api/owner/login', json, function (resp) {
+        global.post(`${global.origin}/api/owner/login`, json, function (resp) {
             global.buttonEnable('#login-button');
 
             if (!resp.success) {
@@ -80,7 +80,7 @@
             }
 
             global.cookieSet('commentoOwnerToken', resp.ownerToken);
-            document.location = global.origin + '/dashboard';
+            document.location = `${global.origin}/dashboard`;
         });
     };
 

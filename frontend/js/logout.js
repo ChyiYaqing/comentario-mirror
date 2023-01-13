@@ -3,7 +3,7 @@
 
     global.logout = function () {
         global.cookieDelete('commentoOwnerToken');
-        document.location = global.origin + '/login';
+        document.location = `${global.origin}/login`;
     }
 
 }(window.commento, document));

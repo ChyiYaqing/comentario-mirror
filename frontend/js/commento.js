@@ -116,17 +116,21 @@
     }
 
     function classAdd(el, cls) {
-        el.classList.add('commento-' + cls);
+        el.classList.add(`commento-${cls}`);
     }
 
     function classRemove(el, cls) {
         if (el !== null) {
-            el.classList.remove('commento-' + cls);
+            el.classList.remove(`commento-${cls}`);
         }
     }
 
-    function create(el) {
-        return document.createElement(el);
+    function create(el, id) {
+        const e = document.createElement(el);
+        if (id) {
+            e.id = id;
+        }
+        return e;
     }
 
     function remove(el) {
@@ -135,14 +139,9 @@
         }
     }
 
-    function attrGet(node, a) {
+    function getAttr(node, a) {
         const attr = node.attributes[a];
-
-        if (attr === undefined) {
-            return undefined;
-        }
-
-        return attr.value;
+        return attr === void 0 ? undefined : attr.value;
     }
 
     function removeAllEventListeners(node) {
@@ -168,8 +167,8 @@
         });
     }
 
-    function attrSet(node, a, value) {
-        node.setAttribute(a, value);
+    function setAttr(node, values) {
+        Object.keys(values).forEach(k => node.setAttribute(k, values[k]));
     }
 
     function post(url, data, callback) {
@@ -202,8 +201,8 @@
     }
 
     function cookieGet(name) {
-        const c = '; ' + document.cookie;
-        const x = c.split('; ' + name + '=');
+        const c = `; ${document.cookie}`;
+        const x = c.split(`; ${name}=`);
         if (x.length === 2) {
             return x.pop().split(';').shift();
         }
@@ -217,11 +216,7 @@
 
     function commenterTokenGet() {
         const commenterToken = cookieGet('commentoCommenterToken');
-        if (commenterToken === undefined) {
-            return 'anonymous';
-        }
-
-        return commenterToken;
+        return commenterToken === undefined ? 'anonymous' : commenterToken;
     }
 
     global.logout = function () {
@@ -233,32 +228,25 @@
     }
 
     function profileEdit() {
-        window.open(origin + '/profile?commenterToken=' + commenterTokenGet(), '_blank');
+        window.open(`${origin}/profile?commenterToken=${commenterTokenGet()}`, '_blank');
     }
 
     function notificationSettings(unsubscribeSecretHex) {
-        window.open(origin + '/unsubscribe?unsubscribeSecretHex=' + unsubscribeSecretHex, '_blank');
+        window.open(`${origin}/unsubscribe?unsubscribeSecretHex=${unsubscribeSecretHex}`, '_blank');
     }
 
     function selfLoad(commenter, email) {
         commenters[commenter.commenterHex] = commenter;
         selfHex = commenter.commenterHex;
 
-        const loggedContainer = create('div');
+        const loggedContainer = create('div', ID_LOGGED_CONTAINER);
         const loggedInAs = create('div');
-        let name;
-        if (commenter.link !== 'undefined') {
-            name = create('a');
-        } else {
-            name = create('div');
-        }
+        const name = commenter.link !== 'undefined' ? create('a') : create('div');
         let avatar;
         const notificationSettingsButton = create('div');
         const profileEditButton = create('div');
         const logoutButton = create('div');
-        const color = colorGet(commenter.commenterHex + '-' + commenter.name);
-
-        loggedContainer.id = ID_LOGGED_CONTAINER;
+        const color = colorGet(`${commenter.commenterHex}-${commenter.name}`);
 
         classAdd(loggedContainer, 'logged-container');
         classAdd(loggedInAs, 'logged-in-as');
@@ -276,9 +264,9 @@
         onclick(notificationSettingsButton, notificationSettings, email.unsubscribeSecretHex);
         onclick(profileEditButton, profileEdit);
 
-        attrSet(loggedContainer, 'style', 'display: none');
+        setAttr(loggedContainer, {style: 'display: none'});
         if (commenter.link !== 'undefined') {
-            attrSet(name, 'href', commenter.link);
+            setAttr(name, {href: commenter.link});
         }
         if (commenter.photo === 'undefined') {
             avatar = create('div');
@@ -287,8 +275,9 @@
             classAdd(avatar, 'avatar');
         } else {
             avatar = create('img');
-            attrSet(avatar, 'src', cdn + '/api/commenter/photo?commenterHex=' + commenter.commenterHex);
-            attrSet(avatar, 'loading', 'lazy');
+            setAttr(
+                avatar,
+                {src: `${cdn}/api/commenter/photo?commenterHex=${commenter.commenterHex}`, loading: 'lazy', alt: ''});
             classAdd(avatar, 'avatar-img');
         }
 
@@ -313,11 +302,9 @@
             return;
         }
 
-        const json = {
-            'commenterToken': commenterTokenGet(),
-        };
+        const json = {commenterToken: commenterTokenGet()};
 
-        post(origin + '/api/commenter/self', json, function (resp) {
+        post(`${origin}/api/commenter/self`, json, resp => {
             if (!resp.success) {
                 cookieSet('commentoCommenterToken', 'anonymous');
                 call(callback);
@@ -334,32 +321,25 @@
     function cssLoad(file, f) {
         const link = create('link');
         const head = document.getElementsByTagName('head')[0];
-
-        link.type = 'text/css';
-        attrSet(link, 'href', file);
-        attrSet(link, 'rel', 'stylesheet');
+        setAttr(link, {href: file, rel: 'stylesheet', type: 'text/css'});
         onload(link, f);
-
         append(head, link);
     }
 
     function footerLoad() {
-        const footer = create('div');
+        const footer = create('div', ID_FOOTER);
         const aContainer = create('div');
         const a = create('a');
         const text = create('span');
-
-        footer.id = ID_FOOTER;
 
         classAdd(footer, 'footer');
         classAdd(aContainer, 'logo-container');
         classAdd(a, 'logo');
         classAdd(text, 'logo-text');
 
-        attrSet(a, 'href', 'https://yktoo.com');
-        attrSet(a, 'target', '_blank');
+        setAttr(a, {href: 'https://gitlab.com/comentario/comentario', target: '_blank'});
 
-        text.innerText = 'Comentario';
+        text.innerText = 'Comentario 🗨';
 
         append(a, text);
         append(aContainer, a);
@@ -370,18 +350,18 @@
 
     function commentsGet(callback) {
         const json = {
-            'commenterToken': commenterTokenGet(),
-            'domain': parent.location.host,
-            'path': pageId,
+            commenterToken: commenterTokenGet(),
+            domain: parent.location.host,
+            path: pageId,
         };
 
-        post(origin + '/api/comment/list', json, function (resp) {
+        post(`${origin}/api/comment/list`, json, resp => {
             if (!resp.success) {
                 errorShow(resp.message);
                 return;
-            } else {
-                errorHide();
             }
+
+            errorHide();
 
             requireIdentification = resp.requireIdentification;
             isModerator = resp.isModerator;
@@ -402,40 +382,32 @@
 
     function errorShow(text) {
         const el = $(ID_ERROR);
-
         el.innerText = text;
-
-        attrSet(el, 'style', 'display: block;');
+        setAttr(el, {style: 'display: block;'});
     }
 
     function errorHide() {
-        const el = $(ID_ERROR);
-
-        attrSet(el, 'style', 'display: none;');
+        setAttr($(ID_ERROR), {style: 'display: none;'});
     }
 
     function errorElementCreate() {
-        const el = create('div');
-
-        el.id = ID_ERROR;
-
+        const el = create('div', ID_ERROR);
         classAdd(el, 'error-box');
-        attrSet(el, 'style', 'display: none;');
-
+        setAttr(el, {style: 'display: none;'});
         append(root, el);
     }
 
     function autoExpander(el) {
-        return function () {
+        return () => {
             el.style.height = '';
-            el.style.height = Math.min(Math.max(el.scrollHeight, 75), 400) + 'px';
+            el.style.height = `${Math.min(Math.max(el.scrollHeight, 75), 400)}px`;
         }
     }
 
     function markdownHelpShow(id) {
         const textareaSuperContainer = $(ID_SUPER_CONTAINER + id);
         let markdownButton = $(ID_MARKDOWN_BUTTON + id);
-        const markdownHelp = create('table');
+        const markdownHelp = create('table', ID_MARKDOWN_HELP + id);
         const italicsContainer = create('tr');
         const italicsLeft = create('td');
         const italicsRight = create('td');
@@ -454,8 +426,6 @@
         const quoteContainer = create('tr');
         const quoteLeft = create('td');
         const quoteRight = create('td');
-
-        markdownHelp.id = ID_MARKDOWN_HELP + id;
 
         classAdd(markdownHelp, 'markdown-help');
 
@@ -507,21 +477,14 @@
     }
 
     function textareaCreate(id, edit) {
-        const textareaSuperContainer = create('div');
-        const textareaContainer = create('div');
-        const textarea = create('textarea');
+        const textareaSuperContainer     = create('div',      ID_SUPER_CONTAINER    + id);
+        const textareaContainer          = create('div',      ID_TEXTAREA_CONTAINER + id);
+        const textarea                   = create('textarea', ID_TEXTAREA           + id);
         const anonymousCheckboxContainer = create('div');
-        const anonymousCheckbox = create('input');
-        const anonymousCheckboxLabel = create('label');
-        const submitButton = create('button');
-        const markdownButton = create('a');
-
-        textareaSuperContainer.id = ID_SUPER_CONTAINER + id;
-        textareaContainer.id = ID_TEXTAREA_CONTAINER + id;
-        textarea.id = ID_TEXTAREA + id;
-        anonymousCheckbox.id = ID_ANONYMOUS_CHECKBOX + id;
-        submitButton.id = ID_SUBMIT_BUTTON + id;
-        markdownButton.id = ID_MARKDOWN_BUTTON + id;
+        const anonymousCheckbox          = create('input',    ID_ANONYMOUS_CHECKBOX + id);
+        const anonymousCheckboxLabel     = create('label');
+        const submitButton               = create('button',   ID_SUBMIT_BUTTON      + id);
+        const markdownButton             = create('a',        ID_MARKDOWN_BUTTON    + id);
 
         classAdd(textareaContainer, 'textarea-container');
         classAdd(anonymousCheckboxContainer, 'round-check');
@@ -531,16 +494,12 @@
         classAdd(markdownButton, 'markdown-button');
         classAdd(textareaSuperContainer, 'button-margin');
 
-        attrSet(textarea, 'placeholder', 'Add a comment');
-        attrSet(anonymousCheckbox, 'type', 'checkbox');
-        attrSet(anonymousCheckboxLabel, 'for', ID_ANONYMOUS_CHECKBOX + id);
+        setAttr(textarea, {placeholder: 'Add a comment'});
+        setAttr(anonymousCheckbox, {type: 'checkbox'});
+        setAttr(anonymousCheckboxLabel, {for: ID_ANONYMOUS_CHECKBOX + id});
 
         anonymousCheckboxLabel.innerText = 'Comment anonymously';
-        if (edit === true) {
-            submitButton.innerText = 'Save Changes';
-        } else {
-            submitButton.innerText = 'Add Comment';
-        }
+        submitButton.innerText = edit ? 'Save Changes' : 'Add Comment';
         markdownButton.innerHTML = '<b>M &#8595;</b> &nbsp; Markdown';
 
         if (anonymousOnly) {
@@ -549,11 +508,7 @@
         }
 
         textarea.oninput = autoExpander(textarea);
-        if (edit === true) {
-            onclick(submitButton, commentEdit, id);
-        } else {
-            onclick(submitButton, submitAccountDecide, id);
-        }
+        onclick(submitButton, edit ? commentEdit : submitAccountDecide, id);
         onclick(markdownButton, markdownHelpShow, id);
 
         append(textareaContainer, textarea);
@@ -597,8 +552,7 @@
         classAdd(sortPolicyButtons, 'sort-policy-buttons');
 
         for (let sp in sortPolicyNames) {
-            const sortPolicyButton = create('a');
-            sortPolicyButton.id = ID_SORT_POLICY + sp;
+            const sortPolicyButton = create('a', ID_SORT_POLICY + sp);
             classAdd(sortPolicyButton, 'sort-policy-button');
             if (sp === sortPolicy) {
                 classAdd(sortPolicyButton, 'sort-policy-button-selected');
@@ -614,15 +568,11 @@
     }
 
     function rootCreate(callback) {
-        const login = create('div');
-        const loginText = create('div');
-        const mainArea = $(ID_MAIN_AREA);
-        const preCommentsArea = create('div');
-        const commentsArea = create('div');
-
-        login.id = ID_LOGIN;
-        preCommentsArea.id = ID_PRE_COMMENTS_AREA;
-        commentsArea.id = ID_COMMENTS_AREA;
+        const login           = create('div', ID_LOGIN);
+        const loginText       = create('div');
+        const mainArea        = $(ID_MAIN_AREA);
+        const preCommentsArea = create('div', ID_PRE_COMMENTS_AREA);
+        const commentsArea    = create('div', ID_COMMENTS_AREA);
 
         classAdd(login, 'login');
         classAdd(loginText, 'login-text');
@@ -634,11 +584,7 @@
         onclick(loginText, global.loginBoxShow, null);
 
         let numOauthConfigured = 0;
-        Object.keys(configuredOauths).forEach(function (key) {
-            if (configuredOauths[key]) {
-                numOauthConfigured++;
-            }
-        });
+        Object.keys(configuredOauths).forEach(key => configuredOauths[key] && numOauthConfigured++);
         if (numOauthConfigured > 0) {
             append(login, loginText);
         } else if (!requireIdentification) {
@@ -665,26 +611,20 @@
         if (comments.length > 0) {
             append(mainArea, sortPolicyBox());
         }
-
         append(mainArea, preCommentsArea);
-
         append(mainArea, commentsArea);
         append(root, mainArea);
-
         call(callback);
     }
 
     function messageCreate(text) {
         const msg = create('div');
-
         classAdd(msg, 'moderation-notice');
-
         msg.innerText = text;
-
         return msg;
     }
 
-    global.commentNew = function (id, commenterToken, appendCard, callback) {
+    global.commentNew = (id, commenterToken, appendCard, callback) => {
         const textareaSuperContainer = $(ID_SUPER_CONTAINER + id);
         const textarea = $(ID_TEXTAREA + id);
         const replyButton = $(ID_REPLY + id);
@@ -694,57 +634,53 @@
         if (markdown === '') {
             classAdd(textarea, 'red-border');
             return;
-        } else {
-            classRemove(textarea, 'red-border');
         }
 
+        classRemove(textarea, 'red-border');
+
         const json = {
-            'commenterToken': commenterToken,
-            'domain': parent.location.host,
-            'path': pageId,
-            'parentHex': id,
-            'markdown': markdown,
+            commenterToken: commenterToken,
+            domain: parent.location.host,
+            path: pageId,
+            parentHex: id,
+            markdown: markdown,
         };
 
-        post(origin + '/api/comment/new', json, function (resp) {
+        post(`${origin}/api/comment/new`, json, resp => {
             if (!resp.success) {
                 errorShow(resp.message);
                 return;
-            } else {
-                errorHide();
             }
 
+            errorHide();
+
             let message = '';
-            if (resp.state === 'unapproved') {
+            switch (resp.state) {
+            case 'unapproved':
                 message = 'Your comment is under moderation.';
-            } else if (resp.state === 'flagged') {
+                break;
+            case 'flagged':
                 message = 'Your comment was flagged as spam and is under moderation.';
+                break;
             }
 
             if (message !== '') {
                 prepend($(ID_SUPER_CONTAINER + id), messageCreate(message));
             }
 
-            let commenterHex = selfHex;
-            if (commenterHex === undefined || commenterToken === 'anonymous') {
-                commenterHex = 'anonymous';
-            }
-
             const comment = {
-                'commentHex': resp.commentHex,
-                'commenterHex': commenterHex,
-                'markdown': markdown,
-                'html': resp.html,
-                'parentHex': 'root',
-                'score': 0,
-                'state': 'approved',
-                'direction': 0,
-                'creationDate': new Date(),
+                commentHex: resp.commentHex,
+                commenterHex: selfHex === undefined || commenterToken === 'anonymous' ? 'anonymous' : selfHex,
+                markdown: markdown,
+                html: resp.html,
+                parentHex: 'root',
+                score: 0,
+                state: 'approved',
+                direction: 0,
+                creationDate: new Date(),
             };
 
-            const newCard = commentsRecurse({
-                'root': [comment]
-            }, 'root');
+            const newCard = commentsRecurse({root: [comment]}, 'root');
 
             commentsMap[resp.commentHex] = comment;
             if (appendCard) {
@@ -811,46 +747,28 @@
         if (elapsed < msJustNow) {
             return 'just now';
         } else if (elapsed < msMinutesAgo) {
-            return Math.round(elapsed / msPerSecond) + ' seconds ago';
+            return `${Math.round(elapsed / msPerSecond)} seconds ago`;
         } else if (elapsed < msHoursAgo) {
-            return Math.round(elapsed / msPerMinute) + ' minutes ago';
+            return `${Math.round(elapsed / msPerMinute)} minutes ago`;
         } else if (elapsed < msDaysAgo) {
-            return Math.round(elapsed / msPerHour) + ' hours ago';
+            return `${Math.round(elapsed / msPerHour)} hours ago`;
         } else if (elapsed < msMonthsAgo) {
-            return Math.round(elapsed / msPerDay) + ' days ago';
+            return `${Math.round(elapsed / msPerDay)} days ago`;
         } else if (elapsed < msYearsAgo) {
-            return Math.round(elapsed / msPerMonth) + ' months ago';
+            return `${Math.round(elapsed / msPerMonth)} months ago`;
         } else {
-            return Math.round(elapsed / msPerYear) + ' years ago';
+            return `${Math.round(elapsed / msPerYear)} years ago`;
         }
     }
 
     function scorify(score) {
-        if (score !== 1) {
-            return score + ' points';
-        } else {
-            return score + ' point';
-        }
+        return score === 1 ? `${score} point` : `${score} points`;
     }
 
     const sortPolicyFunctions = {
-        'score-desc': function (a, b) {
-            return b.score - a.score;
-        },
-        'creationdate-desc': function (a, b) {
-            if (a.creationDate < b.creationDate) {
-                return 1;
-            } else {
-                return -1;
-            }
-        },
-        'creationdate-asc': function (a, b) {
-            if (a.creationDate < b.creationDate) {
-                return -1;
-            } else {
-                return 1;
-            }
-        },
+        'score-desc':        (a, b) => b.score - a.score,
+        'creationdate-desc': (a, b) => a.creationDate < b.creationDate ? 1 : -1,
+        'creationdate-asc':  (a, b) => a.creationDate < b.creationDate ? -1 : 1,
     };
 
     function commentsRecurse(parentMap, parentHex) {
@@ -859,67 +777,47 @@
             return null;
         }
 
-        cur.sort(function (a, b) {
-            if (!a.deleted && a.commentHex === stickyCommentHex) {
-                return -Infinity;
-            } else if (!b.deleted && b.commentHex === stickyCommentHex) {
-                return Infinity;
-            }
-
-            return sortPolicyFunctions[sortPolicy](a, b);
+        cur.sort((a, b) => {
+            return !a.deleted && a.commentHex === stickyCommentHex ?
+                -Infinity :
+                !b.deleted && b.commentHex === stickyCommentHex ?
+                    Infinity :
+                    sortPolicyFunctions[sortPolicy](a, b);
         });
 
         const curTime = (new Date()).getTime();
         const cards = create('div');
-        cur.forEach(function (comment) {
+        cur.forEach(comment => {
             const commenter = commenters[comment.commenterHex];
             let avatar;
-            const card = create('div');
-            const header = create('div');
-            const subtitle = create('div');
-            const timeago = create('div');
-            const score = create('div');
-            const body = create('div');
-            const text = create('div');
-            const options = create('div');
-            const edit = create('button');
-            const reply = create('button');
-            const collapse = create('button');
-            let upvote = create('button');
-            let downvote = create('button');
-            const approve = create('button');
-            const remove = create('button');
-            const sticky = create('button');
-            const children = commentsRecurse(parentMap, comment.commentHex);
-            const contents = create('div');
-            const color = colorGet(comment.commenterHex + '-' + commenter.name);
-            let name;
-            if (commenter.link !== 'undefined' && commenter.link !== 'https://undefined' && commenter.link !== '') {
-                name = create('a');
-            } else {
-                name = create('div');
-            }
+            const hex = comment.commentHex;
+            const header   = create('div');
+            const card     = create('div',    ID_CARD     + hex);
+            const subtitle = create('div',    ID_SUBTITLE + hex);
+            const timeago  = create('div',    ID_TIMEAGO  + hex);
+            const score    = create('div',    ID_SCORE    + hex);
+            const body     = create('div',    ID_BODY     + hex);
+            const text     = create('div',    ID_TEXT     + hex);
+            const options  = create('div',    ID_OPTIONS  + hex);
+            const edit     = create('button', ID_EDIT     + hex);
+            const reply    = create('button', ID_REPLY    + hex);
+            const collapse = create('button', ID_COLLAPSE + hex);
+            let   upvote   = create('button', ID_UPVOTE   + hex);
+            let   downvote = create('button', ID_DOWNVOTE + hex);
+            const approve  = create('button', ID_APPROVE  + hex);
+            const remove   = create('button', ID_REMOVE   + hex);
+            const sticky   = create('button', ID_STICKY   + hex);
+            const contents = create('div',    ID_CONTENTS + hex);
 
-            card.id = ID_CARD + comment.commentHex;
-            body.id = ID_BODY + comment.commentHex;
-            text.id = ID_TEXT + comment.commentHex;
-            subtitle.id = ID_SUBTITLE + comment.commentHex;
-            timeago.id = ID_TIMEAGO + comment.commentHex;
-            score.id = ID_SCORE + comment.commentHex;
-            options.id = ID_OPTIONS + comment.commentHex;
-            edit.id = ID_EDIT + comment.commentHex;
-            reply.id = ID_REPLY + comment.commentHex;
-            collapse.id = ID_COLLAPSE + comment.commentHex;
-            upvote.id = ID_UPVOTE + comment.commentHex;
-            downvote.id = ID_DOWNVOTE + comment.commentHex;
-            approve.id = ID_APPROVE + comment.commentHex;
-            remove.id = ID_REMOVE + comment.commentHex;
-            sticky.id = ID_STICKY + comment.commentHex;
+            const children = commentsRecurse(parentMap, hex);
+            const color = colorGet(`${comment.commenterHex}-${commenter.name}`);
+            const name = create(
+                commenter.link !== 'undefined' && commenter.link !== 'https://undefined' && commenter.link !== '' ? 'a' : 'div',
+                ID_NAME + hex);
+
             if (children) {
-                children.id = ID_CHILDREN + comment.commentHex;
+                children.id = ID_CHILDREN + hex;
             }
-            contents.id = ID_CONTENTS + comment.commentHex;
-            name.id = ID_NAME + comment.commentHex;
 
             collapse.title = 'Collapse children';
             upvote.title = 'Upvote';
@@ -928,7 +826,7 @@
             reply.title = 'Reply';
             approve.title = 'Approve';
             remove.title = 'Remove';
-            if (stickyCommentHex === comment.commentHex) {
+            if (stickyCommentHex === hex) {
                 if (isModerator) {
                     sticky.title = 'Unsticky';
                 } else {
@@ -939,7 +837,7 @@
             }
             timeago.title = comment.creationDate.toString();
 
-            card.style['borderLeft'] = '2px solid ' + color;
+            card.style['borderLeft'] = `2px solid ${color}`;
             if (comment.deleted) {
                 name.innerText = '[deleted]';
             } else {
@@ -963,7 +861,7 @@
                 classAdd(avatar, 'avatar');
             } else {
                 avatar = create('img');
-                attrSet(avatar, 'src', cdn + '/api/commenter/photo?commenterHex=' + commenter.commenterHex);
+                setAttr(avatar, {src: `${cdn}/api/commenter/photo?commenterHex=${commenter.commenterHex}`});
                 classAdd(avatar, 'avatar-img');
             }
 
@@ -1002,11 +900,7 @@
             classAdd(remove, 'option-button');
             classAdd(remove, 'option-remove');
             classAdd(sticky, 'option-button');
-            if (stickyCommentHex === comment.commentHex) {
-                classAdd(sticky, 'option-unsticky');
-            } else {
-                classAdd(sticky, 'option-sticky');
-            }
+            classAdd(sticky, stickyCommentHex === hex ? 'option-unsticky' : 'option-sticky');
 
             if (isAuthenticated) {
                 if (comment.direction > 0) {
@@ -1016,14 +910,14 @@
                 }
             }
 
-            onclick(edit, global.editShow, comment.commentHex);
-            onclick(collapse, global.commentCollapse, comment.commentHex);
-            onclick(approve, global.commentApprove, comment.commentHex);
-            onclick(remove, global.commentDelete, comment.commentHex);
-            onclick(sticky, global.commentSticky, comment.commentHex);
+            onclick(edit, global.editShow, hex);
+            onclick(collapse, global.commentCollapse, hex);
+            onclick(approve, global.commentApprove, hex);
+            onclick(remove, global.commentDelete, hex);
+            onclick(sticky, global.commentSticky, hex);
 
             if (isAuthenticated) {
-                const upDown = upDownOnclickSet(upvote, downvote, comment.commentHex, comment.direction);
+                const upDown = upDownOnclickSet(upvote, downvote, hex, comment.direction);
                 upvote = upDown[0];
                 downvote = upDown[1];
             } else {
@@ -1031,10 +925,10 @@
                 onclick(downvote, global.loginBoxShow, null);
             }
 
-            onclick(reply, global.replyShow, comment.commentHex);
+            onclick(reply, global.replyShow, hex);
 
             if (commenter.link !== 'undefined' && commenter.link !== 'https://undefined' && commenter.link !== '') {
-                attrSet(name, 'href', commenter.link);
+                setAttr(name, {href: commenter.link});
             }
 
             append(options, collapse);
@@ -1062,13 +956,13 @@
                 append(options, approve);
             }
 
-            if (!comment.deleted && (!isModerator && stickyCommentHex === comment.commentHex)) {
+            if (!comment.deleted && (!isModerator && stickyCommentHex === hex)) {
                 append(options, sticky);
             }
 
-            attrSet(options, 'style', 'width: ' + ((options.childNodes.length + 1) * 32) + 'px;');
+            setAttr(options, {style: `width: ${(options.childNodes.length + 1) * 32}px;`});
             for (let i = 0; i < options.childNodes.length; i++) {
-                attrSet(options.childNodes[i], 'style', 'right: ' + (i * 32) + 'px;');
+                setAttr(options.childNodes[i], {style: `right: ${i * 32}px;`});
             }
 
             append(subtitle, score);
@@ -1104,20 +998,16 @@
             append(cards, card);
         });
 
-        if (cards.childNodes.length === 0) {
-            return null;
-        }
-
-        return cards;
+        return cards.childNodes.length === 0 ? null : cards;
     }
 
-    global.commentApprove = function (commentHex) {
+    global.commentApprove = commentHex => {
         const json = {
-            'commenterToken': commenterTokenGet(),
-            'commentHex': commentHex,
+            commenterToken: commenterTokenGet(),
+            commentHex: commentHex,
         };
 
-        post(origin + '/api/comment/approve', json, function (resp) {
+        post(`${origin}/api/comment/approve`, json, resp => {
             if (!resp.success) {
                 errorShow(resp.message);
                 return
@@ -1135,24 +1025,23 @@
         });
     }
 
-    global.commentDelete = function (commentHex) {
+    global.commentDelete = commentHex => {
         if (!confirm('Are you sure you want to delete this comment?')) {
             return;
         }
 
         const json = {
-            'commenterToken': commenterTokenGet(),
-            'commentHex': commentHex,
+            commenterToken: commenterTokenGet(),
+            commentHex: commentHex,
         };
 
-        post(origin + '/api/comment/delete', json, function (resp) {
+        post(`${origin}/api/comment/delete`, json, resp => {
             if (!resp.success) {
                 errorShow(resp.message);
                 return
-            } else {
-                errorHide();
             }
 
+            errorHide();
             const text = $(ID_TEXT + commentHex);
             text.innerText = '[deleted]';
         });
@@ -1162,7 +1051,7 @@
         const els = document.getElementsByClassName('commento-name');
 
         for (let i = 0; i < els.length; i++) {
-            attrSet(els[i], 'style', 'max-width: ' + (els[i].getBoundingClientRect()['width'] + 20) + 'px;')
+            setAttr(els[i], {style: `max-width: ${els[i].getBoundingClientRect()['width'] + 20}px;`})
         }
     }
 
@@ -1184,7 +1073,7 @@
         return [upvote, downvote];
     }
 
-    global.vote = function (data) {
+    global.vote = data => {
         const commentHex = data[0];
         const oldDirection = data[1][0];
         const newDirection = data[1][1];
@@ -1194,9 +1083,9 @@
         const score = $(ID_SCORE + commentHex);
 
         const json = {
-            'commenterToken': commenterTokenGet(),
-            'commentHex': commentHex,
-            'direction': newDirection,
+            commenterToken: commenterTokenGet(),
+            commentHex: commentHex,
+            direction: newDirection,
         };
 
         const upDown = upDownOnclickSet(upvote, downvote, commentHex, newDirection);
@@ -1213,7 +1102,7 @@
 
         score.innerText = scorify(parseInt(score.innerText.replace(/[^\d-.]/g, '')) + newDirection - oldDirection);
 
-        post(origin + '/api/comment/vote', json, function (resp) {
+        post(`${origin}/api/comment/vote`, json, resp => {
             if (!resp.success) {
                 errorShow(resp.message);
                 classRemove(upvote, 'upvoted');
@@ -1228,29 +1117,27 @@
 
     function commentEdit(id) {
         const textarea = $(ID_TEXTAREA + id);
-
         const markdown = textarea.value;
-
         if (markdown === '') {
             classAdd(textarea, 'red-border');
             return;
-        } else {
-            classRemove(textarea, 'red-border');
         }
 
+        classRemove(textarea, 'red-border');
+
         const json = {
-            'commenterToken': commenterTokenGet(),
-            'commentHex': id,
-            'markdown': markdown,
+            commenterToken: commenterTokenGet(),
+            commentHex: id,
+            markdown: markdown,
         };
 
-        post(origin + '/api/comment/edit', json, function (resp) {
+        post(`${origin}/api/comment/edit`, json, resp => {
             if (!resp.success) {
                 errorShow(resp.message);
                 return;
-            } else {
-                errorHide();
             }
+
+            errorHide();
 
             commentsMap[id].markdown = markdown;
             commentsMap[id].html = resp.html;
@@ -1271,10 +1158,13 @@
             onclick(editButton, global.editShow, id)
 
             let message = '';
-            if (resp.state === 'unapproved') {
+            switch (resp.state) {
+            case 'unapproved':
                 message = 'Your comment is under moderation.';
-            } else if (resp.state === 'flagged') {
+                break;
+            case 'flagged':
                 message = 'Your comment was flagged as spam and is under moderation.';
+                break;
             }
 
             if (message !== '') {
@@ -1283,7 +1173,7 @@
         });
     }
 
-    global.editShow = function (id) {
+    global.editShow = id => {
         if (id in shownEdit && shownEdit[id]) {
             return;
         }
@@ -1306,7 +1196,7 @@
         onclick(editButton, global.editCollapse, id);
     };
 
-    global.editCollapse = function (id) {
+    global.editCollapse = id => {
         let editButton = $(ID_EDIT + id);
         const textarea = $(ID_SUPER_CONTAINER + id);
 
@@ -1323,7 +1213,7 @@
         onclick(editButton, global.editShow, id)
     }
 
-    global.replyShow = function (id) {
+    global.replyShow = id => {
         if (id in shownReply && shownReply[id]) {
             return;
         }
@@ -1343,7 +1233,7 @@
         onclick(replyButton, global.replyCollapse, id);
     };
 
-    global.replyCollapse = function (id) {
+    global.replyCollapse = id => {
         let replyButton = $(ID_REPLY + id);
         const el = $(ID_SUPER_CONTAINER + id);
 
@@ -1359,7 +1249,7 @@
         onclick(replyButton, global.replyShow, id)
     }
 
-    global.commentCollapse = function (id) {
+    global.commentCollapse = id => {
         const children = $(ID_CHILDREN + id);
         let button = $(ID_COLLAPSE + id);
 
@@ -1376,7 +1266,7 @@
         onclick(button, global.commentUncollapse, id);
     }
 
-    global.commentUncollapse = function (id) {
+    global.commentUncollapse = id => {
         const children = $(ID_CHILDREN + id);
         let button = $(ID_COLLAPSE + id);
 
@@ -1395,7 +1285,7 @@
 
     function parentMap(comments) {
         const m = {};
-        comments.forEach(function (comment) {
+        comments.forEach(comment => {
             const parentHex = comment.parentHex;
             if (!(parentHex in m)) {
                 m[parentHex] = [];
@@ -1405,8 +1295,8 @@
 
             m[parentHex].push(comment);
             commentsMap[comment.commentHex] = {
-                'html': comment.html,
-                'markdown': comment.markdown,
+                html: comment.html,
+                markdown: comment.markdown,
             };
         });
 
@@ -1462,30 +1352,29 @@
     }
 
     // OAuth logic
-    global.commentoAuth = function (data) {
+    global.commentoAuth = data => {
         const provider = data.provider;
         const id = data.id;
         const popup = window.open('', '_blank');
 
-        get(origin + '/api/commenter/token/new', function (resp) {
+        get(`${origin}/api/commenter/token/new`, resp => {
             if (!resp.success) {
                 errorShow(resp.message);
                 return;
-            } else {
-                errorHide();
             }
+            errorHide();
 
             cookieSet('commentoCommenterToken', resp.commenterToken);
 
-            popup.location = origin + '/api/oauth/' + provider + '/redirect?commenterToken=' + resp.commenterToken;
+            popup.location = `${origin}/api/oauth/${provider}/redirect?commenterToken=${resp.commenterToken}`;
 
-            const interval = setInterval(function () {
+            const interval = setInterval(() => {
                 if (popup.closed) {
                     clearInterval(interval);
-                    selfGet(function () {
+                    selfGet(() => {
                         const loggedContainer = $(ID_LOGGED_CONTAINER);
                         if (loggedContainer) {
-                            attrSet(loggedContainer, 'style', '');
+                            setAttr(loggedContainer, {style: ''});
                         }
 
                         if (commenterTokenGet() !== 'anonymous') {
@@ -1493,7 +1382,7 @@
                         }
 
                         if (id !== null) {
-                            global.commentNew(id, resp.commenterToken, false, function () {
+                            global.commentNew(id, resp.commenterToken, false, () => {
                                 global.loginBoxClose();
                                 commentsGet(commentsRender);
                             });
@@ -1514,47 +1403,30 @@
     }
 
     function loginBoxCreate() {
-        const loginBoxContainer = create('div');
-
-        loginBoxContainer.id = ID_LOGIN_BOX_CONTAINER;
-
-        append(root, loginBoxContainer);
+        append(root, create('div', ID_LOGIN_BOX_CONTAINER));
     }
 
-    global.popupRender = function (id) {
-        const loginBoxContainer = $(ID_LOGIN_BOX_CONTAINER);
-        const loginBox = create('div');
-        const ssoSubtitle = create('div');
-        const ssoButtonContainer = create('div');
-        const ssoButton = create('div');
-        const hr1 = create('hr');
-        const oauthSubtitle = create('div');
-        const oauthButtonsContainer = create('div');
-        const oauthButtons = create('div');
-        const hr2 = create('hr');
-        const emailSubtitle = create('div');
-        const emailContainer = create('div');
-        const email = create('div');
-        const emailInput = create('input');
-        const emailButton = create('button');
-        const forgotLinkContainer = create('div');
-        const forgotLink = create('a');
-        const loginLinkContainer = create('div');
-        const loginLink = create('a');
-        const close = create('div');
-
-        loginBox.id = ID_LOGIN_BOX;
-        emailSubtitle.id = ID_LOGIN_BOX_EMAIL_SUBTITLE;
-        emailInput.id = ID_LOGIN_BOX_EMAIL_INPUT;
-        emailButton.id = ID_LOGIN_BOX_EMAIL_BUTTON;
-        forgotLinkContainer.id = ID_LOGIN_BOX_FORGOT_LINK_CONTAINER
-        loginLinkContainer.id = ID_LOGIN_BOX_LOGIN_LINK_CONTAINER;
-        ssoButtonContainer.id = ID_LOGIN_BOX_SSO_BUTTON_CONTAINER;
-        ssoSubtitle.id = ID_LOGIN_BOX_SSO_PRETEXT;
-        hr1.id = ID_LOGIN_BOX_HR1;
-        oauthSubtitle.id = ID_LOGIN_BOX_OAUTH_PRETEXT;
-        oauthButtonsContainer.id = ID_LOGIN_BOX_OAUTH_BUTTONS_CONTAINER;
-        hr2.id = ID_LOGIN_BOX_HR2;
+    global.popupRender = id => {
+        const loginBoxContainer     = $(ID_LOGIN_BOX_CONTAINER);
+        const loginBox              = create('div',    ID_LOGIN_BOX);
+        const ssoSubtitle           = create('div',    ID_LOGIN_BOX_SSO_PRETEXT);
+        const ssoButtonContainer    = create('div',    ID_LOGIN_BOX_SSO_BUTTON_CONTAINER);
+        const ssoButton             = create('div');
+        const hr1                   = create('hr',     ID_LOGIN_BOX_HR1);
+        const oauthSubtitle         = create('div',    ID_LOGIN_BOX_OAUTH_PRETEXT);
+        const oauthButtonsContainer = create('div',    ID_LOGIN_BOX_OAUTH_BUTTONS_CONTAINER);
+        const oauthButtons          = create('div');
+        const hr2                   = create('hr',     ID_LOGIN_BOX_HR2);
+        const emailSubtitle         = create('div',    ID_LOGIN_BOX_EMAIL_SUBTITLE);
+        const emailContainer        = create('div');
+        const email                 = create('div');
+        const emailInput            = create('input',  ID_LOGIN_BOX_EMAIL_INPUT);
+        const emailButton           = create('button', ID_LOGIN_BOX_EMAIL_BUTTON);
+        const forgotLinkContainer   = create('div',    ID_LOGIN_BOX_FORGOT_LINK_CONTAINER);
+        const forgotLink            = create('a');
+        const loginLinkContainer    = create('div',    ID_LOGIN_BOX_LOGIN_LINK_CONTAINER);
+        const loginLink             = create('a');
+        const close                 = create('div');
 
         classAdd(loginBoxContainer, 'login-box-container');
         classAdd(loginBox, 'login-box');
@@ -1581,30 +1453,28 @@
         emailSubtitle.innerText = 'Login with your email address';
         emailButton.innerText = 'Continue';
         oauthSubtitle.innerText = 'Proceed with social login';
-        ssoSubtitle.innerText = 'Proceed with ' + parent.location.host + ' authentication';
+        ssoSubtitle.innerText = `Proceed with ${parent.location.host} authentication`;
 
         onclick(emailButton, global.passwordAsk, id);
         onclick(forgotLink, global.forgotPassword, id);
         onclick(loginLink, global.popupSwitch, id);
         onclick(close, global.loginBoxClose);
 
-        attrSet(loginBoxContainer, 'style', 'display: none; opacity: 0;');
-        attrSet(emailInput, 'name', 'email');
-        attrSet(emailInput, 'placeholder', 'Email address');
-        attrSet(emailInput, 'type', 'text');
+        setAttr(loginBoxContainer, {style: 'display: none; opacity: 0;'});
+        setAttr(emailInput, {name: 'email', placeholder: 'Email address', type: 'text', autocomplete: 'email'});
 
         let numOauthConfigured = 0;
         const oauthProviders = ['google', 'github', 'gitlab'];
-        oauthProviders.forEach(function (provider) {
+        oauthProviders.forEach(provider => {
             if (configuredOauths[provider]) {
                 const button = create('button');
 
                 classAdd(button, 'button');
-                classAdd(button, provider + '-button');
+                classAdd(button, `${provider}-button`);
 
                 button.innerText = provider;
 
-                onclick(button, global.commentoAuth, {'provider': provider, 'id': id});
+                onclick(button, global.commentoAuth, {provider: provider, id: id});
 
                 append(oauthButtons, button);
                 numOauthConfigured++;
@@ -1619,7 +1489,7 @@
 
             button.innerText = 'Single Sign-On';
 
-            onclick(button, global.commentoAuth, {'provider': 'sso', 'id': id});
+            onclick(button, global.commentoAuth, {provider: 'sso', id: id});
 
             append(ssoButton, button);
             append(ssoButtonContainer, ssoButton);
@@ -1666,13 +1536,13 @@
         append(loginBoxContainer, loginBox);
     }
 
-    global.forgotPassword = function () {
+    global.forgotPassword = () => {
         const popup = window.open('', '_blank');
-        popup.location = origin + '/forgot?commenter=true';
+        popup.location = `${origin}/forgot?commenter=true`;
         global.loginBoxClose();
     }
 
-    global.popupSwitch = function (id) {
+    global.popupSwitch = id => {
         const emailSubtitle = $(ID_LOGIN_BOX_EMAIL_SUBTITLE);
 
         if (oauthButtonsShown) {
@@ -1700,11 +1570,11 @@
 
     function loginUP(username, password, id) {
         const json = {
-            'email': username,
-            'password': password,
+            email: username,
+            password: password,
         };
 
-        post(origin + '/api/commenter/login', json, function (resp) {
+        post(`${origin}/api/commenter/login`, json, resp => {
             if (!resp.success) {
                 global.loginBoxClose();
                 errorShow(resp.message);
@@ -1720,7 +1590,7 @@
 
             remove($(ID_LOGIN));
             if (id !== null) {
-                global.commentNew(id, resp.commenterToken, false, function () {
+                global.commentNew(id, resp.commenterToken, false, () => {
                     global.loginBoxClose();
                     commentsGet(commentsRender);
                 });
@@ -1731,40 +1601,39 @@
         });
     }
 
-    global.login = function (id) {
+    global.login = id => {
         const email = $(ID_LOGIN_BOX_EMAIL_INPUT);
         const password = $(ID_LOGIN_BOX_PASSWORD_INPUT);
-
         loginUP(email.value, password.value, id);
     }
 
-    global.signup = function (id) {
+    global.signup = id => {
         const email = $(ID_LOGIN_BOX_EMAIL_INPUT);
         const name = $(ID_LOGIN_BOX_NAME_INPUT);
         const website = $(ID_LOGIN_BOX_WEBSITE_INPUT);
         const password = $(ID_LOGIN_BOX_PASSWORD_INPUT);
 
         const json = {
-            'email': email.value,
-            'name': name.value,
-            'website': website.value,
-            'password': password.value,
+            email: email.value,
+            name: name.value,
+            website: website.value,
+            password: password.value,
         };
 
-        post(origin + '/api/commenter/new', json, function (resp) {
+        post(`${origin}/api/commenter/new`, json, resp => {
             if (!resp.success) {
                 global.loginBoxClose();
                 errorShow(resp.message);
                 return
-            } else {
-                errorHide();
             }
 
+            errorHide();
             loginUP(email.value, password.value, id);
         });
     }
 
-    global.passwordAsk = function (id) {
+    global.passwordAsk = id => {
+        const isSignup = popupBoxType === 'signup';
         const loginBox = $(ID_LOGIN_BOX);
         const subtitle = $(ID_LOGIN_BOX_EMAIL_SUBTITLE);
 
@@ -1780,62 +1649,49 @@
             }
         }
 
-        let order, fid, type, placeholder;
+        const controls = isSignup ?
+            [
+                {id: ID_LOGIN_BOX_NAME_INPUT,     name: 'name',     type: 'text',     placeholder: 'Real Name'},
+                {id: ID_LOGIN_BOX_WEBSITE_INPUT,  name: 'website',  type: 'text',     placeholder: 'Website (Optional)'},
+                {id: ID_LOGIN_BOX_PASSWORD_INPUT, name: 'password', type: 'password', placeholder: 'Password', autocomplete: 'new-password'},
+            ] :
+            [
+                {id: ID_LOGIN_BOX_PASSWORD_INPUT, name: 'password', type: 'password', placeholder: 'Password', autocomplete: 'current-password'},
+            ];
 
-        if (popupBoxType === 'signup') {
-            order = ['name', 'website', 'password'];
-            fid = [ID_LOGIN_BOX_NAME_INPUT, ID_LOGIN_BOX_WEBSITE_INPUT, ID_LOGIN_BOX_PASSWORD_INPUT];
-            type = ['text', 'text', 'password'];
-            placeholder = ['Real Name', 'Website (Optional)', 'Password'];
-        } else {
-            order = ['password'];
-            fid = [ID_LOGIN_BOX_PASSWORD_INPUT];
-            type = ['password'];
-            placeholder = ['Password'];
-        }
+        subtitle.innerText = isSignup ?
+            'Finish the rest of your profile to complete.' :
+            'Enter your password to log in.';
 
-        if (popupBoxType === 'signup') {
-            subtitle.innerText = 'Finish the rest of your profile to complete.'
-        } else {
-            subtitle.innerText = 'Enter your password to log in.'
-        }
-
-        for (let i = 0; i < order.length; i++) {
+        controls.forEach(c => {
             const fieldContainer = create('div');
-            const field = create('div');
-            const fieldInput = create('input');
-
-            fieldInput.id = fid[i];
+            const field          = create('div');
+            const fieldInput     = create('input', c.id);
 
             classAdd(fieldContainer, 'email-container');
             classAdd(field, 'email');
             classAdd(fieldInput, 'input');
 
-            attrSet(fieldInput, 'name', order[i]);
-            attrSet(fieldInput, 'type', type[i]);
-            attrSet(fieldInput, 'placeholder', placeholder[i]);
-
+            setAttr(fieldInput, c);
             append(field, fieldInput);
             append(fieldContainer, field);
 
-            if (order[i] === 'password') {
+            if (c.type === 'password') {
                 const fieldButton = create('button');
                 classAdd(fieldButton, 'email-button');
                 fieldButton.innerText = popupBoxType;
 
-                if (popupBoxType === 'signup') {
+                if (isSignup) {
                     onclick(fieldButton, global.signup, id);
                 } else {
                     onclick(fieldButton, global.login, id);
                 }
-
                 append(field, fieldButton);
             }
-
             append(loginBox, fieldContainer);
-        }
+        });
 
-        if (popupBoxType === 'signup') {
+        if (isSignup) {
             $(ID_LOGIN_BOX_NAME_INPUT).focus();
         } else {
             $(ID_LOGIN_BOX_PASSWORD_INPUT).focus();
@@ -1844,55 +1700,50 @@
 
     function pageUpdate(callback) {
         const attributes = {
-            'isLocked': isLocked,
-            'stickyCommentHex': stickyCommentHex,
+            isLocked: isLocked,
+            stickyCommentHex: stickyCommentHex,
         };
 
         const json = {
-            'commenterToken': commenterTokenGet(),
-            'domain': parent.location.host,
-            'path': pageId,
-            'attributes': attributes,
+            commenterToken: commenterTokenGet(),
+            domain: parent.location.host,
+            path: pageId,
+            attributes: attributes,
         };
 
-        post(origin + '/api/page/update', json, function (resp) {
+        post(`${origin}/api/page/update`, json, resp => {
             if (!resp.success) {
                 errorShow(resp.message);
                 return
-            } else {
-                errorHide();
             }
 
+            errorHide();
             call(callback);
         });
     }
 
-    global.threadLockToggle = function () {
+    global.threadLockToggle = () => {
         const lock = $(ID_MOD_TOOLS_LOCK_BUTTON);
 
         isLocked = !isLocked;
 
         lock.disabled = true;
-        pageUpdate(function () {
+        pageUpdate(() => {
             lock.disabled = false;
             refreshAll();
         });
     }
 
-    global.commentSticky = function (commentHex) {
+    global.commentSticky = commentHex => {
         if (stickyCommentHex !== 'none') {
             const sticky = $(ID_STICKY + stickyCommentHex);
             classRemove(sticky, 'option-unsticky');
             classAdd(sticky, 'option-sticky');
         }
 
-        if (stickyCommentHex === commentHex) {
-            stickyCommentHex = 'none';
-        } else {
-            stickyCommentHex = commentHex;
-        }
+        stickyCommentHex = stickyCommentHex === commentHex ? 'none' : commentHex;
 
-        pageUpdate(function () {
+        pageUpdate(() => {
             const sticky = $(ID_STICKY + commentHex);
             if (stickyCommentHex === commentHex) {
                 classRemove(sticky, 'option-sticky');
@@ -1905,35 +1756,22 @@
     }
 
     function mainAreaCreate() {
-        const mainArea = create('div');
-
-        mainArea.id = ID_MAIN_AREA;
-
+        const mainArea = create('div', ID_MAIN_AREA);
         classAdd(mainArea, 'main-area');
-
-        attrSet(mainArea, 'style', 'display: none');
-
+        setAttr(mainArea, {style: 'display: none'});
         append(root, mainArea);
     }
 
     function modToolsCreate() {
-        const modTools = create('div');
-        const lock = create('button');
-
-        modTools.id = ID_MOD_TOOLS;
-        lock.id = ID_MOD_TOOLS_LOCK_BUTTON;
-
+        const modTools = create('div',    ID_MOD_TOOLS);
+        const lock     = create('button', ID_MOD_TOOLS_LOCK_BUTTON);
         classAdd(modTools, 'mod-tools');
 
-        if (isLocked) {
-            lock.innerHTML = 'Unlock Thread';
-        } else {
-            lock.innerHTML = 'Lock Thread';
-        }
+        lock.innerHTML = isLocked ? 'Unlock Thread' : 'Lock Thread';
 
         onclick(lock, global.threadLockToggle);
 
-        attrSet(modTools, 'style', 'display: none');
+        setAttr(modTools, {style: 'display: none'});
 
         append(modTools, lock);
         append(root, modTools);
@@ -1952,36 +1790,35 @@
         const modTools = $(ID_MOD_TOOLS);
         const loggedContainer = $(ID_LOGGED_CONTAINER);
 
-        attrSet(mainArea, 'style', '');
+        setAttr(mainArea, {style: ''});
 
         if (isModerator) {
-            attrSet(modTools, 'style', '');
+            setAttr(modTools, {style: ''});
         }
 
         if (loggedContainer) {
-            attrSet(loggedContainer, 'style', '');
+            setAttr(loggedContainer, {style: ''});
         }
     }
 
-    global.loginBoxClose = function () {
+    global.loginBoxClose = () => {
         const mainArea = $(ID_MAIN_AREA);
         const loginBoxContainer = $(ID_LOGIN_BOX_CONTAINER);
 
         classRemove(mainArea, 'blurred');
         classRemove(root, 'root-min-height');
 
-        attrSet(loginBoxContainer, 'style', 'display: none');
+        setAttr(loginBoxContainer, {style: 'display: none'});
     }
 
-    global.loginBoxShow = function (id) {
+    global.loginBoxShow = id => {
         const mainArea = $(ID_MAIN_AREA);
         const loginBoxContainer = $(ID_LOGIN_BOX_CONTAINER);
 
         global.popupRender(id);
 
         classAdd(mainArea, 'blurred');
-
-        attrSet(loginBoxContainer, 'style', '');
+        setAttr(loginBoxContainer, {style: ''});
 
         window.location.hash = ID_LOGIN_BOX_CONTAINER;
 
@@ -1991,24 +1828,20 @@
     function dataTagsLoad() {
         const scripts = tags('script');
         for (let i = 0; i < scripts.length; i++) {
-            if (scripts[i].src.match(/\/js\/commento\.js$/)) {
-                const pid = attrGet(scripts[i], 'data-page-id');
+            const scr = scripts[i];
+            if (scr.src.match(/\/js\/commento\.js$/)) {
+                const pid = getAttr(scr, 'data-page-id');
                 if (pid !== undefined) {
                     pageId = pid;
                 }
-
-                cssOverride = attrGet(scripts[i], 'data-css-override');
-
-                autoInit = attrGet(scripts[i], 'data-auto-init');
-
-                ID_ROOT = attrGet(scripts[i], 'data-id-root');
+                cssOverride = getAttr(scr, 'data-css-override');
+                autoInit = getAttr(scr, 'data-auto-init');
+                ID_ROOT = getAttr(scr, 'data-id-root');
                 if (ID_ROOT === undefined) {
                     ID_ROOT = 'commento';
                 }
-
-                noFonts = attrGet(scripts[i], 'data-no-fonts');
-
-                hideDeleted = attrGet(scripts[i], 'data-hide-deleted');
+                noFonts = getAttr(scr, 'data-no-fonts');
+                hideDeleted = getAttr(scr, 'data-hide-deleted');
             }
         }
     }
@@ -2034,10 +1867,10 @@
         }
     }
 
-    global.main = function (callback) {
+    global.main = callback => {
         root = $(ID_ROOT);
         if (root === null) {
-            console.log('[commento] error: no root element with ID \'' + ID_ROOT + '\' found');
+            console.log(`[commento] error: no root element with ID '${ID_ROOT}' found`);
             return;
         }
 
@@ -2057,12 +1890,12 @@
         mainAreaCreate();
 
         const footer = footerLoad();
-        cssLoad(cdn + '/css/commento.css', loadCssOverride);
+        cssLoad(`${cdn}/css/commento.css`, loadCssOverride);
 
-        selfGet(function () {
-            commentsGet(function () {
+        selfGet(() => {
+            commentsGet(() => {
                 modToolsCreate();
-                rootCreate(function () {
+                rootCreate(() => {
                     commentsRender();
                     append(root, footer);
                     loadHash();
@@ -2091,23 +1924,27 @@
         }
     }
 
-    const readyLoad = function () {
-        const readyState = document.readyState;
-
-        if (readyState === 'loading') {
-            // The document is still loading. The div we need to fill might not have
-            // been parsed yet, so let's wait and retry when the readyState changes.
-            // If there is more than one state change, we aren't affected because we
-            // have a double-call protection in init().
+    const readyLoad = () => {
+        switch (document.readyState) {
+        // The document is still loading. The div we need to fill might not have
+        // been parsed yet, so let's wait and retry when the readyState changes.
+        // If there is more than one state change, we aren't affected because we
+        // have a double-call protection in init().
+        case 'loading':
             document.addEventListener('readystatechange', readyLoad);
-        } else if (readyState === 'interactive') {
-            // The document has been parsed and DOM objects are now accessible. While
-            // JS, CSS, and images are still loading, we don't need to wait.
+            break;
+
+        // The document has been parsed and DOM objects are now accessible. While
+        // JS, CSS, and images are still loading, we don't need to wait.
+        case 'interactive':
             init();
-        } else if (readyState === 'complete') {
-            // The page has fully loaded (including JS, CSS, and images). From our
-            // point of view, this is practically no different from interactive.
+            break;
+
+        // The page has fully loaded (including JS, CSS, and images). From our
+        // point of view, this is practically no different from interactive.
+        case 'complete':
             init();
+            break;
         }
     };
 

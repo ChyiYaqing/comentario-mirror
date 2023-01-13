@@ -22,15 +22,15 @@
         }
 
         const json = {
-            'commenterToken': global.paramGet('commenterToken'),
-            'name': $('#name').val(),
-            'email': $('#email').val(),
-            'link': $('#link').val(),
-            'photo': $('#photo').val(),
+            commenterToken: global.paramGet('commenterToken'),
+            name: $('#name').val(),
+            email: $('#email').val(),
+            link: $('#link').val(),
+            photo: $('#photo').val(),
         };
 
         global.buttonDisable('#save-button');
-        global.post(global.origin + '/api/commenter/update', json, function (resp) {
+        global.post(`${global.origin}/api/commenter/update`, json, function (resp) {
             global.buttonEnable('#save-button');
             if (!resp.success) {
                 $('.err').text(resp.message);
@@ -45,10 +45,10 @@
         $('.err').text('');
         $('.msg').text('');
         const json = {
-            'commenterToken': global.paramGet('commenterToken'),
+            commenterToken: global.paramGet('commenterToken'),
         };
 
-        global.post(global.origin + '/api/commenter/self', json, function (resp) {
+        global.post(`${global.origin}/api/commenter/self`, json, function (resp) {
             $('#loading').hide();
             $('#form').show();
             if (!resp.success) {
@@ -58,7 +58,7 @@
 
             $('#name').val(resp.commenter.name);
             $('#email').val(resp.commenter.email);
-            $('#unsubscribe').attr('href', global.origin + '/unsubscribe?unsubscribeSecretHex=' + resp.email.unsubscribeSecretHex);
+            $('#unsubscribe').attr('href', `${global.origin}/unsubscribe?unsubscribeSecretHex=${resp.email.unsubscribeSecretHex}`);
 
             if (resp.commenter.provider === 'commento') {
                 $('#link-row').attr('style', '')

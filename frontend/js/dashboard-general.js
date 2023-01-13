@@ -26,11 +26,11 @@
 
         if (data.domains[data.cd].ssoSecret === '') {
             const json = {
-                'ownerToken': global.cookieGet('commentoOwnerToken'),
-                'domain': data.domains[data.cd].domain,
+                ownerToken: global.cookieGet('commentoOwnerToken'),
+                domain: data.domains[data.cd].domain,
             };
 
-            global.post(global.origin + '/api/domain/sso/new', json, function (resp) {
+            global.post(`${global.origin}/api/domain/sso/new`, json, function (resp) {
                 if (!resp.success) {
                     global.globalErrorShow(resp.message);
                     return;

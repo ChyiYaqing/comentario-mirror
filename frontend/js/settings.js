@@ -24,8 +24,8 @@
     global.settingShow = function (setting) {
         $('.pane-setting').removeClass('selected');
         $('.view').hide();
-        $('#' + setting).addClass('selected');
-        $('#' + setting + '-view').show();
+        $(`#${setting}`).addClass('selected');
+        $(`#${setting}-view`).show();
     };
 
     global.deleteOwnerHandler = function () {
@@ -33,13 +33,11 @@
             return;
         }
 
-        const json = {
-            'ownerToken': global.cookieGet('commentoOwnerToken'),
-        };
+        const json = {ownerToken: global.cookieGet('commentoOwnerToken')};
         const delBtn = $('#delete-owner-button');
         delBtn.prop('disabled', true);
         delBtn.text('Deleting...');
-        global.post(global.origin + '/api/owner/delete', json, function (resp) {
+        global.post(`${global.origin}/api/owner/delete`, json, function (resp) {
             if (!resp.success) {
                 delBtn.prop('disabled', false);
                 delBtn.text('Delete Account');
@@ -49,7 +47,7 @@
             }
 
             global.cookieDelete('commentoOwnerToken');
-            document.location = global.origin + '/login?deleted=true';
+            document.location = `${global.origin}/login?deleted=true`;
         });
     };
 

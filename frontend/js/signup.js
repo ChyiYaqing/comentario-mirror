@@ -23,13 +23,13 @@
         }
 
         const json = {
-            'email': $('#email').val(),
-            'name': $('#name').val(),
-            'password': pwd.val(),
+            email: $('#email').val(),
+            name: $('#name').val(),
+            password: pwd.val(),
         };
 
         global.buttonDisable('#signup-button');
-        global.post(global.origin + '/api/owner/new', json, function (resp) {
+        global.post(`${global.origin}/api/owner/new`, json, function (resp) {
             global.buttonEnable('#signup-button')
 
             if (!resp.success) {
@@ -38,9 +38,9 @@
             }
 
             if (resp.confirmEmail) {
-                document.location = global.origin + '/confirm-email';
+                document.location = `${global.origin}/confirm-email`;
             } else {
-                document.location = global.origin + '/login?signedUp=true';
+                document.location = `${global.origin}/login?signedUp=true`;
             }
         });
     };

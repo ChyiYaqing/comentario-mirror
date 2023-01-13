@@ -16,7 +16,7 @@
     }
 
     let commentsText = function (count) {
-        return count + ' ' + (count === 1 ? 'comment' : 'comments')
+        return `${count} ${count === 1 ? 'comment' : 'comments'}`
     };
 
     function tags(tag) {
@@ -75,13 +75,13 @@
         }
 
         const json = {
-            'domain': parent.location.host,
-            'paths': paths,
+            domain: parent.location.host,
+            paths: paths,
         };
 
-        post(origin + '/api/comment/count', json, function (resp) {
+        post(`${origin}/api/comment/count`, json, function (resp) {
             if (!resp.success) {
-                console.log('[commento] error: ' + resp.message);
+                console.log(`[commento] error: ${resp.message}`);
                 return;
             }
 

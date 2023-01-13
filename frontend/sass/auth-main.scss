@@ -47,6 +47,7 @@ body {
       border-bottom: 1px solid $gray-1;
 
       input[type=text],
+      input[type=email],
       input[type=password] {
         font-size: 15px;
         display: inline-block;
@@ -62,6 +63,7 @@ body {
       }
 
       input[type=text]::placeholder,
+      input[type=email]::placeholder,
       input[type=password]::placeholder {
         color: $gray-3;
       }

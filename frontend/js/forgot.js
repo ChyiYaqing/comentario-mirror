@@ -24,12 +24,12 @@
         }
 
         const json = {
-            'email': $('#email').val(),
-            'entity': entity,
+            email: $('#email').val(),
+            entity: entity,
         };
 
         global.buttonDisable('#reset-button');
-        global.post(global.origin + '/api/forgot', json, function (resp) {
+        global.post(`${global.origin}/api/forgot`, json, function (resp) {
             global.buttonEnable('#reset-button');
 
             global.textSet('#err', '');

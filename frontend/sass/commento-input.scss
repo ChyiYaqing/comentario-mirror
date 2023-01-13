@@ -2,14 +2,16 @@
 @import "checkbox.scss";
 
 textarea,
-input[type=text] {
+input[type=text],
+input[type=email] {
   background: #ffffff;
   border: 1px solid rgba(50, 50, 93, .1);
   border-radius: 3px;
   color: #525f7f;
 }
 
-input[type=text]::placeholder {
+input[type=text]::placeholder,
+input[type=email]::placeholder {
   color: #cacaca;
 }
 

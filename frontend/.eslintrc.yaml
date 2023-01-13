@@ -18,14 +18,18 @@ rules:
   - error
   - 4
   no-use-before-define:
-  - 2
+  - error
   - functions: false
-  new-cap: 2
-  no-caller: 2
+  new-cap: error
+  no-caller: error
+  no-unused-vars: error
+  prefer-template: error
+  quote-props:
+  - error
+  - as-needed
   quotes:
-  - 2
+  - error
   - single
-  no-unused-vars: 2
   strict:
-  - 2
+  - error
   - function
