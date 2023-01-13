@@ -10,8 +10,8 @@ func domainUpdate(d domain) error {
 	}
 
 	statement := `
-		UPDATE domains
-		SET
+		update domains
+		set
 			name=$2,
 			state=$3,
 			autoSpamFilter=$4,
@@ -27,7 +27,7 @@ func domainUpdate(d domain) error {
 			ssoProvider=$14,
 			ssoUrl=$15,
 			defaultSortPolicy=$16
-		WHERE domain=$1;
+		where domain=$1;
 	`
 
 	_, err := db.Exec(statement,
@@ -63,32 +63,32 @@ func domainUpdateHandler(w http.ResponseWriter, r *http.Request) {
 
 	var x request
 	if err := bodyUnmarshal(r, &x); err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
 	o, err := ownerGetByOwnerToken(*x.OwnerToken)
 	if err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
 	domain := domainStrip((*x.D).Domain)
 	isOwner, err := domainOwnershipVerify(o.OwnerHex, domain)
 	if err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
 	if !isOwner {
-		bodyMarshal(w, response{"success": false, "message": errorNotAuthorised.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": errorNotAuthorised.Error()})
 		return
 	}
 
 	if err = domainUpdate(*x.D); err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
-	bodyMarshal(w, response{"success": true})
+	bodyMarshalChecked(w, response{"success": true})
 }

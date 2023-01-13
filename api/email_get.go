@@ -63,15 +63,15 @@ func emailGetHandler(w http.ResponseWriter, r *http.Request) {
 
 	var x request
 	if err := bodyUnmarshal(r, &x); err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
 	e, err := emailGetByUnsubscribeSecretHex(*x.UnsubscribeSecretHex)
 	if err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
-	bodyMarshal(w, response{"success": true, "email": e})
+	bodyMarshalChecked(w, response{"success": true, "email": e})
 }

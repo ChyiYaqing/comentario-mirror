@@ -16,13 +16,13 @@ func failTestOnError(t *testing.T, err error) {
 
 func getPublicTables() ([]string, error) {
 	statement := `
-		SELECT tablename
-		FROM pg_tables
-		WHERE schemaname='public';
+		select tablename
+		from pg_tables
+		where schemaname='public';
 	`
 	rows, err := db.Query(statement)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "cannot query public tables: %v", err)
+		_, _ = fmt.Fprintf(os.Stderr, "cannot query public tables: %v", err)
 		return []string{}, err
 	}
 
@@ -32,7 +32,7 @@ func getPublicTables() ([]string, error) {
 	for rows.Next() {
 		var table string
 		if err = rows.Scan(&table); err != nil {
-			fmt.Fprintf(os.Stderr, "cannot scan table name: %v", err)
+			_, _ = fmt.Fprintf(os.Stderr, "cannot scan table name: %v", err)
 			return []string{}, err
 		}
 
@@ -50,9 +50,9 @@ func dropTables() error {
 
 	for _, table := range tables {
 		if table != "migrations" {
-			_, err = db.Exec(fmt.Sprintf("DROP TABLE %s;", table))
+			_, err = db.Exec(fmt.Sprintf("drop table %s;", table))
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "cannot drop %s: %v", table, err)
+				_, _ = fmt.Fprintf(os.Stderr, "cannot drop %s: %v", table, err)
 				return err
 			}
 		}
@@ -64,9 +64,9 @@ func dropTables() error {
 func setupTestDatabase() error {
 	if os.Getenv("COMMENTO_POSTGRES") != "" {
 		// set it manually because we need to use commento_test, not commento, by mistake
-		os.Setenv("POSTGRES", os.Getenv("COMMENTO_POSTGRES"))
+		_ = os.Setenv("POSTGRES", os.Getenv("COMMENTO_POSTGRES"))
 	} else {
-		os.Setenv("POSTGRES", "postgres://postgres:postgres@localhost/commento_test?sslmode=disable")
+		_ = os.Setenv("POSTGRES", "postgres://postgres:postgres@localhost/commento_test?sslmode=disable")
 	}
 
 	if err := dbConnect(0); err != nil {
@@ -91,9 +91,9 @@ func clearTables() error {
 	}
 
 	for _, table := range tables {
-		_, err = db.Exec(fmt.Sprintf("DELETE FROM %s;", table))
+		_, err = db.Exec(fmt.Sprintf("delete from %s;", table))
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "cannot clear %s: %v", table, err)
+			_, _ = fmt.Fprintf(os.Stderr, "cannot clear %s: %v", table, err)
 			return err
 		}
 	}

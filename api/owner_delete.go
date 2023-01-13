@@ -21,29 +21,20 @@ func ownerDelete(ownerHex string, deleteDomains bool) error {
 		}
 	}
 
-	statement := `
-		DELETE FROM owners
-		WHERE ownerHex = $1;
-	`
+	statement := `delete from owners where ownerHex = $1;`
 	_, err = db.Exec(statement, ownerHex)
 	if err != nil {
 		return errorNoSuchOwner
 	}
 
-	statement = `
-		DELETE FROM ownersessions
-		WHERE ownerHex = $1;
-	`
+	statement = `delete from ownersessions where ownerHex = $1;`
 	_, err = db.Exec(statement, ownerHex)
 	if err != nil {
 		logger.Errorf("cannot delete from ownersessions: %v", err)
 		return errorInternal
 	}
 
-	statement = `
-		DELETE FROM resethexes
-		WHERE hex = $1;
-	`
+	statement = `delete from resethexes where hex = $1;`
 	_, err = db.Exec(statement, ownerHex)
 	if err != nil {
 		logger.Errorf("cannot delete from resethexes: %v", err)
@@ -60,20 +51,20 @@ func ownerDeleteHandler(w http.ResponseWriter, r *http.Request) {
 
 	var x request
 	if err := bodyUnmarshal(r, &x); err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
 	o, err := ownerGetByOwnerToken(*x.OwnerToken)
 	if err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
 	if err = ownerDelete(o.OwnerHex, false); err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
-	bodyMarshal(w, response{"success": true})
+	bodyMarshalChecked(w, response{"success": true})
 }

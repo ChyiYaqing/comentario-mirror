@@ -7,7 +7,7 @@ import (
 func TestDomainUpdateBasics(t *testing.T) {
 	failTestOnError(t, setupTestEnv())
 
-	domainNew("temp-owner-hex", "Example", "example.com")
+	_ = domainNew("temp-owner-hex", "Example", "example.com")
 
 	d, _ := domainList("temp-owner-hex")
 

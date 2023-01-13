@@ -120,7 +120,7 @@ func emailNotificationReply(d domain, path string, title string, commenterHex st
 		return
 	}
 
-	smtpEmailNotification(pc.Email, pc.Name, "reply", d.Domain, path, commentHex, commenterName, title, html, epc.UnsubscribeSecretHex)
+	_ = smtpEmailNotification(pc.Email, pc.Name, "reply", d.Domain, path, commentHex, commenterName, title, html, epc.UnsubscribeSecretHex)
 }
 
 func emailNotificationNew(d domain, path string, commenterHex string, commentHex string, html string, parentHex string, state string) {

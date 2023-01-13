@@ -14,13 +14,13 @@ func googleCallbackHandler(w http.ResponseWriter, r *http.Request) {
 
 	_, err := commenterGetByCommenterToken(commenterToken)
 	if err != nil && err != errorNoSuchToken {
-		fmt.Fprintf(w, "Error: %s\n", err.Error())
+		_, _ = fmt.Fprintf(w, "Error: %s\n", err.Error())
 		return
 	}
 
 	token, err := googleConfig.Exchange(context.TODO(), code)
 	if err != nil {
-		fmt.Fprintf(w, "Error: %s", err.Error())
+		_, _ = fmt.Fprintf(w, "Error: %s", err.Error())
 		return
 	}
 
@@ -29,18 +29,18 @@ func googleCallbackHandler(w http.ResponseWriter, r *http.Request) {
 
 	contents, err := io.ReadAll(resp.Body)
 	if err != nil {
-		fmt.Fprintf(w, "Error: %s", errorCannotReadResponse.Error())
+		_, _ = fmt.Fprintf(w, "Error: %s", errorCannotReadResponse.Error())
 		return
 	}
 
 	user := make(map[string]interface{})
 	if err := json.Unmarshal(contents, &user); err != nil {
-		fmt.Fprintf(w, "Error: %s", errorInternal.Error())
+		_, _ = fmt.Fprintf(w, "Error: %s", errorInternal.Error())
 		return
 	}
 
 	if user["email"] == nil {
-		fmt.Fprintf(w, "Error: no email address returned by Github")
+		_, _ = fmt.Fprintf(w, "Error: no email address returned by Github")
 		return
 	}
 
@@ -48,7 +48,7 @@ func googleCallbackHandler(w http.ResponseWriter, r *http.Request) {
 
 	c, err := commenterGetByEmail("google", email)
 	if err != nil && err != errorNoSuchCommenter {
-		fmt.Fprintf(w, "Error: %s", err.Error())
+		_, _ = fmt.Fprintf(w, "Error: %s", err.Error())
 		return
 	}
 
@@ -69,7 +69,7 @@ func googleCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	if err == errorNoSuchCommenter {
 		commenterHex, err = commenterNew(email, name, link, photo, "google", "")
 		if err != nil {
-			fmt.Fprintf(w, "Error: %s", err.Error())
+			_, _ = fmt.Fprintf(w, "Error: %s", err.Error())
 			return
 		}
 	} else {
@@ -82,9 +82,9 @@ func googleCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := commenterSessionUpdate(commenterToken, commenterHex); err != nil {
-		fmt.Fprintf(w, "Error: %s", err.Error())
+		_, _ = fmt.Fprintf(w, "Error: %s", err.Error())
 		return
 	}
 
-	fmt.Fprintf(w, "<html><script>window.parent.close()</script></html>")
+	_, _ = fmt.Fprintf(w, "<html><script>window.parent.close()</script></html>")
 }

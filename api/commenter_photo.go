@@ -38,22 +38,23 @@ func commenterPhotoHandler(w http.ResponseWriter, r *http.Request) {
 	defer resp.Body.Close()
 
 	if c.Provider != "commento" { // Custom URL avatars need to be resized.
-		io.Copy(w, resp.Body)
+		if _, err := io.Copy(w, resp.Body); err != nil {
+			logger.Warningf("Copy() failed: %v", err)
+		}
 		return
 	}
 
-	// Limit the size of the response to 128 KiB to prevent DoS attacks
-	// that exhaust memory.
+	// Limit the size of the response to 128 KiB to prevent DoS attacks that exhaust memory
 	limitedResp := &io.LimitedReader{R: resp.Body, N: 128 * 1024}
 
 	img, err := jpeg.Decode(limitedResp)
 	if err != nil {
-		fmt.Fprintf(w, "JPEG decode failed: %v\n", err)
+		_, _ = fmt.Fprintf(w, "JPEG decode failed: %v\n", err)
 		return
 	}
 
 	if err = imaging.Encode(w, imaging.Resize(img, 38, 0, imaging.Lanczos), imaging.JPEG); err != nil {
-		fmt.Fprintf(w, "image encoding failed: %v\n", err)
+		_, _ = fmt.Fprintf(w, "image encoding failed: %v\n", err)
 		return
 	}
 }

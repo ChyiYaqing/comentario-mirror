@@ -7,7 +7,7 @@ import (
 func TestPageGetBasics(t *testing.T) {
 	failTestOnError(t, setupTestEnv())
 
-	pageNew("example.com", "/path.html")
+	_ = pageNew("example.com", "/path.html")
 
 	p, err := pageGet("example.com", "/path.html")
 	if err != nil {
@@ -29,7 +29,7 @@ func TestPageGetBasics(t *testing.T) {
 func TestPageGetEmpty(t *testing.T) {
 	failTestOnError(t, setupTestEnv())
 
-	pageNew("example.com", "")
+	_ = pageNew("example.com", "")
 
 	if _, err := pageGet("example.com", ""); err != nil {
 		t.Errorf("unexpected error getting page with empty path: %v", err)

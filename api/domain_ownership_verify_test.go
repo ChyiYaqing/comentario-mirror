@@ -8,9 +8,9 @@ func TestDomainVerifyOwnershipBasics(t *testing.T) {
 	failTestOnError(t, setupTestEnv())
 
 	ownerHex, _ := ownerNew("test@example.com", "Test", "hunter2")
-	ownerLogin("test@example.com", "hunter2")
+	_, _ = ownerLogin("test@example.com", "hunter2")
 
-	domainNew(ownerHex, "Example", "example.com")
+	_ = domainNew(ownerHex, "Example", "example.com")
 
 	isOwner, err := domainOwnershipVerify(ownerHex, "example.com")
 	if err != nil {
@@ -24,7 +24,7 @@ func TestDomainVerifyOwnershipBasics(t *testing.T) {
 	}
 
 	otherOwnerHex, _ := ownerNew("test2@example.com", "Test2", "hunter2")
-	ownerLogin("test2@example.com", "hunter2")
+	_, _ = ownerLogin("test2@example.com", "hunter2")
 
 	isOwner, err = domainOwnershipVerify(otherOwnerHex, "example.com")
 	if err != nil {

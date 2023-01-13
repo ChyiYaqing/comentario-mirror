@@ -8,7 +8,7 @@ import (
 func googleRedirectHandler(w http.ResponseWriter, r *http.Request) {
 	if googleConfig == nil {
 		logger.Errorf("google oauth access attempt without configuration")
-		fmt.Fprintf(w, "error: this website has not configured Google OAuth")
+		_, _ = fmt.Fprintf(w, "error: this website has not configured Google OAuth")
 		return
 	}
 
@@ -16,7 +16,7 @@ func googleRedirectHandler(w http.ResponseWriter, r *http.Request) {
 
 	_, err := commenterGetByCommenterToken(commenterToken)
 	if err != nil && err != errorNoSuchToken {
-		fmt.Fprintf(w, "error: %s\n", err.Error())
+		_, _ = fmt.Fprintf(w, "error: %s\n", err.Error())
 		return
 	}
 

@@ -15,11 +15,7 @@ func domainNew(ownerHex string, name string, domain string) error {
 		return errorInvalidDomain
 	}
 
-	statement := `
-		INSERT INTO
-		domains (ownerHex, name, domain, creationDate)
-		VALUES  ($1,       $2,   $3,     $4          );
-	`
+	statement := `insert into domains(ownerHex, name, domain, creationDate) values($1, $2, $3, $4);`
 	_, err := db.Exec(statement, ownerHex, name, domain, time.Now().UTC())
 	if err != nil {
 		// TODO: Make sure this is really the error.
@@ -38,27 +34,27 @@ func domainNewHandler(w http.ResponseWriter, r *http.Request) {
 
 	var x request
 	if err := bodyUnmarshal(r, &x); err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
 	o, err := ownerGetByOwnerToken(*x.OwnerToken)
 	if err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
 	domain := domainStrip(*x.Domain)
 
 	if err = domainNew(o.OwnerHex, *x.Name, domain); err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
 	if err = domainModeratorNew(domain, o.Email); err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
-	bodyMarshal(w, response{"success": true, "domain": domain})
+	bodyMarshalChecked(w, response{"success": true, "domain": domain})
 }

@@ -45,11 +45,7 @@ func commenterNew(email string, name string, link string, photo string, provider
 		}
 	}
 
-	statement := `
-		INSERT INTO
-		commenters (commenterHex, email, name, link, photo, provider, passwordHash, joinDate)
-		VALUES     ($1,           $2,    $3,   $4,   $5,    $6,       $7,           $8      );
-	`
+	statement := `insert into commenters(commenterHex, email, name, link, photo, provider, passwordHash, joinDate) values($1, $2, $3, $4, $5, $6, $7, $8);`
 	_, err = db.Exec(statement, commenterHex, email, name, link, photo, provider, string(passwordHash), time.Now().UTC())
 	if err != nil {
 		logger.Errorf("cannot insert commenter: %v", err)
@@ -69,7 +65,7 @@ func commenterNewHandler(w http.ResponseWriter, r *http.Request) {
 
 	var x request
 	if err := bodyUnmarshal(r, &x); err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
@@ -81,9 +77,9 @@ func commenterNewHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if _, err := commenterNew(*x.Email, *x.Name, *x.Website, "undefined", "commento", *x.Password); err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
-	bodyMarshal(w, response{"success": true, "confirmEmail": smtpConfigured})
+	bodyMarshalChecked(w, response{"success": true, "confirmEmail": smtpConfigured})
 }

@@ -114,7 +114,7 @@ func commentListHandler(w http.ResponseWriter, r *http.Request) {
 
 	var x request
 	if err := bodyUnmarshal(r, &x); err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
@@ -123,13 +123,13 @@ func commentListHandler(w http.ResponseWriter, r *http.Request) {
 
 	d, err := domainGet(domain)
 	if err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
 	p, err := pageGet(domain, path)
 	if err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
@@ -143,7 +143,7 @@ func commentListHandler(w http.ResponseWriter, r *http.Request) {
 			if err == errorNoSuchToken {
 				commenterHex = "anonymous"
 			} else {
-				bodyMarshal(w, response{"success": false, "message": err.Error()})
+				bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 				return
 			}
 		} else {
@@ -166,7 +166,7 @@ func commentListHandler(w http.ResponseWriter, r *http.Request) {
 
 	comments, commenters, err := commentList(commenterHex, domain, path, isModerator)
 	if err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
@@ -179,24 +179,26 @@ func commentListHandler(w http.ResponseWriter, r *http.Request) {
 		_commenters[commenterHex] = cr
 	}
 
-	bodyMarshal(w, response{
-		"success":               true,
-		"domain":                domain,
-		"comments":              comments,
-		"commenters":            _commenters,
-		"requireModeration":     d.RequireModeration,
-		"requireIdentification": d.RequireIdentification,
-		"isFrozen":              d.State == "frozen",
-		"isModerator":           isModerator,
-		"defaultSortPolicy":     d.DefaultSortPolicy,
-		"attributes":            p,
-		"configuredOauths": map[string]bool{
-			"commento": d.CommentoProvider,
-			"google":   googleConfigured && d.GoogleProvider,
-			"twitter":  twitterConfigured && d.TwitterProvider,
-			"github":   githubConfigured && d.GithubProvider,
-			"gitlab":   gitlabConfigured && d.GitlabProvider,
-			"sso":      d.SsoProvider,
-		},
-	})
+	bodyMarshalChecked(
+		w,
+		response{
+			"success":               true,
+			"domain":                domain,
+			"comments":              comments,
+			"commenters":            _commenters,
+			"requireModeration":     d.RequireModeration,
+			"requireIdentification": d.RequireIdentification,
+			"isFrozen":              d.State == "frozen",
+			"isModerator":           isModerator,
+			"defaultSortPolicy":     d.DefaultSortPolicy,
+			"attributes":            p,
+			"configuredOauths": map[string]bool{
+				"commento": d.CommentoProvider,
+				"google":   googleConfigured && d.GoogleProvider,
+				"twitter":  twitterConfigured && d.TwitterProvider,
+				"github":   githubConfigured && d.GithubProvider,
+				"gitlab":   gitlabConfigured && d.GitlabProvider,
+				"sso":      d.SsoProvider,
+			},
+		})
 }

@@ -12,11 +12,9 @@ func pageUpdate(p page) error {
 	// fields to not update:
 	//   commentCount
 	statement := `
-		INSERT INTO
-		pages  (domain, path, isLocked, stickyCommentHex)
-		VALUES ($1,     $2,   $3,       $4              )
-		ON CONFLICT (domain, path) DO
-			UPDATE SET isLocked = $3, stickyCommentHex = $4;
+		insert into pages(domain, path, isLocked, stickyCommentHex) values($1, $2, $3, $4)
+		on conflict (domain, path) do
+			update set isLocked = $3, stickyCommentHex = $4;
 	`
 	_, err := db.Exec(statement, p.Domain, p.Path, p.IsLocked, p.StickyCommentHex)
 	if err != nil {
@@ -37,13 +35,13 @@ func pageUpdateHandler(w http.ResponseWriter, r *http.Request) {
 
 	var x request
 	if err := bodyUnmarshal(r, &x); err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
 	c, err := commenterGetByCommenterToken(*x.CommenterToken)
 	if err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
@@ -51,12 +49,12 @@ func pageUpdateHandler(w http.ResponseWriter, r *http.Request) {
 
 	isModerator, err := isDomainModerator(domain, c.Email)
 	if err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
 	if !isModerator {
-		bodyMarshal(w, response{"success": false, "message": errorNotModerator.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": errorNotModerator.Error()})
 		return
 	}
 
@@ -64,9 +62,9 @@ func pageUpdateHandler(w http.ResponseWriter, r *http.Request) {
 	(*x.Attributes).Path = *x.Path
 
 	if err = pageUpdate(*x.Attributes); err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
-	bodyMarshal(w, response{"success": true})
+	bodyMarshalChecked(w, response{"success": true})
 }

@@ -126,7 +126,7 @@ func staticRouterInit(router *mux.Router) error {
 			if compress {
 				w.Header().Set("Content-Encoding", "gzip")
 			}
-			w.Write(asset[r.URL.Path])
+			_, _ = w.Write(asset[r.URL.Path])
 		})
 	}
 

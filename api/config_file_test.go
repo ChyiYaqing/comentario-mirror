@@ -36,7 +36,7 @@ func TestConfigFileLoadBasics(t *testing.T) {
 		return
 	}
 
-	os.Setenv("COMMENTO_PORT", "9000")
+	_ = os.Setenv("COMMENTO_PORT", "9000")
 	if err := configFileLoad(f.Name()); err != nil {
 		t.Errorf("unexpected error loading config file: %v", err)
 		return

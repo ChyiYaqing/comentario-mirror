@@ -7,7 +7,7 @@ import (
 )
 
 func TestConfigParseBasics(t *testing.T) {
-	os.Setenv("COMMENTO_ORIGIN", "https://commento.io")
+	_ = os.Setenv("COMMENTO_ORIGIN", "https://commento.io")
 
 	if err := configParse(); err != nil {
 		t.Errorf("unexpected error when parsing config: %v", err)
@@ -19,9 +19,9 @@ func TestConfigParseBasics(t *testing.T) {
 		return
 	}
 
-	os.Setenv("COMMENTO_BIND_ADDRESS", "192.168.1.100")
+	_ = os.Setenv("COMMENTO_BIND_ADDRESS", "192.168.1.100")
 
-	os.Setenv("COMMENTO_PORT", "")
+	_ = os.Setenv("COMMENTO_PORT", "")
 	if err := configParse(); err != nil {
 		t.Errorf("unexpected error when parsing config: %v", err)
 		return
@@ -38,7 +38,7 @@ func TestConfigParseBasics(t *testing.T) {
 		return
 	}
 
-	os.Setenv("COMMENTO_PORT", "1886")
+	_ = os.Setenv("COMMENTO_PORT", "1886")
 
 	if err := configParse(); err != nil {
 		t.Errorf("unexpected error when parsing config: %v", err)
@@ -52,7 +52,7 @@ func TestConfigParseBasics(t *testing.T) {
 }
 
 func TestConfigParseNoOrigin(t *testing.T) {
-	os.Setenv("COMMENTO_ORIGIN", "")
+	_ = os.Setenv("COMMENTO_ORIGIN", "")
 
 	if err := configParse(); err == nil {
 		t.Errorf("expected error not found parsing config without ORIGIN")
@@ -61,7 +61,7 @@ func TestConfigParseNoOrigin(t *testing.T) {
 }
 
 func TestConfigParseStatic(t *testing.T) {
-	os.Setenv("COMMENTO_ORIGIN", "https://commento.io")
+	_ = os.Setenv("COMMENTO_ORIGIN", "https://commento.io")
 
 	if err := configParse(); err != nil {
 		t.Errorf("unexpected error when parsing config: %v", err)
@@ -79,7 +79,7 @@ func TestConfigParseStatic(t *testing.T) {
 		return
 	}
 
-	os.Setenv("COMMENTO_STATIC", "/usr/")
+	_ = os.Setenv("COMMENTO_STATIC", "/usr/")
 
 	if err := configParse(); err != nil {
 		t.Errorf("unexpected error when parsing config: %v", err)
@@ -93,8 +93,8 @@ func TestConfigParseStatic(t *testing.T) {
 }
 
 func TestConfigParseStaticDNE(t *testing.T) {
-	os.Setenv("COMMENTO_ORIGIN", "https://commento.io")
-	os.Setenv("COMMENTO_STATIC", "/does/not/exist/surely/")
+	_ = os.Setenv("COMMENTO_ORIGIN", "https://commento.io")
+	_ = os.Setenv("COMMENTO_STATIC", "/does/not/exist/surely/")
 
 	if err := configParse(); err == nil {
 		t.Errorf("expected error not found when a non-existant directory is used")
@@ -103,8 +103,8 @@ func TestConfigParseStaticDNE(t *testing.T) {
 }
 
 func TestConfigParseStaticNotADirectory(t *testing.T) {
-	os.Setenv("COMMENTO_ORIGIN", "https://commento.io")
-	os.Setenv("COMMENTO_STATIC", os.Args[0])
+	_ = os.Setenv("COMMENTO_ORIGIN", "https://commento.io")
+	_ = os.Setenv("COMMENTO_STATIC", os.Args[0])
 
 	if err := configParse(); err != errorNotADirectory {
 		t.Errorf("expected error not found when a file is used")
@@ -113,8 +113,8 @@ func TestConfigParseStaticNotADirectory(t *testing.T) {
 }
 
 func TestConfigOriginTrailingSlash(t *testing.T) {
-	os.Setenv("COMMENTO_ORIGIN", "https://commento.io/")
-	os.Setenv("COMMENTO_STATIC", "")
+	_ = os.Setenv("COMMENTO_ORIGIN", "https://commento.io/")
+	_ = os.Setenv("COMMENTO_STATIC", "")
 
 	if err := configParse(); err != nil {
 		t.Errorf("unexpected error when parsing config: %v", err)
@@ -128,28 +128,28 @@ func TestConfigOriginTrailingSlash(t *testing.T) {
 }
 
 func TestConfigMaxConnections(t *testing.T) {
-	os.Setenv("COMMENTO_ORIGIN", "https://commento.io")
-	os.Setenv("COMMENTO_STATIC", "")
+	_ = os.Setenv("COMMENTO_ORIGIN", "https://commento.io")
+	_ = os.Setenv("COMMENTO_STATIC", "")
 
-	os.Setenv("COMMENTO_MAX_IDLE_PG_CONNECTIONS", "100")
+	_ = os.Setenv("COMMENTO_MAX_IDLE_PG_CONNECTIONS", "100")
 	if err := configParse(); err != nil {
 		t.Errorf("unexpected error when MAX_IDLE_PG_CONNECTIONS=100: %v", err)
 		return
 	}
 
-	os.Setenv("COMMENTO_MAX_IDLE_PG_CONNECTIONS", "text")
+	_ = os.Setenv("COMMENTO_MAX_IDLE_PG_CONNECTIONS", "text")
 	if err := configParse(); err == nil {
 		t.Errorf("expected error with MAX_IDLE_PG_CONNECTIONS=text not found")
 		return
 	}
 
-	os.Setenv("COMMENTO_MAX_IDLE_PG_CONNECTIONS", "0")
+	_ = os.Setenv("COMMENTO_MAX_IDLE_PG_CONNECTIONS", "0")
 	if err := configParse(); err == nil {
 		t.Errorf("expected error with MAX_IDLE_PG_CONNECTIONS=0 not found")
 		return
 	}
 
-	os.Setenv("COMMENTO_MAX_IDLE_PG_CONNECTIONS", "-1")
+	_ = os.Setenv("COMMENTO_MAX_IDLE_PG_CONNECTIONS", "-1")
 	if err := configParse(); err == nil {
 		t.Errorf("expected error with MAX_IDLE_PG_CONNECTIONS=-1 not found")
 		return

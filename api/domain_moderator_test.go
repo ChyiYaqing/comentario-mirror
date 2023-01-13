@@ -7,8 +7,8 @@ import (
 func TestDomainModeratorListBasics(t *testing.T) {
 	failTestOnError(t, setupTestEnv())
 
-	domainModeratorNew("example.com", "test@example.com")
-	domainModeratorNew("example.com", "test2@example.com")
+	_ = domainModeratorNew("example.com", "test@example.com")
+	_ = domainModeratorNew("example.com", "test2@example.com")
 
 	mods, err := domainModeratorList("example.com")
 	if err != nil {
@@ -35,7 +35,7 @@ func TestDomainModeratorListBasics(t *testing.T) {
 func TestIsDomainModeratorBasics(t *testing.T) {
 	failTestOnError(t, setupTestEnv())
 
-	domainModeratorNew("example.com", "test@example.com")
+	_ = domainModeratorNew("example.com", "test@example.com")
 
 	isMod, err := isDomainModerator("example.com", "test@example.com")
 	if err != nil {

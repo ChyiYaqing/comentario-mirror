@@ -9,10 +9,12 @@ func gzipStatic(b []byte) ([]byte, error) {
 	var buf bytes.Buffer
 	g := gzip.NewWriter(&buf)
 	if _, err := g.Write(b); err != nil {
-		g.Close()
+		err = g.Close()
 		return []byte{}, err
 	}
 
-	g.Close()
+	if err := g.Close(); err != nil {
+		return nil, err
+	}
 	return buf.Bytes(), nil
 }

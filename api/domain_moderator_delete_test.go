@@ -7,8 +7,8 @@ import (
 func TestDomainModeratorDeleteBasics(t *testing.T) {
 	failTestOnError(t, setupTestEnv())
 
-	domainModeratorNew("example.com", "test@example.com")
-	domainModeratorNew("example.com", "test2@example.com")
+	_ = domainModeratorNew("example.com", "test@example.com")
+	_ = domainModeratorNew("example.com", "test2@example.com")
 
 	if err := domainModeratorDelete("example.com", "test@example.com"); err != nil {
 		t.Errorf("unexpected error creating new domain moderator: %v", err)
@@ -31,7 +31,7 @@ func TestDomainModeratorDeleteBasics(t *testing.T) {
 func TestDomainModeratorDeleteEmpty(t *testing.T) {
 	failTestOnError(t, setupTestEnv())
 
-	domainModeratorNew("example.com", "test@example.com")
+	_ = domainModeratorNew("example.com", "test@example.com")
 
 	if err := domainModeratorDelete("example.com", ""); err == nil {
 		t.Errorf("expected error not found when passing empty email")

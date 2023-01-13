@@ -15,11 +15,7 @@ func domainSsoSecretNew(domain string) (string, error) {
 		return "", errorInternal
 	}
 
-	statement := `
-		UPDATE domains
-		SET ssoSecret = $2
-		WHERE domain = $1;
-	`
+	statement := `update domains set ssoSecret = $2 where domain = $1;`
 	_, err = db.Exec(statement, domain, ssoSecret)
 	if err != nil {
 		logger.Errorf("cannot update ssoSecret: %v", err)
@@ -37,33 +33,33 @@ func domainSsoSecretNewHandler(w http.ResponseWriter, r *http.Request) {
 
 	var x request
 	if err := bodyUnmarshal(r, &x); err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
 	o, err := ownerGetByOwnerToken(*x.OwnerToken)
 	if err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
 	domain := domainStrip(*x.Domain)
 	isOwner, err := domainOwnershipVerify(o.OwnerHex, domain)
 	if err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
 	if !isOwner {
-		bodyMarshal(w, response{"success": false, "message": errorNotAuthorised.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": errorNotAuthorised.Error()})
 		return
 	}
 
 	ssoSecret, err := domainSsoSecretNew(domain)
 	if err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
-	bodyMarshal(w, response{"success": true, "ssoSecret": ssoSecret})
+	bodyMarshalChecked(w, response{"success": true, "ssoSecret": ssoSecret})
 }

@@ -25,9 +25,9 @@ func commenterTokenNew() (string, error) {
 func commenterTokenNewHandler(w http.ResponseWriter, _ *http.Request) {
 	commenterToken, err := commenterTokenNew()
 	if err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
-	bodyMarshal(w, response{"success": true, "commenterToken": commenterToken})
+	bodyMarshalChecked(w, response{"success": true, "commenterToken": commenterToken})
 }

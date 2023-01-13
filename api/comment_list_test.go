@@ -11,8 +11,8 @@ func TestCommentListBasics(t *testing.T) {
 
 	commenterHex, _ := commenterNew("test@example.com", "Test", "undefined", "http://example.com/photo.jpg", "google", "")
 
-	commentNew(commenterHex, "example.com", "/path.html", "root", "**foo**", "approved", time.Now().UTC())
-	commentNew(commenterHex, "example.com", "/path.html", "root", "**bar**", "approved", time.Now().UTC())
+	_, _ = commentNew(commenterHex, "example.com", "/path.html", "root", "**foo**", "approved", time.Now().UTC())
+	_, _ = commentNew(commenterHex, "example.com", "/path.html", "root", "**bar**", "approved", time.Now().UTC())
 
 	c, _, err := commentList("temp-commenter-hex", "example.com", "/path.html", false)
 	if err != nil {
@@ -67,7 +67,7 @@ func TestCommentListSelfUnapproved(t *testing.T) {
 
 	commenterHex, _ := commenterNew("test@example.com", "Test", "undefined", "http://example.com/photo.jpg", "google", "")
 
-	commentNew(commenterHex, "example.com", "/path.html", "root", "**foo**", "unapproved", time.Now().UTC())
+	_, _ = commentNew(commenterHex, "example.com", "/path.html", "root", "**foo**", "unapproved", time.Now().UTC())
 
 	c, _, _ := commentList("temp-commenter-hex", "example.com", "/path.html", false)
 
@@ -87,7 +87,7 @@ func TestCommentListSelfUnapproved(t *testing.T) {
 func TestCommentListAnonymousUnapproved(t *testing.T) {
 	failTestOnError(t, setupTestEnv())
 
-	commentNew("anonymous", "example.com", "/path.html", "root", "**foo**", "unapproved", time.Now().UTC())
+	_, _ = commentNew("anonymous", "example.com", "/path.html", "root", "**foo**", "unapproved", time.Now().UTC())
 
 	c, _, _ := commentList("anonymous", "example.com", "/path.html", false)
 
@@ -100,7 +100,7 @@ func TestCommentListAnonymousUnapproved(t *testing.T) {
 func TestCommentListIncludeUnapproved(t *testing.T) {
 	failTestOnError(t, setupTestEnv())
 
-	commentNew("anonymous", "example.com", "/path.html", "root", "**foo**", "unapproved", time.Now().UTC())
+	_, _ = commentNew("anonymous", "example.com", "/path.html", "root", "**foo**", "unapproved", time.Now().UTC())
 
 	c, _, _ := commentList("anonymous", "example.com", "/path.html", true)
 
@@ -113,9 +113,9 @@ func TestCommentListIncludeUnapproved(t *testing.T) {
 func TestCommentListDifferentPaths(t *testing.T) {
 	failTestOnError(t, setupTestEnv())
 
-	commentNew("anonymous", "example.com", "/path1.html", "root", "**foo**", "unapproved", time.Now().UTC())
-	commentNew("anonymous", "example.com", "/path1.html", "root", "**foo**", "unapproved", time.Now().UTC())
-	commentNew("anonymous", "example.com", "/path2.html", "root", "**foo**", "unapproved", time.Now().UTC())
+	_, _ = commentNew("anonymous", "example.com", "/path1.html", "root", "**foo**", "unapproved", time.Now().UTC())
+	_, _ = commentNew("anonymous", "example.com", "/path1.html", "root", "**foo**", "unapproved", time.Now().UTC())
+	_, _ = commentNew("anonymous", "example.com", "/path2.html", "root", "**foo**", "unapproved", time.Now().UTC())
 
 	c, _, _ := commentList("anonymous", "example.com", "/path1.html", true)
 
@@ -135,8 +135,8 @@ func TestCommentListDifferentPaths(t *testing.T) {
 func TestCommentListDifferentDomains(t *testing.T) {
 	failTestOnError(t, setupTestEnv())
 
-	commentNew("anonymous", "example1.com", "/path.html", "root", "**foo**", "unapproved", time.Now().UTC())
-	commentNew("anonymous", "example2.com", "/path.html", "root", "**foo**", "unapproved", time.Now().UTC())
+	_, _ = commentNew("anonymous", "example1.com", "/path.html", "root", "**foo**", "unapproved", time.Now().UTC())
+	_, _ = commentNew("anonymous", "example2.com", "/path.html", "root", "**foo**", "unapproved", time.Now().UTC())
 
 	c, _, _ := commentList("anonymous", "example1.com", "/path.html", true)
 

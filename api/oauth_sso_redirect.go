@@ -14,55 +14,55 @@ func ssoRedirectHandler(w http.ResponseWriter, r *http.Request) {
 	domain := r.Header.Get("Referer")
 
 	if commenterToken == "" {
-		fmt.Fprintf(w, "Error: %s\n", errorMissingField.Error())
+		_, _ = fmt.Fprintf(w, "Error: %s\n", errorMissingField.Error())
 		return
 	}
 
 	domain = domainStrip(domain)
 	if domain == "" {
-		fmt.Fprintf(w, "Error: No Referer header found in request\n")
+		_, _ = fmt.Fprintf(w, "Error: No Referer header found in request\n")
 		return
 	}
 
 	_, err := commenterGetByCommenterToken(commenterToken)
 	if err != nil && err != errorNoSuchToken {
-		fmt.Fprintf(w, "Error: %s\n", err.Error())
+		_, _ = fmt.Fprintf(w, "Error: %s\n", err.Error())
 		return
 	}
 
 	d, err := domainGet(domain)
 	if err != nil {
-		fmt.Fprintf(w, "Error: %s\n", errorNoSuchDomain.Error())
+		_, _ = fmt.Fprintf(w, "Error: %s\n", errorNoSuchDomain.Error())
 		return
 	}
 
 	if !d.SsoProvider {
-		fmt.Fprintf(w, "Error: SSO not configured for %s\n", domain)
+		_, _ = fmt.Fprintf(w, "Error: SSO not configured for %s\n", domain)
 		return
 	}
 
 	if d.SsoSecret == "" || d.SsoUrl == "" {
-		fmt.Fprintf(w, "Error: %s\n", errorMissingConfig.Error())
+		_, _ = fmt.Fprintf(w, "Error: %s\n", errorMissingConfig.Error())
 		return
 	}
 
 	key, err := hex.DecodeString(d.SsoSecret)
 	if err != nil {
 		logger.Errorf("cannot decode SSO secret as hex: %v", err)
-		fmt.Fprintf(w, "Error: %s\n", err.Error())
+		_, _ = fmt.Fprintf(w, "Error: %s\n", err.Error())
 		return
 	}
 
 	token, err := ssoTokenNew(domain, commenterToken)
 	if err != nil {
-		fmt.Fprintf(w, "Error: %s\n", err.Error())
+		_, _ = fmt.Fprintf(w, "Error: %s\n", err.Error())
 		return
 	}
 
 	tokenBytes, err := hex.DecodeString(token)
 	if err != nil {
 		logger.Errorf("cannot decode hex token: %v", err)
-		fmt.Fprintf(w, "Error: %s\n", errorInternal.Error())
+		_, _ = fmt.Fprintf(w, "Error: %s\n", errorInternal.Error())
 		return
 	}
 
@@ -75,7 +75,7 @@ func ssoRedirectHandler(w http.ResponseWriter, r *http.Request) {
 		// this should really not be happening; we're checking if the
 		// passed URL is valid at domain update
 		logger.Errorf("cannot parse URL: %v", err)
-		fmt.Fprintf(w, "Error: %s\n", errorInternal.Error())
+		_, _ = fmt.Fprintf(w, "Error: %s\n", errorInternal.Error())
 		return
 	}
 

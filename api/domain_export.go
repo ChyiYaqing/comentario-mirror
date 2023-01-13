@@ -112,33 +112,33 @@ func domainExportBeginHandler(w http.ResponseWriter, r *http.Request) {
 
 	var x request
 	if err := bodyUnmarshal(r, &x); err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
 	if !smtpConfigured {
-		bodyMarshal(w, response{"success": false, "message": errorSmtpNotConfigured.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": errorSmtpNotConfigured.Error()})
 		return
 	}
 
 	o, err := ownerGetByOwnerToken(*x.OwnerToken)
 	if err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
 	isOwner, err := domainOwnershipVerify(o.OwnerHex, *x.Domain)
 	if err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
 	if !isOwner {
-		bodyMarshal(w, response{"success": false, "message": errorNotAuthorised.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": errorNotAuthorised.Error()})
 		return
 	}
 
 	go domainExportBegin(o.Email, o.Name, *x.Domain)
 
-	bodyMarshal(w, response{"success": true})
+	bodyMarshalChecked(w, response{"success": true})
 }

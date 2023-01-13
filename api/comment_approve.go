@@ -9,11 +9,7 @@ func commentApprove(commentHex string) error {
 		return errorMissingField
 	}
 
-	statement := `
-		UPDATE comments
-		SET state = 'approved'
-		WHERE commentHex = $1;
-	`
+	statement := `update comments set state = 'approved' where commentHex = $1;`
 
 	_, err := db.Exec(statement, commentHex)
 	if err != nil {
@@ -32,37 +28,37 @@ func commentApproveHandler(w http.ResponseWriter, r *http.Request) {
 
 	var x request
 	if err := bodyUnmarshal(r, &x); err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
 	c, err := commenterGetByCommenterToken(*x.CommenterToken)
 	if err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
 	domain, _, err := commentDomainPathGet(*x.CommentHex)
 	if err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
 	isModerator, err := isDomainModerator(domain, c.Email)
 	if err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
 	if !isModerator {
-		bodyMarshal(w, response{"success": false, "message": errorNotModerator.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": errorNotModerator.Error()})
 		return
 	}
 
 	if err = commentApprove(*x.CommentHex); err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
-	bodyMarshal(w, response{"success": true})
+	bodyMarshalChecked(w, response{"success": true})
 }

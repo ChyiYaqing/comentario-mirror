@@ -35,13 +35,19 @@ func bodyUnmarshal(r *http.Request, x interface{}) error {
 func bodyMarshal(w http.ResponseWriter, x map[string]interface{}) error {
 	resp, err := json.Marshal(x)
 	if err != nil {
-		w.Write([]byte(`{"success":false,"message":"Some internal error occurred"}`))
+		_, _ = w.Write([]byte(`{"success":false,"message":"Some internal error occurred"}`))
 		logger.Errorf("cannot marshal response: %v\n")
 		return errorInternal
 	}
 
-	w.Write(resp)
-	return nil
+	_, err = w.Write(resp)
+	return err
+}
+
+func bodyMarshalChecked(w http.ResponseWriter, x map[string]interface{}) {
+	if err := bodyMarshal(w, x); err != nil {
+		logger.Warningf("failed to write success response ($#v): %v", x, err)
+	}
 }
 
 func getIp(r *http.Request) string {

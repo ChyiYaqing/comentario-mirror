@@ -87,7 +87,7 @@ func TestImportCommento(t *testing.T) {
 
 	// Launch http server serving commento json gzipped data
 	go func() {
-		http.Serve(listener, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = http.Serve(listener, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			gzipper := gzip.NewWriter(w)
 			defer func() {
 				_ = gzipper.Close()
@@ -100,7 +100,7 @@ func TestImportCommento(t *testing.T) {
 	}()
 	url := fmt.Sprintf("http://127.0.0.1:%d", port)
 
-	domainNew("temp-owner-hex", "Example", "example.com")
+	_ = domainNew("temp-owner-hex", "Example", "example.com")
 
 	n, err := domainImportCommento("example.com", url)
 	if err != nil {

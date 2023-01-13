@@ -15,19 +15,19 @@ func gitlabCallbackHandler(w http.ResponseWriter, r *http.Request) {
 
 	_, err := commenterGetByCommenterToken(commenterToken)
 	if err != nil && err != errorNoSuchToken {
-		fmt.Fprintf(w, "Error: %s\n", err.Error())
+		_, _ = fmt.Fprintf(w, "Error: %s\n", err.Error())
 		return
 	}
 
 	token, err := gitlabConfig.Exchange(context.TODO(), code)
 	if err != nil {
-		fmt.Fprintf(w, "Error: %s", err.Error())
+		_, _ = fmt.Fprintf(w, "Error: %s", err.Error())
 		return
 	}
 
 	resp, err := http.Get(os.Getenv("GITLAB_URL") + "/api/v4/user?access_token=" + token.AccessToken)
 	if err != nil {
-		fmt.Fprintf(w, "Error: %s", err.Error())
+		_, _ = fmt.Fprintf(w, "Error: %s", err.Error())
 		return
 	}
 	logger.Infof("%v", resp.StatusCode)
@@ -35,25 +35,25 @@ func gitlabCallbackHandler(w http.ResponseWriter, r *http.Request) {
 
 	contents, err := io.ReadAll(resp.Body)
 	if err != nil {
-		fmt.Fprintf(w, "Error: %s", errorCannotReadResponse.Error())
+		_, _ = fmt.Fprintf(w, "Error: %s", errorCannotReadResponse.Error())
 		return
 	}
 
 	user := make(map[string]interface{})
 	if err := json.Unmarshal(contents, &user); err != nil {
-		fmt.Fprintf(w, "Error: %s", errorInternal.Error())
+		_, _ = fmt.Fprintf(w, "Error: %s", errorInternal.Error())
 		return
 	}
 
 	if user["email"] == nil {
-		fmt.Fprintf(w, "Error: no email address returned by Gitlab")
+		_, _ = fmt.Fprintf(w, "Error: no email address returned by Gitlab")
 		return
 	}
 
 	email := user["email"].(string)
 
 	if user["name"] == nil {
-		fmt.Fprintf(w, "Error: no name returned by Gitlab")
+		_, _ = fmt.Fprintf(w, "Error: no name returned by Gitlab")
 		return
 	}
 
@@ -71,7 +71,7 @@ func gitlabCallbackHandler(w http.ResponseWriter, r *http.Request) {
 
 	c, err := commenterGetByEmail("gitlab", email)
 	if err != nil && err != errorNoSuchCommenter {
-		fmt.Fprintf(w, "Error: %s", err.Error())
+		_, _ = fmt.Fprintf(w, "Error: %s", err.Error())
 		return
 	}
 
@@ -80,7 +80,7 @@ func gitlabCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	if err == errorNoSuchCommenter {
 		commenterHex, err = commenterNew(email, name, link, photo, "gitlab", "")
 		if err != nil {
-			fmt.Fprintf(w, "Error: %s", err.Error())
+			_, _ = fmt.Fprintf(w, "Error: %s", err.Error())
 			return
 		}
 	} else {
@@ -93,9 +93,9 @@ func gitlabCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := commenterSessionUpdate(commenterToken, commenterHex); err != nil {
-		fmt.Fprintf(w, "Error: %s", err.Error())
+		_, _ = fmt.Fprintf(w, "Error: %s", err.Error())
 		return
 	}
 
-	fmt.Fprintf(w, "<html><script>window.parent.close()</script></html>")
+	_, _ = fmt.Fprintf(w, "<html><script>window.parent.close()</script></html>")
 }

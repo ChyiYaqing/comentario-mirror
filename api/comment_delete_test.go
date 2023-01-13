@@ -10,7 +10,7 @@ func TestCommentDeleteBasics(t *testing.T) {
 
 	commenterHex := "temp-commenter-hex"
 	commentHex, _ := commentNew(commenterHex, "example.com", "/path.html", "root", "**foo**", "approved", time.Now().UTC())
-	commentNew(commenterHex, "example.com", "/path.html", commentHex, "**bar**", "approved", time.Now().UTC())
+	_, _ = commentNew(commenterHex, "example.com", "/path.html", commentHex, "**bar**", "approved", time.Now().UTC())
 
 	if err := commentDelete(commentHex, commenterHex); err != nil {
 		t.Errorf("unexpected error deleting comment: %v", err)

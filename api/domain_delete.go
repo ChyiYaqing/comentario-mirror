@@ -9,39 +9,27 @@ func domainDelete(domain string) error {
 		return errorMissingField
 	}
 
-	statement := `
-		DELETE FROM domains
-		WHERE domain = $1;
-	`
+	statement := `delete from domains where domain = $1;`
 	_, err := db.Exec(statement, domain)
 	if err != nil {
 		return errorNoSuchDomain
 	}
 
-	statement = `
-		DELETE FROM views
-		WHERE views.domain = $1;
-	`
+	statement = `delete from views where views.domain = $1;`
 	_, err = db.Exec(statement, domain)
 	if err != nil {
 		logger.Errorf("cannot delete domain from views: %v", err)
 		return errorInternal
 	}
 
-	statement = `
-		DELETE FROM moderators
-		WHERE moderators.domain = $1;
-	`
+	statement = `delete from moderators where moderators.domain = $1;`
 	_, err = db.Exec(statement, domain)
 	if err != nil {
 		logger.Errorf("cannot delete domain from moderators: %v", err)
 		return errorInternal
 	}
 
-	statement = `
-		DELETE FROM ssotokens
-		WHERE ssotokens.domain = $1;
-	`
+	statement = `delete from ssotokens where ssotokens.domain = $1;`
 	_, err = db.Exec(statement, domain)
 	if err != nil {
 		logger.Errorf("cannot delete domain from ssotokens: %v", err)
@@ -65,32 +53,32 @@ func domainDeleteHandler(w http.ResponseWriter, r *http.Request) {
 
 	var x request
 	if err := bodyUnmarshal(r, &x); err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
 	o, err := ownerGetByOwnerToken(*x.OwnerToken)
 	if err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
 	domain := domainStrip(*x.Domain)
 	isOwner, err := domainOwnershipVerify(o.OwnerHex, domain)
 	if err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
 	if !isOwner {
-		bodyMarshal(w, response{"success": false, "message": errorNotAuthorised.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": errorNotAuthorised.Error()})
 		return
 	}
 
 	if err = domainDelete(*x.Domain); err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
-	bodyMarshal(w, response{"success": true})
+	bodyMarshalChecked(w, response{"success": true})
 }

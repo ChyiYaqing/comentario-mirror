@@ -8,7 +8,7 @@ import (
 func githubRedirectHandler(w http.ResponseWriter, r *http.Request) {
 	if githubConfig == nil {
 		logger.Errorf("github oauth access attempt without configuration")
-		fmt.Fprintf(w, "error: this website has not configured github OAuth")
+		_, _ = fmt.Fprintf(w, "error: this website has not configured github OAuth")
 		return
 	}
 
@@ -16,7 +16,7 @@ func githubRedirectHandler(w http.ResponseWriter, r *http.Request) {
 
 	_, err := commenterGetByCommenterToken(commenterToken)
 	if err != nil && err != errorNoSuchToken {
-		fmt.Fprintf(w, "error: %s\n", err.Error())
+		_, _ = fmt.Fprintf(w, "error: %s\n", err.Error())
 		return
 	}
 

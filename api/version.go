@@ -60,8 +60,8 @@ func versionCheckStart() error {
 			}
 
 			r := response{}
-			json.Unmarshal(body, &r)
-			if !r.Success {
+			err = json.Unmarshal(body, &r)
+			if err != nil || !r.Success {
 				errorCount++
 				if !printedError && errorCount > 5 {
 					logger.Errorf("error checking version: %s", r.Message)

@@ -6,15 +6,15 @@ import (
 
 func domainStatistics(domain string) ([]int64, error) {
 	statement := `
-		SELECT COUNT(views.viewDate)
-		FROM (
-			SELECT to_char(date_trunc('day', (current_date - offs)), 'YYYY-MM-DD') AS date
-			FROM generate_series(0, 30, 1) AS offs
-		) gen LEFT OUTER JOIN views
-		ON gen.date = to_char(date_trunc('day', views.viewDate), 'YYYY-MM-DD') AND
+		select COUNT(views.viewDate)
+		from (
+			select to_char(date_trunc('day', (current_date - offs)), 'YYYY-MM-DD') as date
+			from generate_series(0, 30, 1) as offs
+		) gen left outer join views
+		on gen.date = to_char(date_trunc('day', views.viewDate), 'YYYY-MM-DD') and
 		   views.domain=$1
-		GROUP BY gen.date
-		ORDER BY gen.date;
+		group by gen.date
+		order by gen.date;
 	`
 	rows, err := db.Query(statement, domain)
 	if err != nil {
@@ -45,39 +45,39 @@ func domainStatisticsHandler(w http.ResponseWriter, r *http.Request) {
 
 	var x request
 	if err := bodyUnmarshal(r, &x); err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
 	o, err := ownerGetByOwnerToken(*x.OwnerToken)
 	if err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
 	domain := domainStrip(*x.Domain)
 	isOwner, err := domainOwnershipVerify(o.OwnerHex, domain)
 	if err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
 	if !isOwner {
-		bodyMarshal(w, response{"success": false, "message": errorNotAuthorised.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": errorNotAuthorised.Error()})
 		return
 	}
 
 	viewsLast30Days, err := domainStatistics(domain)
 	if err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
 	commentsLast30Days, err := commentStatistics(domain)
 	if err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
-	bodyMarshal(w, response{"success": true, "viewsLast30Days": viewsLast30Days, "commentsLast30Days": commentsLast30Days})
+	bodyMarshalChecked(w, response{"success": true, "viewsLast30Days": viewsLast30Days, "commentsLast30Days": commentsLast30Days})
 }

@@ -7,8 +7,8 @@ import (
 func TestDomainDeleteBasics(t *testing.T) {
 	failTestOnError(t, setupTestEnv())
 
-	domainNew("temp-owner-hex", "Example", "example.com")
-	domainNew("temp-owner-hex", "Example", "example2.com")
+	_ = domainNew("temp-owner-hex", "Example", "example.com")
+	_ = domainNew("temp-owner-hex", "Example", "example2.com")
 
 	if err := domainDelete("example.com"); err != nil {
 		t.Errorf("unexpected error deleting domain: %v", err)

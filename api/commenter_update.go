@@ -18,11 +18,7 @@ func commenterUpdate(commenterHex string, email string, name string, link string
 		link = "https://" + link
 	}
 
-	statement := `
-		UPDATE commenters
-		SET email = $3, name = $4, link = $5, photo = $6
-		WHERE commenterHex = $1 and provider = $2;
-	`
+	statement := `update commenters set email = $3, name = $4, link = $5, photo = $6 where commenterHex = $1 and provider = $2;`
 	_, err := db.Exec(statement, commenterHex, provider, email, name, link, photo)
 	if err != nil {
 		logger.Errorf("cannot update commenter: %v", err)
@@ -43,27 +39,27 @@ func commenterUpdateHandler(w http.ResponseWriter, r *http.Request) {
 
 	var x request
 	if err := bodyUnmarshal(r, &x); err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
 	c, err := commenterGetByCommenterToken(*x.CommenterToken)
 	if err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
 	if c.Provider != "commento" {
-		bodyMarshal(w, response{"success": false, "message": errorCannotUpdateOauthProfile.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": errorCannotUpdateOauthProfile.Error()})
 		return
 	}
 
 	*x.Email = c.Email
 
 	if err = commenterUpdate(c.CommenterHex, *x.Email, *x.Name, *x.Link, *x.Photo, c.Provider); err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
-	bodyMarshal(w, response{"success": true})
+	bodyMarshalChecked(w, response{"success": true})
 }

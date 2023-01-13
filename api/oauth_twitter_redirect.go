@@ -9,7 +9,7 @@ import (
 func twitterRedirectHandler(w http.ResponseWriter, r *http.Request) {
 	if twitterClient == nil {
 		logger.Errorf("twitter oauth access attempt without configuration")
-		fmt.Fprintf(w, "error: this website has not configured twitter OAuth")
+		_, _ = fmt.Fprintf(w, "error: this website has not configured twitter OAuth")
 		return
 	}
 
@@ -17,14 +17,14 @@ func twitterRedirectHandler(w http.ResponseWriter, r *http.Request) {
 
 	_, err := commenterGetByCommenterToken(commenterToken)
 	if err != nil && err != errorNoSuchToken {
-		fmt.Fprintf(w, "error: %s\n", err.Error())
+		_, _ = fmt.Fprintf(w, "error: %s\n", err.Error())
 		return
 	}
 
 	cred, err := twitterClient.RequestTemporaryCredentials(nil, os.Getenv("ORIGIN")+"/api/oauth/twitter/callback", nil)
 	if err != nil {
 		logger.Errorf("cannot get temporary twitter credentials: %v", err)
-		fmt.Fprintf(w, "error: %v", errorInternal.Error())
+		_, _ = fmt.Fprintf(w, "error: %v", errorInternal.Error())
 		return
 	}
 

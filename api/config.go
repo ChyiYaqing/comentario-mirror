@@ -66,10 +66,14 @@ func configParse() error {
 	}
 
 	for key, value := range defaults {
+		var err error
 		if os.Getenv("COMMENTO_"+key) == "" {
-			os.Setenv(key, value)
+			err = os.Setenv(key, value)
 		} else {
-			os.Setenv(key, os.Getenv("COMMENTO_"+key))
+			err = os.Setenv(key, os.Getenv("COMMENTO_"+key))
+		}
+		if err != nil {
+			return err
 		}
 	}
 
@@ -81,15 +85,25 @@ func configParse() error {
 		}
 	}
 
-	os.Setenv("ORIGIN", strings.TrimSuffix(os.Getenv("ORIGIN"), "/"))
-	os.Setenv("ORIGIN", addHttpIfAbsent(os.Getenv("ORIGIN")))
-
-	if os.Getenv("CDN_PREFIX") == "" {
-		os.Setenv("CDN_PREFIX", os.Getenv("ORIGIN"))
+	if err := os.Setenv("ORIGIN", strings.TrimSuffix(os.Getenv("ORIGIN"), "/")); err != nil {
+		return err
+	}
+	if err := os.Setenv("ORIGIN", addHttpIfAbsent(os.Getenv("ORIGIN"))); err != nil {
+		return err
 	}
 
-	os.Setenv("CDN_PREFIX", strings.TrimSuffix(os.Getenv("CDN_PREFIX"), "/"))
-	os.Setenv("CDN_PREFIX", addHttpIfAbsent(os.Getenv("CDN_PREFIX")))
+	if os.Getenv("CDN_PREFIX") == "" {
+		if err := os.Setenv("CDN_PREFIX", os.Getenv("ORIGIN")); err != nil {
+			return err
+		}
+	}
+
+	if err := os.Setenv("CDN_PREFIX", strings.TrimSuffix(os.Getenv("CDN_PREFIX"), "/")); err != nil {
+		return err
+	}
+	if err := os.Setenv("CDN_PREFIX", addHttpIfAbsent(os.Getenv("CDN_PREFIX"))); err != nil {
+		return err
+	}
 
 	if os.Getenv("FORBID_NEW_OWNERS") != "true" && os.Getenv("FORBID_NEW_OWNERS") != "false" {
 		logger.Errorf("COMMENTO_FORBID_NEW_OWNERS neither 'true' nor 'false'")
@@ -112,7 +126,9 @@ func configParse() error {
 		return errorNotADirectory
 	}
 
-	os.Setenv("STATIC", static)
+	if err := os.Setenv("STATIC", static); err != nil {
+		return err
+	}
 
 	if num, err := strconv.Atoi(os.Getenv("MAX_IDLE_PG_CONNECTIONS")); err != nil {
 		logger.Errorf("invalid COMMENTO_MAX_IDLE_PG_CONNECTIONS: %v", err)

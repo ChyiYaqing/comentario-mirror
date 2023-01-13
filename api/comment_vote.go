@@ -10,11 +10,7 @@ func commentVote(commenterHex string, commentHex string, direction int) error {
 		return errorMissingField
 	}
 
-	statement := `
-		SELECT commenterHex
-		FROM comments
-		WHERE commentHex = $1;
-	`
+	statement := `select commenterHex from comments where commentHex = $1;`
 	row := db.QueryRow(statement, commentHex)
 
 	var authorHex string
@@ -28,11 +24,9 @@ func commentVote(commenterHex string, commentHex string, direction int) error {
 	}
 
 	statement = `
-		INSERT INTO
-		votes  (commentHex, commenterHex, direction, voteDate)
-		VALUES ($1,         $2,           $3,        $4      )
-		ON CONFLICT (commentHex, commenterHex) DO
-		UPDATE SET direction = $3;
+		insert into votes(commentHex, commenterHex, direction, voteDate) values($1, $2, $3, $4)
+		on conflict (commentHex, commenterHex) do
+			update set direction = $3;
 	`
 	_, err := db.Exec(statement, commentHex, commenterHex, direction, time.Now().UTC())
 	if err != nil {
@@ -52,18 +46,18 @@ func commentVoteHandler(w http.ResponseWriter, r *http.Request) {
 
 	var x request
 	if err := bodyUnmarshal(r, &x); err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
 	if *x.CommenterToken == "anonymous" {
-		bodyMarshal(w, response{"success": false, "message": errorUnauthorisedVote.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": errorUnauthorisedVote.Error()})
 		return
 	}
 
 	c, err := commenterGetByCommenterToken(*x.CommenterToken)
 	if err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
@@ -75,9 +69,9 @@ func commentVoteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := commentVote(c.CommenterHex, *x.CommentHex, direction); err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
-	bodyMarshal(w, response{"success": true})
+	bodyMarshalChecked(w, response{"success": true})
 }

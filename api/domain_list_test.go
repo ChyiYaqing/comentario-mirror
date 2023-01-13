@@ -7,8 +7,8 @@ import (
 func TestDomainListBasics(t *testing.T) {
 	failTestOnError(t, setupTestEnv())
 
-	domainNew("temp-owner-hex", "Example", "example.com")
-	domainNew("temp-owner-hex", "Example", "example2.com")
+	_ = domainNew("temp-owner-hex", "Example", "example.com")
+	_ = domainNew("temp-owner-hex", "Example", "example2.com")
 
 	d, err := domainList("temp-owner-hex")
 	if err != nil {

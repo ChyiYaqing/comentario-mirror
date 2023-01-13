@@ -57,11 +57,7 @@ func forgot(email string, entity string) error {
 
 	var statement string
 
-	statement = `
-		INSERT INTO
-		resetHexes (resetHex, hex, entity, sendDate)
-		VALUES     ($1,       $2,  $3,     $4      );
-	`
+	statement = `insert into resetHexes(resetHex, hex, entity, sendDate) values($1, $2, $3, $4);`
 	_, err = db.Exec(statement, resetHex, hex, entity, time.Now().UTC())
 	if err != nil {
 		logger.Errorf("cannot insert resetHex: %v", err)
@@ -84,14 +80,14 @@ func forgotHandler(w http.ResponseWriter, r *http.Request) {
 
 	var x request
 	if err := bodyUnmarshal(r, &x); err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
 	if err := forgot(*x.Email, *x.Entity); err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
-	bodyMarshal(w, response{"success": true})
+	bodyMarshalChecked(w, response{"success": true})
 }

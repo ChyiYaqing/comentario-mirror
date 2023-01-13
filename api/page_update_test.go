@@ -10,7 +10,7 @@ func TestPageUpdateBasics(t *testing.T) {
 
 	commenterHex, _ := commenterNew("test@example.com", "Test", "undefined", "https://example.com/photo.jpg", "google", "")
 
-	commentNew(commenterHex, "example.com", "/path.html", "root", "**foo**", "unapproved", time.Now().UTC())
+	_, _ = commentNew(commenterHex, "example.com", "/path.html", "root", "**foo**", "unapproved", time.Now().UTC())
 
 	p, _ := pageGet("example.com", "/path.html")
 	if p.IsLocked != false {

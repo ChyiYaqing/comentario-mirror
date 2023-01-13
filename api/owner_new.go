@@ -36,11 +36,7 @@ func ownerNew(email string, name string, password string) (string, error) {
 		return "", errorInternal
 	}
 
-	statement := `
-		INSERT INTO
-		owners (ownerHex, email, name, passwordHash, joinDate, confirmedEmail)
-		VALUES ($1,       $2,    $3,   $4,           $5,       $6            );
-	`
+	statement := `insert into owners(ownerHex, email, name, passwordHash, joinDate, confirmedEmail) values($1, $2, $3, $4, $5, $6);`
 	_, err = db.Exec(statement, ownerHex, email, name, string(passwordHash), time.Now().UTC(), !smtpConfigured)
 	if err != nil {
 		// TODO: Make sure `err` is actually about conflicting UNIQUE, and not some
@@ -56,9 +52,9 @@ func ownerNew(email string, name string, password string) (string, error) {
 		}
 
 		statement = `
-			INSERT INTO
+			insert into
 			ownerConfirmHexes (confirmHex, ownerHex, sendDate)
-			VALUES            ($1,         $2,       $3      );
+			values            ($1,         $2,       $3      );
 		`
 		_, err = db.Exec(statement, confirmHex, ownerHex, time.Now().UTC())
 		if err != nil {
@@ -83,17 +79,17 @@ func ownerNewHandler(w http.ResponseWriter, r *http.Request) {
 
 	var x request
 	if err := bodyUnmarshal(r, &x); err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
 	if _, err := ownerNew(*x.Email, *x.Name, *x.Password); err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
 	// Errors in creating a commenter account should not hold this up.
 	_, _ = commenterNew(*x.Email, *x.Name, "undefined", "undefined", "commento", *x.Password)
 
-	bodyMarshal(w, response{"success": true, "confirmEmail": smtpConfigured})
+	bodyMarshalChecked(w, response{"success": true, "confirmEmail": smtpConfigured})
 }

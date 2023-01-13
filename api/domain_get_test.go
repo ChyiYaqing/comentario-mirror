@@ -7,7 +7,7 @@ import (
 func TestDomainGetBasics(t *testing.T) {
 	failTestOnError(t, setupTestEnv())
 
-	domainNew("temp-owner-hex", "Example", "example.com")
+	_ = domainNew("temp-owner-hex", "Example", "example.com")
 
 	d, err := domainGet("example.com")
 	if err != nil {

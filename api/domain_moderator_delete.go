@@ -9,10 +9,7 @@ func domainModeratorDelete(domain string, email string) error {
 		return errorMissingConfig
 	}
 
-	statement := `
-		DELETE FROM moderators
-		WHERE domain=$1 AND email=$2;
-	`
+	statement := `delete from moderators where domain=$1 and email=$2;`
 	_, err := db.Exec(statement, domain, email)
 	if err != nil {
 		logger.Errorf("cannot delete moderator: %v", err)
@@ -31,32 +28,32 @@ func domainModeratorDeleteHandler(w http.ResponseWriter, r *http.Request) {
 
 	var x request
 	if err := bodyUnmarshal(r, &x); err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
 	o, err := ownerGetByOwnerToken(*x.OwnerToken)
 	if err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
 	domain := domainStrip(*x.Domain)
 	authorised, err := domainOwnershipVerify(o.OwnerHex, domain)
 	if err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
 	if !authorised {
-		bodyMarshal(w, response{"success": false, "message": errorNotAuthorised.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": errorNotAuthorised.Error()})
 		return
 	}
 
 	if err = domainModeratorDelete(domain, *x.Email); err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
-	bodyMarshal(w, response{"success": true})
+	bodyMarshalChecked(w, response{"success": true})
 }

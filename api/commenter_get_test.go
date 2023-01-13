@@ -37,7 +37,7 @@ func TestCommenterGetByCommenterToken(t *testing.T) {
 
 	commenterToken, _ := commenterTokenNew()
 
-	commenterSessionUpdate(commenterToken, commenterHex)
+	_ = commenterSessionUpdate(commenterToken, commenterHex)
 
 	c, err := commenterGetByCommenterToken(commenterToken)
 	if err != nil {
@@ -67,7 +67,7 @@ func TestCommenterGetByName(t *testing.T) {
 
 	commenterToken, _ := commenterTokenNew()
 
-	commenterSessionUpdate(commenterToken, commenterHex)
+	_ = commenterSessionUpdate(commenterToken, commenterHex)
 
 	c, err := commenterGetByEmail("google", "test@example.com")
 	if err != nil {

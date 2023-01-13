@@ -10,9 +10,9 @@ func TestCommentCountBasics(t *testing.T) {
 
 	commenterHex, _ := commenterNew("test@example.com", "Test", "undefined", "http://example.com/photo.jpg", "google", "")
 
-	commentNew(commenterHex, "example.com", "/path.html", "root", "**foo**", "approved", time.Now().UTC())
-	commentNew(commenterHex, "example.com", "/path.html", "root", "**bar**", "approved", time.Now().UTC())
-	commentNew(commenterHex, "example.com", "/path.html", "root", "**baz**", "unapproved", time.Now().UTC())
+	_, _ = commentNew(commenterHex, "example.com", "/path.html", "root", "**foo**", "approved", time.Now().UTC())
+	_, _ = commentNew(commenterHex, "example.com", "/path.html", "root", "**bar**", "approved", time.Now().UTC())
+	_, _ = commentNew(commenterHex, "example.com", "/path.html", "root", "**baz**", "unapproved", time.Now().UTC())
 
 	counts, err := commentCount("example.com", []string{"/path.html"})
 	if err != nil {

@@ -38,11 +38,7 @@ func TestCommentNewUpvoted(t *testing.T) {
 
 	commentHex, _ := commentNew("temp-commenter-hex", "example.com", "/path.html", "root", "**foo**", "approved", time.Now().UTC())
 
-	statement := `
-		SELECT score
-		FROM comments
-		WHERE commentHex = $1;
-	`
+	statement := `select score from comments where commentHex = $1;`
 	row := db.QueryRow(statement, commentHex)
 
 	var score int
@@ -60,10 +56,10 @@ func TestCommentNewUpvoted(t *testing.T) {
 func TestCommentNewThreadLocked(t *testing.T) {
 	failTestOnError(t, setupTestEnv())
 
-	pageNew("example.com", "/path.html")
+	_ = pageNew("example.com", "/path.html")
 	p, _ := pageGet("example.com", "/path.html")
 	p.IsLocked = true
-	pageUpdate(p)
+	_ = pageUpdate(p)
 
 	_, err := commentNew("temp-commenter-hex", "example.com", "/path.html", "root", "**foo**", "approved", time.Now().UTC())
 	if err == nil {

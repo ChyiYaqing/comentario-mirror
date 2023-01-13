@@ -11,11 +11,7 @@ func commenterLogin(email string, password string) (string, error) {
 		return "", errorMissingField
 	}
 
-	statement := `
-		SELECT commenterHex, passwordHash
-		FROM commenters
-		WHERE email = $1 AND provider = 'commento';
-	`
+	statement := `select commenterHex, passwordHash from commenters where email = $1 and provider = 'commento';`
 	row := db.QueryRow(statement, email)
 
 	var commenterHex string
@@ -35,11 +31,7 @@ func commenterLogin(email string, password string) (string, error) {
 		return "", errorInternal
 	}
 
-	statement = `
-		INSERT INTO
-		commenterSessions (commenterToken, commenterHex, creationDate)
-		VALUES            ($1,             $2,           $3          );
-	`
+	statement = `insert into commenterSessions(commenterToken, commenterHex, creationDate) values($1, $2, $3);`
 	_, err = db.Exec(statement, commenterToken, commenterHex, time.Now().UTC())
 	if err != nil {
 		logger.Errorf("cannot insert commenterToken token: %v\n", err)
@@ -57,28 +49,28 @@ func commenterLoginHandler(w http.ResponseWriter, r *http.Request) {
 
 	var x request
 	if err := bodyUnmarshal(r, &x); err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
 	commenterToken, err := commenterLogin(*x.Email, *x.Password)
 	if err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
 	// TODO: modify commenterLogin to directly return c?
 	c, err := commenterGetByCommenterToken(commenterToken)
 	if err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
 	e, err := emailGet(c.Email)
 	if err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
-	bodyMarshal(w, response{"success": true, "commenterToken": commenterToken, "commenter": c, "email": e})
+	bodyMarshalChecked(w, response{"success": true, "commenterToken": commenterToken, "commenter": c, "email": e})
 }

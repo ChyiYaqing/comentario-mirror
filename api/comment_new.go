@@ -35,9 +35,8 @@ func commentNew(commenterHex string, domain string, path string, parentHex strin
 	}
 
 	statement := `
-		INSERT INTO
-		comments (commentHex, domain, path, commenterHex, parentHex, markdown, html, creationDate, state)
-		VALUES   ($1,         $2,     $3,   $4,           $5,        $6,       $7,   $8,           $9   );
+		insert into comments(commentHex, domain, path, commenterHex, parentHex, markdown, html, creationDate, state)
+			values($1, $2, $3, $4, $5, $6, $7, $8, $9);
 	`
 	_, err = db.Exec(statement, commentHex, domain, path, commenterHex, parentHex, markdown, html, creationDate, state)
 	if err != nil {
@@ -59,7 +58,7 @@ func commentNewHandler(w http.ResponseWriter, r *http.Request) {
 
 	var x request
 	if err := bodyUnmarshal(r, &x); err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
@@ -68,17 +67,17 @@ func commentNewHandler(w http.ResponseWriter, r *http.Request) {
 
 	d, err := domainGet(domain)
 	if err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
 	if d.State == "frozen" {
-		bodyMarshal(w, response{"success": false, "message": errorDomainFrozen.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": errorDomainFrozen.Error()})
 		return
 	}
 
 	if d.RequireIdentification && *x.CommenterToken == "anonymous" {
-		bodyMarshal(w, response{"success": false, "message": errorNotAuthorised.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": errorNotAuthorised.Error()})
 		return
 	}
 
@@ -89,7 +88,7 @@ func commentNewHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		c, err := commenterGetByCommenterToken(*x.CommenterToken)
 		if err != nil {
-			bodyMarshal(w, response{"success": false, "message": err.Error()})
+			bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 			return
 		}
 		commenterHex, commenterName, commenterEmail, commenterLink = c.CommenterHex, c.Name, c.Email, c.Link
@@ -116,14 +115,14 @@ func commentNewHandler(w http.ResponseWriter, r *http.Request) {
 
 	commentHex, err := commentNew(commenterHex, domain, path, *x.ParentHex, *x.Markdown, state, time.Now().UTC())
 	if err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
 	// TODO: reuse html in commentNew and do only one markdown to HTML conversion?
 	html := markdownToHtml(*x.Markdown)
 
-	bodyMarshal(w, response{"success": true, "commentHex": commentHex, "state": state, "html": html})
+	bodyMarshalChecked(w, response{"success": true, "commentHex": commentHex, "state": state, "html": html})
 	if smtpConfigured {
 		go emailNotificationNew(d, path, commenterHex, commentHex, html, *x.ParentHex, state)
 	}

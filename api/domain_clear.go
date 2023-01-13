@@ -9,31 +9,21 @@ func domainClear(domain string) error {
 		return errorMissingField
 	}
 
-	statement := `
-		DELETE FROM votes
-		USING comments
-		WHERE comments.commentHex = votes.commentHex AND comments.domain = $1;
-	`
+	statement := `delete from votes using comments where comments.commentHex = votes.commentHex and comments.domain = $1;`
 	_, err := db.Exec(statement, domain)
 	if err != nil {
 		logger.Errorf("cannot delete votes: %v", err)
 		return errorInternal
 	}
 
-	statement = `
-		DELETE FROM comments
-		WHERE comments.domain = $1;
-	`
+	statement = `delete from comments where comments.domain = $1;`
 	_, err = db.Exec(statement, domain)
 	if err != nil {
 		logger.Errorf(statement, domain)
 		return errorInternal
 	}
 
-	statement = `
-		DELETE FROM pages
-		WHERE pages.domain = $1;
-	`
+	statement = `delete from pages where pages.domain = $1;`
 	_, err = db.Exec(statement, domain)
 	if err != nil {
 		logger.Errorf(statement, domain)
@@ -51,32 +41,32 @@ func domainClearHandler(w http.ResponseWriter, r *http.Request) {
 
 	var x request
 	if err := bodyUnmarshal(r, &x); err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
 	o, err := ownerGetByOwnerToken(*x.OwnerToken)
 	if err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
 	domain := domainStrip(*x.Domain)
 	isOwner, err := domainOwnershipVerify(o.OwnerHex, domain)
 	if err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
 	if !isOwner {
-		bodyMarshal(w, response{"success": false, "message": errorNotAuthorised.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": errorNotAuthorised.Error()})
 		return
 	}
 
 	if err = domainClear(*x.Domain); err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
-	bodyMarshal(w, response{"success": true})
+	bodyMarshalChecked(w, response{"success": true})
 }

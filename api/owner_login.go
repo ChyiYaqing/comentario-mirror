@@ -11,11 +11,7 @@ func ownerLogin(email string, password string) (string, error) {
 		return "", errorMissingField
 	}
 
-	statement := `
-		SELECT ownerHex, confirmedEmail, passwordHash
-		FROM owners
-		WHERE email=$1;
-	`
+	statement := `select ownerHex, confirmedEmail, passwordHash from owners where email=$1;`
 	row := db.QueryRow(statement, email)
 
 	var ownerHex string
@@ -40,11 +36,7 @@ func ownerLogin(email string, password string) (string, error) {
 		return "", errorInternal
 	}
 
-	statement = `
-		INSERT INTO
-		ownerSessions (ownerToken, ownerHex, loginDate)
-		VALUES        ($1,         $2,       $3       );
-	`
+	statement = `insert into ownerSessions(ownerToken, ownerHex, loginDate) values($1, $2, $3);`
 	_, err = db.Exec(statement, ownerToken, ownerHex, time.Now().UTC())
 	if err != nil {
 		logger.Errorf("cannot insert ownerSession: %v\n", err)
@@ -62,15 +54,15 @@ func ownerLoginHandler(w http.ResponseWriter, r *http.Request) {
 
 	var x request
 	if err := bodyUnmarshal(r, &x); err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
 	ownerToken, err := ownerLogin(*x.Email, *x.Password)
 	if err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
-	bodyMarshal(w, response{"success": true, "ownerToken": ownerToken})
+	bodyMarshalChecked(w, response{"success": true, "ownerToken": ownerToken})
 }

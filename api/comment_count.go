@@ -16,11 +16,7 @@ func commentCount(domain string, paths []string) (map[string]int, error) {
 		return nil, errorEmptyPaths
 	}
 
-	statement := `
-		SELECT path, commentCount
-		FROM pages
-		WHERE domain = $1 AND path = ANY($2);
-	`
+	statement := `select path, commentCount from pages where domain = $1 and path = any($2);`
 	rows, err := db.Query(statement, domain, pq.Array(paths))
 	if err != nil {
 		logger.Errorf("cannot get comments: %v", err)
@@ -50,7 +46,7 @@ func commentCountHandler(w http.ResponseWriter, r *http.Request) {
 
 	var x request
 	if err := bodyUnmarshal(r, &x); err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
@@ -58,9 +54,8 @@ func commentCountHandler(w http.ResponseWriter, r *http.Request) {
 
 	commentCounts, err := commentCount(domain, *x.Paths)
 	if err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
-
-	bodyMarshal(w, response{"success": true, "commentCounts": commentCounts})
+	bodyMarshalChecked(w, response{"success": true, "commentCounts": commentCounts})
 }

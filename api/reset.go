@@ -10,11 +10,7 @@ func reset(resetHex string, password string) (string, error) {
 		return "", errorMissingField
 	}
 
-	statement := `
-		SELECT hex, entity
-		FROM resetHexes
-		WHERE resetHex = $1;
-	`
+	statement := `select hex, entity from resetHexes where resetHex = $1;`
 	row := db.QueryRow(statement, resetHex)
 
 	var hex string
@@ -31,15 +27,9 @@ func reset(resetHex string, password string) (string, error) {
 	}
 
 	if entity == "owner" {
-		statement = `
-			UPDATE owners SET passwordHash = $1
-			WHERE ownerHex = $2;
-		`
+		statement = `update owners set passwordHash = $1 where ownerHex = $2;`
 	} else {
-		statement = `
-			UPDATE commenters SET passwordHash = $1
-			WHERE commenterHex = $2;
-		`
+		statement = `update commenters set passwordHash = $1 where commenterHex = $2;`
 	}
 
 	_, err = db.Exec(statement, string(passwordHash), hex)
@@ -48,10 +38,7 @@ func reset(resetHex string, password string) (string, error) {
 		return "", errorInternal
 	}
 
-	statement = `
-		DELETE FROM resetHexes
-		WHERE resetHex = $1;
-	`
+	statement = `delete from resetHexes where resetHex = $1;`
 	_, err = db.Exec(statement, resetHex)
 	if err != nil {
 		logger.Warningf("cannot remove resetHex: %v\n", err)
@@ -68,15 +55,15 @@ func resetHandler(w http.ResponseWriter, r *http.Request) {
 
 	var x request
 	if err := bodyUnmarshal(r, &x); err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
 	entity, err := reset(*x.ResetHex, *x.Password)
 	if err != nil {
-		bodyMarshal(w, response{"success": false, "message": err.Error()})
+		bodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
-	bodyMarshal(w, response{"success": true, "entity": entity})
+	bodyMarshalChecked(w, response{"success": true, "entity": entity})
 }

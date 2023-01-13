@@ -30,7 +30,9 @@ Subject: {{.Subject}}
 
 `)
 	var header bytes.Buffer
-	h.Execute(&header, &headerPlugs{FromAddress: os.Getenv("SMTP_FROM_ADDRESS"), ToAddress: to, ToName: toName, Subject: "[Commento] " + title})
+	if err := h.Execute(&header, &headerPlugs{FromAddress: os.Getenv("SMTP_FROM_ADDRESS"), ToAddress: to, ToName: toName, Subject: "[Commento] " + title}); err != nil {
+		return err
+	}
 
 	t, err := ht.ParseFiles(fmt.Sprintf("%s/templates/email-notification.txt", os.Getenv("STATIC")))
 	if err != nil {

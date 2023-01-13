@@ -10,45 +10,41 @@ func emailModerateHandler(w http.ResponseWriter, r *http.Request) {
 	action := r.FormValue("action")
 	commentHex := r.FormValue("commentHex")
 	if commentHex == "" {
-		fmt.Fprintf(w, "error: invalid commentHex")
+		_, _ = fmt.Fprintf(w, "error: invalid commentHex")
 		return
 	}
 
-	statement := `
-		SELECT domain, deleted
-		FROM comments
-		WHERE commentHex = $1;
-	`
+	statement := `select domain, deleted from comments where commentHex = $1;`
 	row := db.QueryRow(statement, commentHex)
 
 	var domain string
 	var deleted bool
 	if err := row.Scan(&domain, &deleted); err != nil {
 		// TODO: is this the only error?
-		fmt.Fprintf(w, "error: no such comment found (perhaps it has been deleted?)")
+		_, _ = fmt.Fprintf(w, "error: no such comment found (perhaps it has been deleted?)")
 		return
 	}
 
 	if deleted {
-		fmt.Fprintf(w, "error: that comment has already been deleted")
+		_, _ = fmt.Fprintf(w, "error: that comment has already been deleted")
 		return
 	}
 
 	e, err := emailGetByUnsubscribeSecretHex(unsubscribeSecretHex)
 	if err != nil {
-		fmt.Fprintf(w, "error: %v", err.Error())
+		_, _ = fmt.Fprintf(w, "error: %v", err.Error())
 		return
 	}
 
 	isModerator, err := isDomainModerator(domain, e.Email)
 	if err != nil {
 		logger.Errorf("error checking if %s is a moderator: %v", e.Email, err)
-		fmt.Fprintf(w, "error: %v", errorInternal)
+		_, _ = fmt.Fprintf(w, "error: %v", errorInternal)
 		return
 	}
 
 	if !isModerator {
-		fmt.Fprintf(w, "error: you're not a moderator for that domain")
+		_, _ = fmt.Fprintf(w, "error: you're not a moderator for that domain")
 		return
 	}
 
@@ -56,17 +52,13 @@ func emailModerateHandler(w http.ResponseWriter, r *http.Request) {
 	// should be used. This was poor design on multiple fronts on my part, but
 	// let's deal with that later. For now, it suffices to match the
 	// deleter/approver with any account owned by the same email.
-	statement = `
-		SELECT commenterHex
-		FROM commenters
-		WHERE email = $1;
-	`
+	statement = `select commenterHex from commenters where email = $1;`
 	row = db.QueryRow(statement, e.Email)
 
 	var commenterHex string
 	if err = row.Scan(&commenterHex); err != nil {
 		logger.Errorf("cannot retrieve commenterHex by email %q: %v", e.Email, err)
-		fmt.Fprintf(w, "error: %v", errorInternal)
+		_, _ = fmt.Fprintf(w, "error: %v", errorInternal)
 		return
 	}
 
@@ -80,9 +72,9 @@ func emailModerateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		fmt.Fprintf(w, "error: %v", err)
+		_, _ = fmt.Fprintf(w, "error: %v", err)
 		return
 	}
 
-	fmt.Fprintf(w, "comment successfully %sd", action)
+	_, _ = fmt.Fprintf(w, "comment successfully %sd", action)
 }
