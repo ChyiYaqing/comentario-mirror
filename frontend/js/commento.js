@@ -337,7 +337,7 @@
         classAdd(a, 'logo');
         classAdd(text, 'logo-text');
 
-        setAttr(a, {href: 'https://gitlab.com/comentario/comentario', target: '_blank'});
+        setAttr(a, {href: 'https://comentario.app/', target: '_blank'});
 
         text.innerText = 'Comentario 🗨';
 
