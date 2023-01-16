@@ -95,7 +95,7 @@
     let selfHex = undefined;
     let mobileView = null;
 
-    function $(id) {
+    function byId(id) {
         return document.getElementById(id);
     }
 
@@ -107,28 +107,87 @@
         root.prepend(el);
     }
 
-    function append(root, el) {
-        root.appendChild(el);
+    function append(parent, child) {
+        parent.appendChild(child);
     }
 
     function insertAfter(el1, el2) {
         el1.parentNode.insertBefore(el2, el1.nextSibling);
     }
 
-    function classAdd(el, cls) {
-        el.classList.add(`commento-${cls}`);
+    /**
+     * Add the provided class or classes to the element.
+     * @param el Element to add classes to.
+     * @param classes string|array Class(es) to add.
+     */
+    function addClasses(el, classes) {
+        (Array.isArray(classes) ? classes : [classes]).forEach(c => el.classList.add(`commento-${c}`));
     }
 
-    function classRemove(el, cls) {
+    /**
+     * Remove the provided class or classes from the element.
+     * @param el Element to remove classes from.
+     * @param classes string|array Class(es) to remove.
+     */
+    function removeClasses(el, classes) {
         if (el !== null) {
-            el.classList.remove(`commento-${cls}`);
+            (Array.isArray(classes) ? classes : [classes]).forEach(c => el.classList.remove(`commento-${c}`));
         }
     }
 
-    function create(el, id) {
-        const e = document.createElement(el);
-        if (id) {
-            e.id = id;
+    /**
+     * Create a new HTML element with the given tag and configuration.
+     * @param tagName name of the tag.
+     * @param config configuration object, optionally providing id, classes, parent, innerText, and other attributes.
+     * @returns {*} The created and configured HTML element.
+     */
+    function create(tagName, config) {
+        // Create a new HTML element
+        const e = document.createElement(tagName);
+
+        // If there's any config passed
+        if (config) {
+            // Set up the ID, if given, and clean it up from the config
+            if ('id' in config) {
+                e.id = config.id;
+                delete config.id;
+            }
+
+            // Set up the classes, if given, and clean them up from the config
+            if ('classes' in config) {
+                addClasses(e, config.classes);
+                delete config.classes;
+            }
+
+            // Set up the inner text/HTML, if given, and clean it up from the config
+            if ('innerText' in config) {
+                e.innerText = config.innerText;
+                delete config.innerText;
+            } else if ('innerHTML' in config) {
+                e.innerHTML = config.innerHTML;
+                delete config.innerHTML;
+            }
+
+            // Set up the parent, if given, and clean it up from the config
+            let parent;
+            if ('parent' in config) {
+                parent = config.parent;
+                delete config.parent;
+            }
+
+            // Add any children
+            if ('children' in config) {
+                config.children.forEach(child => e.appendChild(child));
+                delete config.children;
+            }
+
+            // Set up the remaining attributes
+            setAttr(e, config)
+
+            // Add the child to the parent, if any
+            if (parent) {
+                parent.appendChild(e)
+            }
         }
         return e;
     }
@@ -155,18 +214,23 @@
         return node;
     }
 
-    function onclick(node, f, arg) {
+    function onClick(node, f, arg) {
         node.addEventListener('click', function () {
             f(arg);
         }, false);
     }
 
-    function onload(node, f, arg) {
+    function onLoad(node, f, arg) {
         node.addEventListener('load', function () {
             f(arg);
         });
     }
 
+    /**
+     * Set node attributes from the provided object.
+     * @param node HTML element to set attributes on.
+     * @param values Object that provides attribute names (keys) and their values.
+     */
     function setAttr(node, values) {
         Object.keys(values).forEach(k => node.setAttribute(k, values[k]));
     }
@@ -185,12 +249,8 @@
 
     function get(url, callback) {
         const xmlDoc = new XMLHttpRequest();
-
         xmlDoc.open('GET', url, true);
-        xmlDoc.onload = function () {
-            callback(JSON.parse(xmlDoc.response));
-        };
-
+        xmlDoc.onload = () => callback(JSON.parse(xmlDoc.response));
         xmlDoc.send(null);
     }
 
@@ -239,58 +299,48 @@
         commenters[commenter.commenterHex] = commenter;
         selfHex = commenter.commenterHex;
 
-        const loggedContainer = create('div', ID_LOGGED_CONTAINER);
-        const loggedInAs = create('div');
-        const name = commenter.link !== 'undefined' ? create('a') : create('div');
-        let avatar;
-        const notificationSettingsButton = create('div');
-        const profileEditButton = create('div');
-        const logoutButton = create('div');
+        const loggedContainer = create('div', {id: ID_LOGGED_CONTAINER, classes: 'logged-container', style: 'display: none'});
+        const loggedInAs      = create('div', {classes: 'logged-in-as', parent: loggedContainer});
+        const name            = create(commenter.link !== 'undefined' ? 'a' : 'div', {classes: 'name', innerText: commenter.name, parent: loggedInAs});
+        const btnSettings     = create('div', {classes: 'profile-button', innerText: 'Notification Settings', parent: loggedContainer});
+        const btnEditProfile  = create('div', {classes: 'profile-button', innerText: 'Edit Profile'});
+        const btnLogout       = create('div', {classes: 'profile-button', innerText: 'Logout', parent: loggedContainer});
         const color = colorGet(`${commenter.commenterHex}-${commenter.name}`);
 
-        classAdd(loggedContainer, 'logged-container');
-        classAdd(loggedInAs, 'logged-in-as');
-        classAdd(name, 'name');
-        classAdd(notificationSettingsButton, 'profile-button');
-        classAdd(profileEditButton, 'profile-button');
-        classAdd(logoutButton, 'profile-button');
-
-        name.innerText = commenter.name;
-        notificationSettingsButton.innerText = 'Notification Settings';
-        profileEditButton.innerText = 'Edit Profile';
-        logoutButton.innerText = 'Logout';
-
-        onclick(logoutButton, global.logout);
-        onclick(notificationSettingsButton, notificationSettings, email.unsubscribeSecretHex);
-        onclick(profileEditButton, profileEdit);
-
-        setAttr(loggedContainer, {style: 'display: none'});
+        // Set the profile href for the commenter, if any
         if (commenter.link !== 'undefined') {
             setAttr(name, {href: commenter.link});
         }
+
+        onClick(btnLogout, global.logout);
+        onClick(btnSettings, notificationSettings, email.unsubscribeSecretHex);
+        onClick(btnEditProfile, profileEdit);
+
+        // Add an avatar
         if (commenter.photo === 'undefined') {
-            avatar = create('div');
-            avatar.style['background'] = color;
-            avatar.innerHTML = commenter.name[0].toUpperCase();
-            classAdd(avatar, 'avatar');
+            create('div', {
+                classes:   'avatar',
+                innerHTML: commenter.name[0].toUpperCase(),
+                style:     `background-color: ${color}`,
+                parent:    loggedInAs,
+            });
         } else {
-            avatar = create('img');
-            setAttr(
-                avatar,
-                {src: `${cdn}/api/commenter/photo?commenterHex=${commenter.commenterHex}`, loading: 'lazy', alt: ''});
-            classAdd(avatar, 'avatar-img');
+            create('img', {
+                classes: 'avatar-img',
+                src:     `${cdn}/api/commenter/photo?commenterHex=${commenter.commenterHex}`,
+                loading: 'lazy',
+                alt:     '',
+                parent:  loggedInAs,
+            });
         }
 
-        append(loggedInAs, avatar);
-        append(loggedInAs, name);
-        append(loggedContainer, loggedInAs);
-        append(loggedContainer, logoutButton);
+        // If it's a local user, add an Edit profile button
         if (commenter.provider === 'commento') {
-            append(loggedContainer, profileEditButton);
+            append(loggedContainer, btnEditProfile);
         }
-        append(loggedContainer, notificationSettingsButton);
-        prepend(root, loggedContainer);
 
+        // Add the container to the root
+        prepend(root, loggedContainer);
         isAuthenticated = true;
     }
 
@@ -319,43 +369,30 @@
     }
 
     function cssLoad(file, f) {
-        const link = create('link');
-        const head = document.getElementsByTagName('head')[0];
-        setAttr(link, {href: file, rel: 'stylesheet', type: 'text/css'});
-        onload(link, f);
-        append(head, link);
+        const link = create('link', {
+            href:   file,
+            rel:    'stylesheet',
+            type:   'text/css',
+            parent: document.getElementsByTagName('head')[0]});
+        onLoad(link, f);
     }
 
     function footerLoad() {
-        const footer = create('div', ID_FOOTER);
-        const aContainer = create('div');
-        const a = create('a');
-        const text = create('span');
-
-        classAdd(footer, 'footer');
-        classAdd(aContainer, 'logo-container');
-        classAdd(a, 'logo');
-        classAdd(text, 'logo-text');
-
-        setAttr(a, {href: 'https://comentario.app/', target: '_blank'});
-
-        text.innerText = 'Comentario 🗨';
-
-        append(a, text);
-        append(aContainer, a);
-        append(footer, aContainer);
-
+        const footer = create('div', {id: ID_FOOTER, classes: 'footer'});
+        const cont = create('div', {classes: 'logo-container', parent: footer});
+        const link = create('a', {classes: 'logo', parent: cont, href: 'https://comentario.app/', target: '_blank'});
+        create('span', {classes: 'logo-text', parent: link, innerText: 'Comentario 🗨'});
         return footer;
     }
 
     function commentsGet(callback) {
-        const json = {
+        const data = {
             commenterToken: commenterTokenGet(),
             domain: parent.location.host,
             path: pageId,
         };
 
-        post(`${origin}/api/comment/list`, json, resp => {
+        post(`${origin}/api/comment/list`, data, resp => {
             if (!resp.success) {
                 errorShow(resp.message);
                 return;
@@ -381,20 +418,17 @@
     }
 
     function errorShow(text) {
-        const el = $(ID_ERROR);
+        const el = byId(ID_ERROR);
         el.innerText = text;
         setAttr(el, {style: 'display: block;'});
     }
 
     function errorHide() {
-        setAttr($(ID_ERROR), {style: 'display: none;'});
+        setAttr(byId(ID_ERROR), {style: 'display: none;'});
     }
 
     function errorElementCreate() {
-        const el = create('div', ID_ERROR);
-        classAdd(el, 'error-box');
-        setAttr(el, {style: 'display: none;'});
-        append(root, el);
+        create('div', {id: ID_ERROR, classes: 'error-box', style: 'display: none;', parent: root});
     }
 
     function autoExpander(el) {
@@ -405,135 +439,109 @@
     }
 
     function markdownHelpShow(id) {
-        const textareaSuperContainer = $(ID_SUPER_CONTAINER + id);
-        let markdownButton = $(ID_MARKDOWN_BUTTON + id);
-        const markdownHelp = create('table', ID_MARKDOWN_HELP + id);
-        const italicsContainer = create('tr');
-        const italicsLeft = create('td');
-        const italicsRight = create('td');
-        const boldContainer = create('tr');
-        const boldLeft = create('td');
-        const boldRight = create('td');
-        const codeContainer = create('tr');
-        const codeLeft = create('td');
-        const codeRight = create('td');
-        const strikethroughContainer = create('tr');
-        const strikethroughLeft = create('td');
-        const strikethroughRight = create('td');
-        const hyperlinkContainer = create('tr');
-        const hyperlinkLeft = create('td');
-        const hyperlinkRight = create('td');
-        const quoteContainer = create('tr');
-        const quoteLeft = create('td');
-        const quoteRight = create('td');
+        create('table', {
+            id:       ID_MARKDOWN_HELP + id,
+            classes:  'markdown-help',
+            parent:   byId(ID_SUPER_CONTAINER + id),
+            children: [
+                create('tr', {
+                    children: [
+                        create('td', {innerHTML: '<i>italics</i>'}),
+                        create('td', {innerHTML: 'surround text with <pre>*asterisks*</pre>'}),
+                    ],
+                }),
+                create('tr', {
+                    children: [
+                        create('td', {innerHTML: '<b>bold</b>'}),
+                        create('td', {innerHTML: 'surround text with <pre>**two asterisks**</pre>'}),
+                    ],
+                }),
+                create('tr', {
+                    children: [
+                        create('td', {innerHTML: '<pre>code</pre>'}),
+                        create('td', {innerHTML: 'surround text with <pre>`backticks`</pre>'}),
+                    ],
+                }),
+                create('tr', {
+                    children: [
+                        create('td', {innerHTML: '<del>strikethrough</del>'}),
+                        create('td', {innerHTML: 'surround text with <pre>~~two tilde characters~~</pre>'}),
+                    ],
+                }),
+                create('tr', {
+                    children: [
+                        create('td', {innerHTML: '<a href="https://example.com">hyperlink</a>'}),
+                        create('td', {innerHTML: '<pre>[hyperlink](https://example.com)</pre> or just a bare URL'}),
+                    ],
+                }),
+                create('tr', {
+                    children: [
+                        create('td', {innerHTML: '<blockquote>quote</blockquote>'}),
+                        create('td', {innerHTML: 'prefix with <pre>&gt;</pre>'}),
+                    ],
+                }),
+            ],
+        });
 
-        classAdd(markdownHelp, 'markdown-help');
-
-        boldLeft.innerHTML = '<b>bold</b>';
-        boldRight.innerHTML = 'surround text with <pre>**two asterisks**</pre>';
-        italicsLeft.innerHTML = '<i>italics</i>';
-        italicsRight.innerHTML = 'surround text with <pre>*asterisks*</pre>';
-        codeLeft.innerHTML = '<pre>code</pre>';
-        codeRight.innerHTML = 'surround text with <pre>`backticks`</pre>';
-        strikethroughLeft.innerHTML = '<del>strikethrough</del>';
-        strikethroughRight.innerHTML = 'surround text with <pre>~~two tilde characters~~</pre>';
-        hyperlinkLeft.innerHTML = '<a href="https://example.com">hyperlink</a>';
-        hyperlinkRight.innerHTML = '<pre>[hyperlink](https://example.com)</pre> or just a bare URL';
-        quoteLeft.innerHTML = '<blockquote>quote</blockquote>';
-        quoteRight.innerHTML = 'prefix with <pre>&gt;</pre>';
-
-        markdownButton = removeAllEventListeners(markdownButton);
-        onclick(markdownButton, markdownHelpHide, id);
-
-        append(italicsContainer, italicsLeft);
-        append(italicsContainer, italicsRight);
-        append(markdownHelp, italicsContainer);
-        append(boldContainer, boldLeft);
-        append(boldContainer, boldRight);
-        append(markdownHelp, boldContainer);
-        append(hyperlinkContainer, hyperlinkLeft);
-        append(hyperlinkContainer, hyperlinkRight);
-        append(markdownHelp, hyperlinkContainer);
-        append(codeContainer, codeLeft);
-        append(codeContainer, codeRight);
-        append(markdownHelp, codeContainer);
-        append(strikethroughContainer, strikethroughLeft);
-        append(strikethroughContainer, strikethroughRight);
-        append(markdownHelp, strikethroughContainer);
-        append(quoteContainer, quoteLeft);
-        append(quoteContainer, quoteRight);
-        append(markdownHelp, quoteContainer);
-        append(textareaSuperContainer, markdownHelp);
+        // Add a collapse button
+        let markdownButton = removeAllEventListeners(byId(ID_MARKDOWN_BUTTON + id));
+        onClick(markdownButton, markdownHelpHide, id);
     }
 
     function markdownHelpHide(id) {
-        let markdownButton = $(ID_MARKDOWN_BUTTON + id);
-        const markdownHelp = $(ID_MARKDOWN_HELP + id);
+        let markdownButton = byId(ID_MARKDOWN_BUTTON + id);
+        const markdownHelp = byId(ID_MARKDOWN_HELP + id);
 
         markdownButton = removeAllEventListeners(markdownButton);
-        onclick(markdownButton, markdownHelpShow, id);
+        onClick(markdownButton, markdownHelpShow, id);
 
         remove(markdownHelp);
     }
 
     function textareaCreate(id, edit) {
-        const textareaSuperContainer     = create('div',      ID_SUPER_CONTAINER    + id);
-        const textareaContainer          = create('div',      ID_TEXTAREA_CONTAINER + id);
-        const textarea                   = create('textarea', ID_TEXTAREA           + id);
-        const anonymousCheckboxContainer = create('div');
-        const anonymousCheckbox          = create('input',    ID_ANONYMOUS_CHECKBOX + id);
-        const anonymousCheckboxLabel     = create('label');
-        const submitButton               = create('button',   ID_SUBMIT_BUTTON      + id);
-        const markdownButton             = create('a',        ID_MARKDOWN_BUTTON    + id);
-
-        classAdd(textareaContainer, 'textarea-container');
-        classAdd(anonymousCheckboxContainer, 'round-check');
-        classAdd(anonymousCheckboxContainer, 'anonymous-checkbox-container');
-        classAdd(submitButton, 'button');
-        classAdd(submitButton, 'submit-button');
-        classAdd(markdownButton, 'markdown-button');
-        classAdd(textareaSuperContainer, 'button-margin');
-
-        setAttr(textarea, {placeholder: 'Add a comment'});
-        setAttr(anonymousCheckbox, {type: 'checkbox'});
-        setAttr(anonymousCheckboxLabel, {for: ID_ANONYMOUS_CHECKBOX + id});
-
-        anonymousCheckboxLabel.innerText = 'Comment anonymously';
-        submitButton.innerText = edit ? 'Save Changes' : 'Add Comment';
-        markdownButton.innerHTML = '<b>M &#8595;</b> &nbsp; Markdown';
+        const textOuter        = create('div',      {id: ID_SUPER_CONTAINER + id, classes: 'button-margin'});
+        const textCont         = create('div',      {id: ID_TEXTAREA_CONTAINER + id, classes: 'textarea-container', parent: textOuter});
+        const textArea         = create('textarea', {id: ID_TEXTAREA + id, placeholder: 'Add a comment', parent: textCont});
+        const anonCheckboxCont = create('div',      {classes: ['round-check', 'anonymous-checkbox-container']});
+        const anonCheckbox     = create('input',    {id: ID_ANONYMOUS_CHECKBOX + id, type: 'checkbox', parent: anonCheckboxCont});
+        create('label', {for: ID_ANONYMOUS_CHECKBOX + id, innerText: 'Comment anonymously', parent: anonCheckboxCont});
+        const submitButton = create('button', {
+            id:        ID_SUBMIT_BUTTON + id,
+            classes:   ['button', 'submit-button'],
+            innerText: edit ? 'Save Changes' : 'Add Comment',
+            parent:    textOuter,
+        });
+        const markdownButton = create('a', {
+            id:        ID_MARKDOWN_BUTTON + id,
+            classes:   'markdown-button',
+            innerHTML: '<b>M &#8595;</b> &nbsp; Markdown',
+            parent:    textOuter,
+        });
 
         if (anonymousOnly) {
-            anonymousCheckbox.checked = true;
-            anonymousCheckbox.setAttribute('disabled', true);
+            anonCheckbox.checked = true;
+            anonCheckbox.setAttribute('disabled', true);
         }
 
-        textarea.oninput = autoExpander(textarea);
-        onclick(submitButton, edit ? commentEdit : submitAccountDecide, id);
-        onclick(markdownButton, markdownHelpShow, id);
-
-        append(textareaContainer, textarea);
-        append(textareaSuperContainer, textareaContainer);
-        append(anonymousCheckboxContainer, anonymousCheckbox);
-        append(anonymousCheckboxContainer, anonymousCheckboxLabel);
-        append(textareaSuperContainer, submitButton);
-        if (!requireIdentification && edit !== true) {
-            append(textareaSuperContainer, anonymousCheckboxContainer);
+        textArea.oninput = autoExpander(textArea);
+        onClick(submitButton, edit ? commentEdit : submitAccountDecide, id);
+        onClick(markdownButton, markdownHelpShow, id);
+        if (!requireIdentification && !edit) {
+            append(textOuter, anonCheckboxCont);
         }
-        append(textareaSuperContainer, markdownButton);
-
-        return textareaSuperContainer;
+        return textOuter;
     }
 
     const sortPolicyNames = {
-        'score-desc': 'Upvotes',
+        'score-desc':        'Upvotes',
         'creationdate-desc': 'Newest',
-        'creationdate-asc': 'Oldest',
+        'creationdate-asc':  'Oldest',
     };
 
     function sortPolicyApply(policy) {
-        classRemove($(ID_SORT_POLICY + sortPolicy), 'sort-policy-button-selected');
+        removeClasses(byId(ID_SORT_POLICY + sortPolicy), 'sort-policy-button-selected');
 
-        const commentsArea = $(ID_COMMENTS_AREA);
+        const commentsArea = byId(ID_COMMENTS_AREA);
         commentsArea.innerHTML = '';
         sortPolicy = policy;
         const cards = commentsRecurse(parentMap(comments), 'root');
@@ -541,47 +549,34 @@
             append(commentsArea, cards);
         }
 
-        classAdd($(ID_SORT_POLICY + policy), 'sort-policy-button-selected');
+        addClasses(byId(ID_SORT_POLICY + policy), 'sort-policy-button-selected');
     }
 
     function sortPolicyBox() {
-        const sortPolicyButtonsContainer = create('div');
-        const sortPolicyButtons = create('div');
-
-        classAdd(sortPolicyButtonsContainer, 'sort-policy-buttons-container');
-        classAdd(sortPolicyButtons, 'sort-policy-buttons');
-
+        const container = create('div', {classes: 'sort-policy-buttons-container'});
+        const buttonBar = create('div', {classes: 'sort-policy-buttons', parent: container});
         for (let sp in sortPolicyNames) {
-            const sortPolicyButton = create('a', ID_SORT_POLICY + sp);
-            classAdd(sortPolicyButton, 'sort-policy-button');
+            const sortPolicyButton = create('a', {
+                id:        ID_SORT_POLICY +sp,
+                classes:   'sort-policy-button',
+                innerText: sortPolicyNames[sp],
+                parent:    buttonBar,
+            });
             if (sp === sortPolicy) {
-                classAdd(sortPolicyButton, 'sort-policy-button-selected');
+                addClasses(sortPolicyButton, 'sort-policy-button-selected');
             }
-            sortPolicyButton.innerText = sortPolicyNames[sp];
-            onclick(sortPolicyButton, sortPolicyApply, sp);
-            append(sortPolicyButtons, sortPolicyButton)
+            onClick(sortPolicyButton, sortPolicyApply, sp);
         }
-
-        append(sortPolicyButtonsContainer, sortPolicyButtons);
-
-        return sortPolicyButtonsContainer
+        return container;
     }
 
     function rootCreate(callback) {
-        const login           = create('div', ID_LOGIN);
-        const loginText       = create('div');
-        const mainArea        = $(ID_MAIN_AREA);
-        const preCommentsArea = create('div', ID_PRE_COMMENTS_AREA);
-        const commentsArea    = create('div', ID_COMMENTS_AREA);
-
-        classAdd(login, 'login');
-        classAdd(loginText, 'login-text');
-        classAdd(commentsArea, 'comments');
-
-        loginText.innerText = 'Login';
-        commentsArea.innerHTML = '';
-
-        onclick(loginText, global.loginBoxShow, null);
+        const mainArea = byId(ID_MAIN_AREA);
+        const login     = create('div', {id: ID_LOGIN, classes: 'login'});
+        const loginText = create('div', {classes: 'login-text', innerText: 'Login'});
+        const preCommentsArea = create('div', {id: ID_PRE_COMMENTS_AREA});
+        const commentsArea = create('div', {id: ID_COMMENTS_AREA, classes: 'comments'});
+        onClick(loginText, global.loginBoxShow, null);
 
         let numOauthConfigured = 0;
         Object.keys(configuredOauths).forEach(key => configuredOauths[key] && numOauthConfigured++);
@@ -594,16 +589,16 @@
         if (isLocked || isFrozen) {
             if (isAuthenticated || chosenAnonymous) {
                 append(mainArea, messageCreate('This thread is locked. You cannot add new comments.'));
-                remove($(ID_LOGIN));
+                remove(byId(ID_LOGIN));
             } else {
                 append(mainArea, login);
                 append(mainArea, textareaCreate('root'));
             }
         } else {
-            if (!isAuthenticated) {
-                append(mainArea, login);
+            if (isAuthenticated) {
+                remove(byId(ID_LOGIN));
             } else {
-                remove($(ID_LOGIN));
+                append(mainArea, login);
             }
             append(mainArea, textareaCreate('root'));
         }
@@ -618,25 +613,22 @@
     }
 
     function messageCreate(text) {
-        const msg = create('div');
-        classAdd(msg, 'moderation-notice');
-        msg.innerText = text;
-        return msg;
+        return create('div', {classes: 'moderation-notice', innerText: text});
     }
 
     global.commentNew = (id, commenterToken, appendCard, callback) => {
-        const textareaSuperContainer = $(ID_SUPER_CONTAINER + id);
-        const textarea = $(ID_TEXTAREA + id);
-        const replyButton = $(ID_REPLY + id);
+        const textareaSuperContainer = byId(ID_SUPER_CONTAINER + id);
+        const textarea = byId(ID_TEXTAREA + id);
+        const replyButton = byId(ID_REPLY + id);
 
         const markdown = textarea.value;
 
         if (markdown === '') {
-            classAdd(textarea, 'red-border');
+            addClasses(textarea, 'red-border');
             return;
         }
 
-        classRemove(textarea, 'red-border');
+        removeClasses(textarea, 'red-border');
 
         const json = {
             commenterToken: commenterToken,
@@ -665,7 +657,7 @@
             }
 
             if (message !== '') {
-                prepend($(ID_SUPER_CONTAINER + id), messageCreate(message));
+                prepend(byId(ID_SUPER_CONTAINER + id), messageCreate(message));
             }
 
             const comment = {
@@ -689,15 +681,15 @@
 
                     shownReply[id] = false;
 
-                    classAdd(replyButton, 'option-reply');
-                    classRemove(replyButton, 'option-cancel');
+                    addClasses(replyButton, 'option-reply');
+                    removeClasses(replyButton, 'option-cancel');
 
                     replyButton.title = 'Reply to this comment';
 
-                    onclick(replyButton, global.replyShow, id)
+                    onClick(replyButton, global.replyShow, id)
                 } else {
                     textarea.value = '';
-                    insertAfter($(ID_PRE_COMMENTS_AREA), newCard);
+                    insertAfter(byId(ID_PRE_COMMENTS_AREA), newCard);
                 }
             } else if (id === 'root') {
                 textarea.value = '';
@@ -789,67 +781,53 @@
         const cards = create('div');
         cur.forEach(comment => {
             const commenter = commenters[comment.commenterHex];
-            let avatar;
             const hex = comment.commentHex;
-            const header   = create('div');
-            const card     = create('div',    ID_CARD     + hex);
-            const subtitle = create('div',    ID_SUBTITLE + hex);
-            const timeago  = create('div',    ID_TIMEAGO  + hex);
-            const score    = create('div',    ID_SCORE    + hex);
-            const body     = create('div',    ID_BODY     + hex);
-            const text     = create('div',    ID_TEXT     + hex);
-            const options  = create('div',    ID_OPTIONS  + hex);
-            const edit     = create('button', ID_EDIT     + hex);
-            const reply    = create('button', ID_REPLY    + hex);
-            const collapse = create('button', ID_COLLAPSE + hex);
-            let   upvote   = create('button', ID_UPVOTE   + hex);
-            let   downvote = create('button', ID_DOWNVOTE + hex);
-            const approve  = create('button', ID_APPROVE  + hex);
-            const remove   = create('button', ID_REMOVE   + hex);
-            const sticky   = create('button', ID_STICKY   + hex);
-            const contents = create('div',    ID_CONTENTS + hex);
-
-            const children = commentsRecurse(parentMap, hex);
-            const color = colorGet(`${comment.commenterHex}-${commenter.name}`);
+            const header = create('div', {classes: 'header'});
             const name = create(
                 commenter.link !== 'undefined' && commenter.link !== 'https://undefined' && commenter.link !== '' ? 'a' : 'div',
-                ID_NAME + hex);
+                {
+                    id:        ID_NAME + hex,
+                    innerText: comment.deleted ? '[deleted]' : commenter.name,
+                    classes:   'name',
+                });
+            const color = colorGet(`${comment.commenterHex}-${commenter.name}`);
+            const card     = create('div', {id: ID_CARD     + hex, style: `border-left: 2px solid ${color}`, classes: 'card'});
+            const subtitle = create('div', {id: ID_SUBTITLE + hex, classes: 'subtitle'});
+            const timeago = create('div', {
+                id:        ID_TIMEAGO + hex,
+                classes:   'timeago',
+                innerHTML: timeDifference(curTime, comment.creationDate),
+                title:     comment.creationDate.toString(),
+            });
+            const score = create('div', {id: ID_SCORE + hex, classes: 'score', innerText: scorify(comment.score)});
+            const body     = create('div',    {id: ID_BODY     + hex, classes: 'body'});
+            const text     = create('div',    {id: ID_TEXT     + hex, innerHTML: comment.html});
+            const options  = create('div',    {id: ID_OPTIONS  + hex, classes: 'options'});
+            const edit     = create('button', {id: ID_EDIT     + hex, classes: ['option-button', 'option-edit'],     title: 'Edit'});
+            const reply    = create('button', {id: ID_REPLY    + hex, classes: ['option-button', 'option-reply'],    title: 'Reply'});
+            const collapse = create('button', {id: ID_COLLAPSE + hex, classes: ['option-button', 'option-collapse'], title: 'Collapse children'});
+            let   upvote   = create('button', {id: ID_UPVOTE   + hex, classes: ['option-button', 'option-upvote'],   title: 'Upvote'});
+            let   downvote = create('button', {id: ID_DOWNVOTE + hex, classes: ['option-button', 'option-downvote'], title: 'Downvote'});
+            const approve  = create('button', {id: ID_APPROVE  + hex, classes: ['option-button', 'option-approve'],  title: 'Approve'});
+            const remove   = create('button', {id: ID_REMOVE   + hex, classes: ['option-button', 'option-remove'],   title: 'Remove'});
+            const sticky   = create('button', {
+                id:      ID_STICKY + hex,
+                classes: ['option-button', stickyCommentHex === hex ? 'option-unsticky' : 'option-sticky'],
+                title:   stickyCommentHex === hex ? isModerator ? 'Unsticky' : 'This comment has been stickied' : 'Sticky',
+            });
+            const contents = create('div',    {id: ID_CONTENTS + hex});
+            if (mobileView) {
+                addClasses(options, 'options-mobile');
+            }
 
+            const children = commentsRecurse(parentMap, hex);
             if (children) {
                 children.id = ID_CHILDREN + hex;
             }
 
-            collapse.title = 'Collapse children';
-            upvote.title = 'Upvote';
-            downvote.title = 'Downvote';
-            edit.title = 'Edit';
-            reply.title = 'Reply';
-            approve.title = 'Approve';
-            remove.title = 'Remove';
-            if (stickyCommentHex === hex) {
-                if (isModerator) {
-                    sticky.title = 'Unsticky';
-                } else {
-                    sticky.title = 'This comment has been stickied';
-                }
-            } else {
-                sticky.title = 'Sticky';
-            }
-            timeago.title = comment.creationDate.toString();
-
-            card.style['borderLeft'] = `2px solid ${color}`;
-            if (comment.deleted) {
-                name.innerText = '[deleted]';
-            } else {
-                name.innerText = commenter.name;
-            }
-            text.innerHTML = comment.html;
-            timeago.innerHTML = timeDifference(curTime, comment.creationDate);
-            score.innerText = scorify(comment.score);
-
+            let avatar;
             if (commenter.photo === 'undefined') {
-                avatar = create('div');
-                avatar.style['background'] = color;
+                avatar = create('div', {style: `background-color: ${color}`, classes: 'avatar'});
 
                 if (comment.commenterHex === 'anonymous') {
                     avatar.innerHTML = '?';
@@ -857,75 +835,46 @@
                 } else {
                     avatar.innerHTML = commenter.name[0].toUpperCase();
                 }
-
-                classAdd(avatar, 'avatar');
             } else {
-                avatar = create('img');
-                setAttr(avatar, {src: `${cdn}/api/commenter/photo?commenterHex=${commenter.commenterHex}`});
-                classAdd(avatar, 'avatar-img');
+                create('img', {
+                    src:     `${cdn}/api/commenter/photo?commenterHex=${commenter.commenterHex}`,
+                    classes: 'avatar-img',
+                });
             }
-
-            classAdd(card, 'card');
             if (isModerator && comment.state !== 'approved') {
-                classAdd(card, 'dark-card');
+                addClasses(card, 'dark-card');
             }
             if (commenter.isModerator) {
-                classAdd(name, 'moderator');
+                addClasses(name, 'moderator');
             }
             if (comment.state === 'flagged') {
-                classAdd(name, 'flagged');
+                addClasses(name, 'flagged');
             }
-            classAdd(header, 'header');
-            classAdd(name, 'name');
-            classAdd(subtitle, 'subtitle');
-            classAdd(timeago, 'timeago');
-            classAdd(score, 'score');
-            classAdd(body, 'body');
-            classAdd(options, 'options');
-            if (mobileView) {
-                classAdd(options, 'options-mobile');
-            }
-            classAdd(edit, 'option-button');
-            classAdd(edit, 'option-edit');
-            classAdd(reply, 'option-button');
-            classAdd(reply, 'option-reply');
-            classAdd(collapse, 'option-button');
-            classAdd(collapse, 'option-collapse');
-            classAdd(upvote, 'option-button');
-            classAdd(upvote, 'option-upvote');
-            classAdd(downvote, 'option-button');
-            classAdd(downvote, 'option-downvote');
-            classAdd(approve, 'option-button');
-            classAdd(approve, 'option-approve');
-            classAdd(remove, 'option-button');
-            classAdd(remove, 'option-remove');
-            classAdd(sticky, 'option-button');
-            classAdd(sticky, stickyCommentHex === hex ? 'option-unsticky' : 'option-sticky');
 
             if (isAuthenticated) {
                 if (comment.direction > 0) {
-                    classAdd(upvote, 'upvoted');
+                    addClasses(upvote, 'upvoted');
                 } else if (comment.direction < 0) {
-                    classAdd(downvote, 'downvoted');
+                    addClasses(downvote, 'downvoted');
                 }
             }
 
-            onclick(edit, global.editShow, hex);
-            onclick(collapse, global.commentCollapse, hex);
-            onclick(approve, global.commentApprove, hex);
-            onclick(remove, global.commentDelete, hex);
-            onclick(sticky, global.commentSticky, hex);
+            onClick(edit, global.editShow, hex);
+            onClick(collapse, global.commentCollapse, hex);
+            onClick(approve, global.commentApprove, hex);
+            onClick(remove, global.commentDelete, hex);
+            onClick(sticky, global.commentSticky, hex);
 
             if (isAuthenticated) {
-                const upDown = upDownOnclickSet(upvote, downvote, hex, comment.direction);
+                const upDown = upDownOnClickSet(upvote, downvote, hex, comment.direction);
                 upvote = upDown[0];
                 downvote = upDown[1];
             } else {
-                onclick(upvote, global.loginBoxShow, null);
-                onclick(downvote, global.loginBoxShow, null);
+                onClick(upvote, global.loginBoxShow, null);
+                onClick(downvote, global.loginBoxShow, null);
             }
 
-            onclick(reply, global.replyShow, hex);
+            onClick(reply, global.replyShow, hex);
 
             if (commenter.link !== 'undefined' && commenter.link !== 'https://undefined' && commenter.link !== '') {
                 setAttr(name, {href: commenter.link});
@@ -978,13 +927,11 @@
             append(contents, body);
             if (mobileView) {
                 append(contents, options);
-                const optionsClearfix = create('div');
-                classAdd(optionsClearfix, 'options-clearfix');
-                append(contents, optionsClearfix);
+                create('div', {classes: 'options-clearfix', parent: contents});
             }
 
             if (children) {
-                classAdd(children, 'body');
+                addClasses(children, 'body');
                 append(contents, children);
             }
 
@@ -1002,12 +949,12 @@
     }
 
     global.commentApprove = commentHex => {
-        const json = {
+        const data = {
             commenterToken: commenterTokenGet(),
             commentHex: commentHex,
         };
 
-        post(`${origin}/api/comment/approve`, json, resp => {
+        post(`${origin}/api/comment/approve`, data, resp => {
             if (!resp.success) {
                 errorShow(resp.message);
                 return
@@ -1015,12 +962,12 @@
                 errorHide();
             }
 
-            const card = $(ID_CARD + commentHex);
-            const name = $(ID_NAME + commentHex);
-            const tick = $(ID_APPROVE + commentHex);
+            const card = byId(ID_CARD + commentHex);
+            const name = byId(ID_NAME + commentHex);
+            const tick = byId(ID_APPROVE + commentHex);
 
-            classRemove(card, 'dark-card');
-            classRemove(name, 'flagged');
+            removeClasses(card, 'dark-card');
+            removeClasses(name, 'flagged');
             remove(tick);
         });
     }
@@ -1042,7 +989,7 @@
             }
 
             errorHide();
-            const text = $(ID_TEXT + commentHex);
+            const text = byId(ID_TEXT + commentHex);
             text.innerText = '[deleted]';
         });
     }
@@ -1055,19 +1002,19 @@
         }
     }
 
-    function upDownOnclickSet(upvote, downvote, commentHex, direction) {
+    function upDownOnClickSet(upvote, downvote, commentHex, direction) {
         upvote = removeAllEventListeners(upvote);
         downvote = removeAllEventListeners(downvote);
 
         if (direction > 0) {
-            onclick(upvote, global.vote, [commentHex, [1, 0]]);
-            onclick(downvote, global.vote, [commentHex, [1, -1]]);
+            onClick(upvote, global.vote, [commentHex, [1, 0]]);
+            onClick(downvote, global.vote, [commentHex, [1, -1]]);
         } else if (direction < 0) {
-            onclick(upvote, global.vote, [commentHex, [-1, 1]]);
-            onclick(downvote, global.vote, [commentHex, [-1, 0]]);
+            onClick(upvote, global.vote, [commentHex, [-1, 1]]);
+            onClick(downvote, global.vote, [commentHex, [-1, 0]]);
         } else {
-            onclick(upvote, global.vote, [commentHex, [0, 1]]);
-            onclick(downvote, global.vote, [commentHex, [0, -1]]);
+            onClick(upvote, global.vote, [commentHex, [0, 1]]);
+            onClick(downvote, global.vote, [commentHex, [0, -1]]);
         }
 
         return [upvote, downvote];
@@ -1078,9 +1025,9 @@
         const oldDirection = data[1][0];
         const newDirection = data[1][1];
 
-        let upvote = $(ID_UPVOTE + commentHex);
-        let downvote = $(ID_DOWNVOTE + commentHex);
-        const score = $(ID_SCORE + commentHex);
+        let upvote = byId(ID_UPVOTE + commentHex);
+        let downvote = byId(ID_DOWNVOTE + commentHex);
+        const score = byId(ID_SCORE + commentHex);
 
         const json = {
             commenterToken: commenterTokenGet(),
@@ -1088,16 +1035,16 @@
             direction: newDirection,
         };
 
-        const upDown = upDownOnclickSet(upvote, downvote, commentHex, newDirection);
+        const upDown = upDownOnClickSet(upvote, downvote, commentHex, newDirection);
         upvote = upDown[0];
         downvote = upDown[1];
 
-        classRemove(upvote, 'upvoted');
-        classRemove(downvote, 'downvoted');
+        removeClasses(upvote, 'upvoted');
+        removeClasses(downvote, 'downvoted');
         if (newDirection > 0) {
-            classAdd(upvote, 'upvoted');
+            addClasses(upvote, 'upvoted');
         } else if (newDirection < 0) {
-            classAdd(downvote, 'downvoted');
+            addClasses(downvote, 'downvoted');
         }
 
         score.innerText = scorify(parseInt(score.innerText.replace(/[^\d-.]/g, '')) + newDirection - oldDirection);
@@ -1105,10 +1052,10 @@
         post(`${origin}/api/comment/vote`, json, resp => {
             if (!resp.success) {
                 errorShow(resp.message);
-                classRemove(upvote, 'upvoted');
-                classRemove(downvote, 'downvoted');
+                removeClasses(upvote, 'upvoted');
+                removeClasses(downvote, 'downvoted');
                 score.innerText = scorify(parseInt(score.innerText.replace(/[^\d-.]/g, '')) - newDirection + oldDirection);
-                upDownOnclickSet(upvote, downvote, commentHex, oldDirection);
+                upDownOnClickSet(upvote, downvote, commentHex, oldDirection);
             } else {
                 errorHide();
             }
@@ -1116,14 +1063,14 @@
     }
 
     function commentEdit(id) {
-        const textarea = $(ID_TEXTAREA + id);
+        const textarea = byId(ID_TEXTAREA + id);
         const markdown = textarea.value;
         if (markdown === '') {
-            classAdd(textarea, 'red-border');
+            addClasses(textarea, 'red-border');
             return;
         }
 
-        classRemove(textarea, 'red-border');
+        removeClasses(textarea, 'red-border');
 
         const json = {
             commenterToken: commenterTokenGet(),
@@ -1142,20 +1089,20 @@
             commentsMap[id].markdown = markdown;
             commentsMap[id].html = resp.html;
 
-            let editButton = $(ID_EDIT + id);
-            const textarea = $(ID_SUPER_CONTAINER + id);
+            let editButton = byId(ID_EDIT + id);
+            const textarea = byId(ID_SUPER_CONTAINER + id);
 
             textarea.innerHTML = commentsMap[id].html;
             textarea.id = ID_TEXT + id;
             delete shownEdit[id];
 
-            classAdd(editButton, 'option-edit');
-            classRemove(editButton, 'option-cancel');
+            addClasses(editButton, 'option-edit');
+            removeClasses(editButton, 'option-cancel');
 
             editButton.title = 'Edit comment';
 
             editButton = removeAllEventListeners(editButton);
-            onclick(editButton, global.editShow, id)
+            onClick(editButton, global.editShow, id)
 
             let message = '';
             switch (resp.state) {
@@ -1168,7 +1115,7 @@
             }
 
             if (message !== '') {
-                prepend($(ID_SUPER_CONTAINER + id), messageCreate(message));
+                prepend(byId(ID_SUPER_CONTAINER + id), messageCreate(message));
             }
         });
     }
@@ -1178,39 +1125,39 @@
             return;
         }
 
-        const text = $(ID_TEXT + id);
+        const text = byId(ID_TEXT + id);
         shownEdit[id] = true;
         text.replaceWith(textareaCreate(id, true));
 
-        const textarea = $(ID_TEXTAREA + id);
+        const textarea = byId(ID_TEXTAREA + id);
         textarea.value = commentsMap[id].markdown;
 
-        let editButton = $(ID_EDIT + id);
+        let editButton = byId(ID_EDIT + id);
 
-        classRemove(editButton, 'option-edit');
-        classAdd(editButton, 'option-cancel');
+        removeClasses(editButton, 'option-edit');
+        addClasses(editButton, 'option-cancel');
 
         editButton.title = 'Cancel edit';
 
         editButton = removeAllEventListeners(editButton);
-        onclick(editButton, global.editCollapse, id);
+        onClick(editButton, global.editCollapse, id);
     };
 
     global.editCollapse = id => {
-        let editButton = $(ID_EDIT + id);
-        const textarea = $(ID_SUPER_CONTAINER + id);
+        let editButton = byId(ID_EDIT + id);
+        const textarea = byId(ID_SUPER_CONTAINER + id);
 
         textarea.innerHTML = commentsMap[id].html;
         textarea.id = ID_TEXT + id;
         delete shownEdit[id];
 
-        classAdd(editButton, 'option-edit');
-        classRemove(editButton, 'option-cancel');
+        addClasses(editButton, 'option-edit');
+        removeClasses(editButton, 'option-cancel');
 
         editButton.title = 'Edit comment';
 
         editButton = removeAllEventListeners(editButton);
-        onclick(editButton, global.editShow, id)
+        onClick(editButton, global.editShow, id)
     }
 
     global.replyShow = id => {
@@ -1218,69 +1165,69 @@
             return;
         }
 
-        const text = $(ID_TEXT + id);
+        const text = byId(ID_TEXT + id);
         insertAfter(text, textareaCreate(id));
         shownReply[id] = true;
 
-        let replyButton = $(ID_REPLY + id);
+        let replyButton = byId(ID_REPLY + id);
 
-        classRemove(replyButton, 'option-reply');
-        classAdd(replyButton, 'option-cancel');
+        removeClasses(replyButton, 'option-reply');
+        addClasses(replyButton, 'option-cancel');
 
         replyButton.title = 'Cancel reply';
 
         replyButton = removeAllEventListeners(replyButton);
-        onclick(replyButton, global.replyCollapse, id);
+        onClick(replyButton, global.replyCollapse, id);
     };
 
     global.replyCollapse = id => {
-        let replyButton = $(ID_REPLY + id);
-        const el = $(ID_SUPER_CONTAINER + id);
+        let replyButton = byId(ID_REPLY + id);
+        const el = byId(ID_SUPER_CONTAINER + id);
 
         el.remove();
         delete shownReply[id];
 
-        classAdd(replyButton, 'option-reply');
-        classRemove(replyButton, 'option-cancel');
+        addClasses(replyButton, 'option-reply');
+        removeClasses(replyButton, 'option-cancel');
 
         replyButton.title = 'Reply to this comment';
 
         replyButton = removeAllEventListeners(replyButton);
-        onclick(replyButton, global.replyShow, id)
+        onClick(replyButton, global.replyShow, id)
     }
 
     global.commentCollapse = id => {
-        const children = $(ID_CHILDREN + id);
-        let button = $(ID_COLLAPSE + id);
+        const children = byId(ID_CHILDREN + id);
+        let button = byId(ID_COLLAPSE + id);
 
         if (children) {
-            classAdd(children, 'hidden');
+            addClasses(children, 'hidden');
         }
 
-        classRemove(button, 'option-collapse');
-        classAdd(button, 'option-uncollapse');
+        removeClasses(button, 'option-collapse');
+        addClasses(button, 'option-uncollapse');
 
         button.title = 'Expand children';
 
         button = removeAllEventListeners(button);
-        onclick(button, global.commentUncollapse, id);
+        onClick(button, global.commentUncollapse, id);
     }
 
     global.commentUncollapse = id => {
-        const children = $(ID_CHILDREN + id);
-        let button = $(ID_COLLAPSE + id);
+        const children = byId(ID_CHILDREN + id);
+        let button = byId(ID_COLLAPSE + id);
 
         if (children) {
-            classRemove(children, 'hidden');
+            removeClasses(children, 'hidden');
         }
 
-        classRemove(button, 'option-uncollapse');
-        classAdd(button, 'option-collapse');
+        removeClasses(button, 'option-uncollapse');
+        addClasses(button, 'option-collapse');
 
         button.title = 'Collapse children';
 
         button = removeAllEventListeners(button);
-        onclick(button, global.commentCollapse, id);
+        onClick(button, global.commentCollapse, id);
     }
 
     function parentMap(comments) {
@@ -1304,7 +1251,7 @@
     }
 
     function commentsRender() {
-        const commentsArea = $(ID_COMMENTS_AREA);
+        const commentsArea = byId(ID_COMMENTS_AREA);
         commentsArea.innerHTML = ''
 
         const cards = commentsRecurse(parentMap(comments), 'root');
@@ -1333,15 +1280,15 @@
             return;
         }
 
-        const anonymousCheckbox = $(ID_ANONYMOUS_CHECKBOX + id);
-        const textarea = $(ID_TEXTAREA + id);
+        const anonymousCheckbox = byId(ID_ANONYMOUS_CHECKBOX + id);
+        const textarea = byId(ID_TEXTAREA + id);
         const markdown = textarea.value;
 
         if (markdown === '') {
-            classAdd(textarea, 'red-border');
+            addClasses(textarea, 'red-border');
             return;
         } else {
-            classRemove(textarea, 'red-border');
+            removeClasses(textarea, 'red-border');
         }
 
         if (!anonymousCheckbox.checked) {
@@ -1372,13 +1319,13 @@
                 if (popup.closed) {
                     clearInterval(interval);
                     selfGet(() => {
-                        const loggedContainer = $(ID_LOGGED_CONTAINER);
+                        const loggedContainer = byId(ID_LOGGED_CONTAINER);
                         if (loggedContainer) {
                             setAttr(loggedContainer, {style: ''});
                         }
 
                         if (commenterTokenGet() !== 'anonymous') {
-                            remove($(ID_LOGIN));
+                            remove(byId(ID_LOGIN));
                         }
 
                         if (id !== null) {
@@ -1397,101 +1344,60 @@
     }
 
     function refreshAll(callback) {
-        $(ID_ROOT).innerHTML = '';
+        byId(ID_ROOT).innerHTML = '';
         shownReply = {};
         global.main(callback);
     }
 
     function loginBoxCreate() {
-        append(root, create('div', ID_LOGIN_BOX_CONTAINER));
+        append(root, create('div', {id: ID_LOGIN_BOX_CONTAINER}));
     }
 
     global.popupRender = id => {
-        const loginBoxContainer     = $(ID_LOGIN_BOX_CONTAINER);
-        const loginBox              = create('div',    ID_LOGIN_BOX);
-        const ssoSubtitle           = create('div',    ID_LOGIN_BOX_SSO_PRETEXT);
-        const ssoButtonContainer    = create('div',    ID_LOGIN_BOX_SSO_BUTTON_CONTAINER);
-        const ssoButton             = create('div');
-        const hr1                   = create('hr',     ID_LOGIN_BOX_HR1);
-        const oauthSubtitle         = create('div',    ID_LOGIN_BOX_OAUTH_PRETEXT);
-        const oauthButtonsContainer = create('div',    ID_LOGIN_BOX_OAUTH_BUTTONS_CONTAINER);
-        const oauthButtons          = create('div');
-        const hr2                   = create('hr',     ID_LOGIN_BOX_HR2);
-        const emailSubtitle         = create('div',    ID_LOGIN_BOX_EMAIL_SUBTITLE);
-        const emailContainer        = create('div');
-        const email                 = create('div');
-        const emailInput            = create('input',  ID_LOGIN_BOX_EMAIL_INPUT);
-        const emailButton           = create('button', ID_LOGIN_BOX_EMAIL_BUTTON);
-        const forgotLinkContainer   = create('div',    ID_LOGIN_BOX_FORGOT_LINK_CONTAINER);
-        const forgotLink            = create('a');
-        const loginLinkContainer    = create('div',    ID_LOGIN_BOX_LOGIN_LINK_CONTAINER);
-        const loginLink             = create('a');
-        const close                 = create('div');
-
-        classAdd(loginBoxContainer, 'login-box-container');
-        classAdd(loginBox, 'login-box');
-        classAdd(emailSubtitle, 'login-box-subtitle');
-        classAdd(emailContainer, 'email-container');
-        classAdd(email, 'email');
-        classAdd(emailInput, 'input');
-        classAdd(emailButton, 'email-button');
-        classAdd(forgotLinkContainer, 'forgot-link-container');
-        classAdd(forgotLink, 'forgot-link');
-        classAdd(loginLinkContainer, 'login-link-container');
-        classAdd(loginLink, 'login-link');
-        classAdd(ssoSubtitle, 'login-box-subtitle');
-        classAdd(ssoButtonContainer, 'oauth-buttons-container');
-        classAdd(ssoButton, 'oauth-buttons');
-        classAdd(oauthSubtitle, 'login-box-subtitle');
-        classAdd(oauthButtonsContainer, 'oauth-buttons-container');
-        classAdd(oauthButtons, 'oauth-buttons');
-        classAdd(close, 'login-box-close');
-        classAdd(root, 'root-min-height');
-
-        forgotLink.innerText = 'Forgot your password?';
-        loginLink.innerText = 'Don\'t have an account? Sign up.';
-        emailSubtitle.innerText = 'Login with your email address';
-        emailButton.innerText = 'Continue';
-        oauthSubtitle.innerText = 'Proceed with social login';
-        ssoSubtitle.innerText = `Proceed with ${parent.location.host} authentication`;
-
-        onclick(emailButton, global.passwordAsk, id);
-        onclick(forgotLink, global.forgotPassword, id);
-        onclick(loginLink, global.popupSwitch, id);
-        onclick(close, global.loginBoxClose);
-
+        const loginBoxContainer     = byId(ID_LOGIN_BOX_CONTAINER);
+        addClasses(loginBoxContainer, 'login-box-container');
         setAttr(loginBoxContainer, {style: 'display: none; opacity: 0;'});
-        setAttr(emailInput, {name: 'email', placeholder: 'Email address', type: 'text', autocomplete: 'email'});
+
+        const loginBox              = create('div', {id: ID_LOGIN_BOX, classes: 'login-box'});
+        const ssoSubtitle           = create('div', {id: ID_LOGIN_BOX_SSO_PRETEXT, classes: 'login-box-subtitle', innerText: `Proceed with ${parent.location.host} authentication`});
+        const ssoButtonContainer    = create('div', {id: ID_LOGIN_BOX_SSO_BUTTON_CONTAINER, classes: 'oauth-buttons-container'});
+        const ssoButton             = create('div', {classes: 'oauth-buttons'});
+        const hr1                   = create('hr', {id: ID_LOGIN_BOX_HR1});
+        const oauthSubtitle         = create('div', {id: ID_LOGIN_BOX_OAUTH_PRETEXT, classes: 'login-box-subtitle', innerText: 'Proceed with social login'});
+        const oauthButtonsContainer = create('div', {id: ID_LOGIN_BOX_OAUTH_BUTTONS_CONTAINER, classes: 'oauth-buttons-container'});
+        const oauthButtons          = create('div', {classes: 'oauth-buttons'});
+        const hr2                   = create('hr', {id: ID_LOGIN_BOX_HR2});
+        const emailSubtitle         = create('div', {id: ID_LOGIN_BOX_EMAIL_SUBTITLE, classes: 'login-box-subtitle', innerText: 'Login with your email address'});
+        const emailContainer        = create('div', {classes: 'email-container'});
+        const email                 = create('div', {classes: 'email', parent: emailContainer});
+        create('input', {id: ID_LOGIN_BOX_EMAIL_INPUT, classes: 'input', name: 'email', placeholder: 'Email address', type: 'text', autocomplete: 'email', parent: email});
+        const emailButton           = create('button', {id: ID_LOGIN_BOX_EMAIL_BUTTON, classes: 'email-button', innerText: 'Continue', parent: email});
+        const forgotLinkContainer   = create('div', {id: ID_LOGIN_BOX_FORGOT_LINK_CONTAINER, classes: 'forgot-link-container'});
+        const forgotLink            = create('a', {classes: 'forgot-link', innerText: 'Forgot your password?', parent: forgotLinkContainer});
+        const loginLinkContainer    = create('div', {id: ID_LOGIN_BOX_LOGIN_LINK_CONTAINER, classes: 'login-link-container'});
+        const loginLink             = create('a', {classes: 'login-link', innerText: 'Don\'t have an account? Sign up.', parent: loginLinkContainer});
+        const close                 = create('div', {classes: 'login-box-close', parent: loginBox});
+
+        addClasses(root, 'root-min-height');
+
+        onClick(emailButton, global.passwordAsk, id);
+        onClick(forgotLink, global.forgotPassword, id);
+        onClick(loginLink, global.popupSwitch, id);
+        onClick(close, global.loginBoxClose);
 
         let numOauthConfigured = 0;
         const oauthProviders = ['google', 'github', 'gitlab'];
         oauthProviders.forEach(provider => {
             if (configuredOauths[provider]) {
-                const button = create('button');
-
-                classAdd(button, 'button');
-                classAdd(button, `${provider}-button`);
-
-                button.innerText = provider;
-
-                onclick(button, global.commentoAuth, {provider: provider, id: id});
-
-                append(oauthButtons, button);
+                const button = create('button', {classes: ['button', `${provider}-button`], innerText: provider, parent: oauthButtons});
+                onClick(button, global.commentoAuth, {provider: provider, id: id});
                 numOauthConfigured++;
             }
         });
 
         if (configuredOauths['sso']) {
-            const button = create('button');
-
-            classAdd(button, 'button');
-            classAdd(button, 'sso-button');
-
-            button.innerText = 'Single Sign-On';
-
-            onclick(button, global.commentoAuth, {provider: 'sso', id: id});
-
-            append(ssoButton, button);
+            const button = create('button', {classes: ['button', 'sso-button'], innerText: 'Single Sign-On', parent: ssoButton});
+            onClick(button, global.commentoAuth, {provider: 'sso', id: id});
             append(ssoButtonContainer, ssoButton);
             append(loginBox, ssoSubtitle);
             append(loginBox, ssoButtonContainer);
@@ -1510,14 +1416,6 @@
             oauthButtonsShown = false;
         }
 
-        append(email, emailInput);
-        append(email, emailButton);
-        append(emailContainer, email);
-
-        append(forgotLinkContainer, forgotLink);
-
-        append(loginLinkContainer, loginLink);
-
         if (numOauthConfigured > 0 && configuredOauths['commento']) {
             append(loginBox, hr2);
         }
@@ -1528,8 +1426,6 @@
             append(loginBox, forgotLinkContainer);
             append(loginBox, loginLinkContainer);
         }
-
-        append(loginBox, close);
 
         popupBoxType = 'login';
         loginBoxContainer.innerHTML = '';
@@ -1543,29 +1439,29 @@
     }
 
     global.popupSwitch = id => {
-        const emailSubtitle = $(ID_LOGIN_BOX_EMAIL_SUBTITLE);
+        const emailSubtitle = byId(ID_LOGIN_BOX_EMAIL_SUBTITLE);
 
         if (oauthButtonsShown) {
-            remove($(ID_LOGIN_BOX_OAUTH_BUTTONS_CONTAINER));
-            remove($(ID_LOGIN_BOX_OAUTH_PRETEXT));
-            remove($(ID_LOGIN_BOX_HR1));
-            remove($(ID_LOGIN_BOX_HR2));
+            remove(byId(ID_LOGIN_BOX_OAUTH_BUTTONS_CONTAINER));
+            remove(byId(ID_LOGIN_BOX_OAUTH_PRETEXT));
+            remove(byId(ID_LOGIN_BOX_HR1));
+            remove(byId(ID_LOGIN_BOX_HR2));
         }
 
         if (configuredOauths['sso']) {
-            remove($(ID_LOGIN_BOX_SSO_BUTTON_CONTAINER));
-            remove($(ID_LOGIN_BOX_SSO_PRETEXT));
-            remove($(ID_LOGIN_BOX_HR1));
-            remove($(ID_LOGIN_BOX_HR2));
+            remove(byId(ID_LOGIN_BOX_SSO_BUTTON_CONTAINER));
+            remove(byId(ID_LOGIN_BOX_SSO_PRETEXT));
+            remove(byId(ID_LOGIN_BOX_HR1));
+            remove(byId(ID_LOGIN_BOX_HR2));
         }
 
-        remove($(ID_LOGIN_BOX_LOGIN_LINK_CONTAINER));
-        remove($(ID_LOGIN_BOX_FORGOT_LINK_CONTAINER));
+        remove(byId(ID_LOGIN_BOX_LOGIN_LINK_CONTAINER));
+        remove(byId(ID_LOGIN_BOX_FORGOT_LINK_CONTAINER));
 
         emailSubtitle.innerText = 'Create an account';
         popupBoxType = 'signup';
         global.passwordAsk(id);
-        $(ID_LOGIN_BOX_EMAIL_INPUT).focus();
+        byId(ID_LOGIN_BOX_EMAIL_INPUT).focus();
     }
 
     function loginUP(username, password, id) {
@@ -1588,7 +1484,7 @@
             selfLoad(resp.commenter, resp.email);
             allShow();
 
-            remove($(ID_LOGIN));
+            remove(byId(ID_LOGIN));
             if (id !== null) {
                 global.commentNew(id, resp.commenterToken, false, () => {
                     global.loginBoxClose();
@@ -1602,16 +1498,16 @@
     }
 
     global.login = id => {
-        const email = $(ID_LOGIN_BOX_EMAIL_INPUT);
-        const password = $(ID_LOGIN_BOX_PASSWORD_INPUT);
+        const email = byId(ID_LOGIN_BOX_EMAIL_INPUT);
+        const password = byId(ID_LOGIN_BOX_PASSWORD_INPUT);
         loginUP(email.value, password.value, id);
     }
 
     global.signup = id => {
-        const email = $(ID_LOGIN_BOX_EMAIL_INPUT);
-        const name = $(ID_LOGIN_BOX_NAME_INPUT);
-        const website = $(ID_LOGIN_BOX_WEBSITE_INPUT);
-        const password = $(ID_LOGIN_BOX_PASSWORD_INPUT);
+        const email = byId(ID_LOGIN_BOX_EMAIL_INPUT);
+        const name = byId(ID_LOGIN_BOX_NAME_INPUT);
+        const website = byId(ID_LOGIN_BOX_WEBSITE_INPUT);
+        const password = byId(ID_LOGIN_BOX_PASSWORD_INPUT);
 
         const json = {
             email: email.value,
@@ -1634,29 +1530,29 @@
 
     global.passwordAsk = id => {
         const isSignup = popupBoxType === 'signup';
-        const loginBox = $(ID_LOGIN_BOX);
-        const subtitle = $(ID_LOGIN_BOX_EMAIL_SUBTITLE);
+        const loginBox = byId(ID_LOGIN_BOX);
+        const subtitle = byId(ID_LOGIN_BOX_EMAIL_SUBTITLE);
 
-        remove($(ID_LOGIN_BOX_EMAIL_BUTTON));
-        remove($(ID_LOGIN_BOX_LOGIN_LINK_CONTAINER));
-        remove($(ID_LOGIN_BOX_FORGOT_LINK_CONTAINER));
+        remove(byId(ID_LOGIN_BOX_EMAIL_BUTTON));
+        remove(byId(ID_LOGIN_BOX_LOGIN_LINK_CONTAINER));
+        remove(byId(ID_LOGIN_BOX_FORGOT_LINK_CONTAINER));
         if (oauthButtonsShown) {
             if (configuredOauths.length > 0) {
-                remove($(ID_LOGIN_BOX_HR1));
-                remove($(ID_LOGIN_BOX_HR2));
-                remove($(ID_LOGIN_BOX_OAUTH_PRETEXT));
-                remove($(ID_LOGIN_BOX_OAUTH_BUTTONS_CONTAINER));
+                remove(byId(ID_LOGIN_BOX_HR1));
+                remove(byId(ID_LOGIN_BOX_HR2));
+                remove(byId(ID_LOGIN_BOX_OAUTH_PRETEXT));
+                remove(byId(ID_LOGIN_BOX_OAUTH_BUTTONS_CONTAINER));
             }
         }
 
         const controls = isSignup ?
             [
-                {id: ID_LOGIN_BOX_NAME_INPUT,     name: 'name',     type: 'text',     placeholder: 'Real Name'},
-                {id: ID_LOGIN_BOX_WEBSITE_INPUT,  name: 'website',  type: 'text',     placeholder: 'Website (Optional)'},
-                {id: ID_LOGIN_BOX_PASSWORD_INPUT, name: 'password', type: 'password', placeholder: 'Password', autocomplete: 'new-password'},
+                {id: ID_LOGIN_BOX_NAME_INPUT,     classes: 'input', name: 'name',     type: 'text',     placeholder: 'Real Name'},
+                {id: ID_LOGIN_BOX_WEBSITE_INPUT,  classes: 'input', name: 'website',  type: 'text',     placeholder: 'Website (Optional)'},
+                {id: ID_LOGIN_BOX_PASSWORD_INPUT, classes: 'input', name: 'password', type: 'password', placeholder: 'Password', autocomplete: 'new-password'},
             ] :
             [
-                {id: ID_LOGIN_BOX_PASSWORD_INPUT, name: 'password', type: 'password', placeholder: 'Password', autocomplete: 'current-password'},
+                {id: ID_LOGIN_BOX_PASSWORD_INPUT, classes: 'input', name: 'password', type: 'password', placeholder: 'Password', autocomplete: 'current-password'},
             ];
 
         subtitle.innerText = isSignup ?
@@ -1664,54 +1560,30 @@
             'Enter your password to log in.';
 
         controls.forEach(c => {
-            const fieldContainer = create('div');
-            const field          = create('div');
-            const fieldInput     = create('input', c.id);
-
-            classAdd(fieldContainer, 'email-container');
-            classAdd(field, 'email');
-            classAdd(fieldInput, 'input');
-
-            setAttr(fieldInput, c);
+            const fieldContainer = create('div', {classes: 'email-container'});
+            const field          = create('div', {classes: 'email', parent: fieldContainer});
+            const fieldInput     = create('input', c);
             append(field, fieldInput);
-            append(fieldContainer, field);
 
             if (c.type === 'password') {
-                const fieldButton = create('button');
-                classAdd(fieldButton, 'email-button');
-                fieldButton.innerText = popupBoxType;
-
-                if (isSignup) {
-                    onclick(fieldButton, global.signup, id);
-                } else {
-                    onclick(fieldButton, global.login, id);
-                }
-                append(field, fieldButton);
+                const fieldButton = create('button', {classes: 'email-button', innerText: popupBoxType, parent: field});
+                onClick(fieldButton, isSignup ? global.signup : global.login, id);
             }
             append(loginBox, fieldContainer);
         });
 
-        if (isSignup) {
-            $(ID_LOGIN_BOX_NAME_INPUT).focus();
-        } else {
-            $(ID_LOGIN_BOX_PASSWORD_INPUT).focus();
-        }
+        byId(isSignup ? ID_LOGIN_BOX_NAME_INPUT : ID_LOGIN_BOX_PASSWORD_INPUT).focus();
     }
 
     function pageUpdate(callback) {
-        const attributes = {
-            isLocked: isLocked,
-            stickyCommentHex: stickyCommentHex,
-        };
-
-        const json = {
+        const data = {
             commenterToken: commenterTokenGet(),
             domain: parent.location.host,
             path: pageId,
-            attributes: attributes,
+            attributes: {isLocked: isLocked, stickyCommentHex: stickyCommentHex},
         };
 
-        post(`${origin}/api/page/update`, json, resp => {
+        post(`${origin}/api/page/update`, data, resp => {
             if (!resp.success) {
                 errorShow(resp.message);
                 return
@@ -1723,7 +1595,7 @@
     }
 
     global.threadLockToggle = () => {
-        const lock = $(ID_MOD_TOOLS_LOCK_BUTTON);
+        const lock = byId(ID_MOD_TOOLS_LOCK_BUTTON);
 
         isLocked = !isLocked;
 
@@ -1736,45 +1608,33 @@
 
     global.commentSticky = commentHex => {
         if (stickyCommentHex !== 'none') {
-            const sticky = $(ID_STICKY + stickyCommentHex);
-            classRemove(sticky, 'option-unsticky');
-            classAdd(sticky, 'option-sticky');
+            const sticky = byId(ID_STICKY + stickyCommentHex);
+            removeClasses(sticky, 'option-unsticky');
+            addClasses(sticky, 'option-sticky');
         }
 
         stickyCommentHex = stickyCommentHex === commentHex ? 'none' : commentHex;
 
         pageUpdate(() => {
-            const sticky = $(ID_STICKY + commentHex);
+            const sticky = byId(ID_STICKY + commentHex);
             if (stickyCommentHex === commentHex) {
-                classRemove(sticky, 'option-sticky');
-                classAdd(sticky, 'option-unsticky');
+                removeClasses(sticky, 'option-sticky');
+                addClasses(sticky, 'option-unsticky');
             } else {
-                classRemove(sticky, 'option-unsticky');
-                classAdd(sticky, 'option-sticky');
+                removeClasses(sticky, 'option-unsticky');
+                addClasses(sticky, 'option-sticky');
             }
         });
     }
 
     function mainAreaCreate() {
-        const mainArea = create('div', ID_MAIN_AREA);
-        classAdd(mainArea, 'main-area');
-        setAttr(mainArea, {style: 'display: none'});
-        append(root, mainArea);
+        create('div', {id: ID_MAIN_AREA, classes: 'main-area', style: 'display: none', parent: root});
     }
 
     function modToolsCreate() {
-        const modTools = create('div',    ID_MOD_TOOLS);
-        const lock     = create('button', ID_MOD_TOOLS_LOCK_BUTTON);
-        classAdd(modTools, 'mod-tools');
-
-        lock.innerHTML = isLocked ? 'Unlock Thread' : 'Lock Thread';
-
-        onclick(lock, global.threadLockToggle);
-
-        setAttr(modTools, {style: 'display: none'});
-
-        append(modTools, lock);
-        append(root, modTools);
+        const modTools = create('div', {id: ID_MOD_TOOLS, classes: 'mod-tools', style: 'display: none', parent: root});
+        const lock = create('button', {id: ID_MOD_TOOLS_LOCK_BUTTON, innerHTML: isLocked ? 'Unlock Thread' : 'Lock Thread', parent: modTools});
+        onClick(lock, global.threadLockToggle);
     }
 
     function loadCssOverride() {
@@ -1786,9 +1646,9 @@
     }
 
     function allShow() {
-        const mainArea = $(ID_MAIN_AREA);
-        const modTools = $(ID_MOD_TOOLS);
-        const loggedContainer = $(ID_LOGGED_CONTAINER);
+        const mainArea = byId(ID_MAIN_AREA);
+        const modTools = byId(ID_MOD_TOOLS);
+        const loggedContainer = byId(ID_LOGGED_CONTAINER);
 
         setAttr(mainArea, {style: ''});
 
@@ -1802,27 +1662,27 @@
     }
 
     global.loginBoxClose = () => {
-        const mainArea = $(ID_MAIN_AREA);
-        const loginBoxContainer = $(ID_LOGIN_BOX_CONTAINER);
+        const mainArea = byId(ID_MAIN_AREA);
+        const loginBoxContainer = byId(ID_LOGIN_BOX_CONTAINER);
 
-        classRemove(mainArea, 'blurred');
-        classRemove(root, 'root-min-height');
+        removeClasses(mainArea, 'blurred');
+        removeClasses(root, 'root-min-height');
 
         setAttr(loginBoxContainer, {style: 'display: none'});
     }
 
     global.loginBoxShow = id => {
-        const mainArea = $(ID_MAIN_AREA);
-        const loginBoxContainer = $(ID_LOGIN_BOX_CONTAINER);
+        const mainArea = byId(ID_MAIN_AREA);
+        const loginBoxContainer = byId(ID_LOGIN_BOX_CONTAINER);
 
         global.popupRender(id);
 
-        classAdd(mainArea, 'blurred');
+        addClasses(mainArea, 'blurred');
         setAttr(loginBoxContainer, {style: ''});
 
         window.location.hash = ID_LOGIN_BOX_CONTAINER;
 
-        $(ID_LOGIN_BOX_EMAIL_INPUT).focus();
+        byId(ID_LOGIN_BOX_EMAIL_INPUT).focus();
     }
 
     function dataTagsLoad() {
@@ -1850,7 +1710,7 @@
         if (window.location.hash) {
             if (window.location.hash.startsWith('#commento-')) {
                 const id = window.location.hash.split('-')[1];
-                const el = $(ID_CARD + id);
+                const el = byId(ID_CARD + id);
                 if (el === null) {
                     if (id.length === 64) {
                         // A hack to make sure it's a valid ID before showing the user a message.
@@ -1859,7 +1719,7 @@
                     return;
                 }
 
-                classAdd(el, 'highlighted-card');
+                addClasses(el, 'highlighted-card');
                 el.scrollIntoView(true);
             } else if (window.location.hash.startsWith('#commento')) {
                 root.scrollIntoView(true);
@@ -1868,7 +1728,7 @@
     }
 
     global.main = callback => {
-        root = $(ID_ROOT);
+        root = byId(ID_ROOT);
         if (root === null) {
             console.log(`[commento] error: no root element with ID '${ID_ROOT}' found`);
             return;
@@ -1878,9 +1738,9 @@
             mobileView = root.getBoundingClientRect()['width'] < 450;
         }
 
-        classAdd(root, 'root');
+        addClasses(root, 'root');
         if (noFonts !== 'true') {
-            classAdd(root, 'root-font');
+            addClasses(root, 'root-font');
         }
 
         loginBoxCreate();
