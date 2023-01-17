@@ -107,8 +107,8 @@
         root.prepend(el);
     }
 
-    function append(parent, child) {
-        parent.appendChild(child);
+    function append(parent, ...children) {
+        children.forEach(c => parent.appendChild(c));
     }
 
     function insertAfter(el1, el2) {
@@ -118,20 +118,20 @@
     /**
      * Add the provided class or classes to the element.
      * @param el Element to add classes to.
-     * @param classes string|array Class(es) to add.
+     * @param classes string|array Class(es) to add. Falsy values are ignored.
      */
     function addClasses(el, classes) {
-        (Array.isArray(classes) ? classes : [classes]).forEach(c => el.classList.add(`commento-${c}`));
+        (Array.isArray(classes) ? classes : [classes]).forEach(c => c && el.classList.add(`commento-${c}`));
     }
 
     /**
      * Remove the provided class or classes from the element.
      * @param el Element to remove classes from.
-     * @param classes string|array Class(es) to remove.
+     * @param classes string|array Class(es) to remove. Falsy values are ignored.
      */
     function removeClasses(el, classes) {
         if (el !== null) {
-            (Array.isArray(classes) ? classes : [classes]).forEach(c => el.classList.remove(`commento-${c}`));
+            (Array.isArray(classes) ? classes : [classes]).forEach(c => c && el.classList.remove(`commento-${c}`));
         }
     }
 
@@ -192,9 +192,9 @@
         return e;
     }
 
-    function remove(el) {
-        if (el !== null) {
-            el.parentNode.removeChild(el);
+    function remove(...elements) {
+        if (elements && elements.length) {
+            elements.forEach(e => e && e.parentNode.removeChild(e));
         }
     }
 
@@ -227,10 +227,17 @@
     /**
      * Set node attributes from the provided object.
      * @param node HTML element to set attributes on.
-     * @param values Object that provides attribute names (keys) and their values.
+     * @param values Object that provides attribute names (keys) and their values. null and undefined values cause attribute removal from the node.
      */
     function setAttr(node, values) {
-        Object.keys(values).forEach(k => node.setAttribute(k, values[k]));
+        Object.keys(values).forEach(k => {
+            const v = values[k];
+            if (v === undefined || v === null) {
+                node.removeAttribute(k);
+            } else {
+                node.setAttribute(k, v)
+            }
+        });
     }
 
     function post(url, data, callback) {
@@ -300,7 +307,7 @@
         const loggedContainer = create('div', {id: ID_LOGGED_CONTAINER, classes: 'logged-container', style: 'display: none'});
         const loggedInAs      = create('div', {classes: 'logged-in-as', parent: loggedContainer});
         const name            = create(commenter.link !== 'undefined' ? 'a' : 'div', {classes: 'name', innerText: commenter.name, parent: loggedInAs});
-        const btnSettings     = create('div', {classes: 'profile-button', innerText: 'Notification Settings', parent: loggedContainer});
+        const btnSettings     = create('div', {classes: 'profile-button', innerText: 'Notification Settings'});
         const btnEditProfile  = create('div', {classes: 'profile-button', innerText: 'Edit Profile'});
         const btnLogout       = create('div', {classes: 'profile-button', innerText: 'Logout', parent: loggedContainer});
         const color = colorGet(`${commenter.commenterHex}-${commenter.name}`);
@@ -336,6 +343,7 @@
         if (commenter.provider === 'commento') {
             append(loggedContainer, btnEditProfile);
         }
+        append(loggedContainer, btnSettings);
 
         // Add the container to the root
         prepend(root, loggedContainer);
@@ -371,16 +379,31 @@
             href:   file,
             rel:    'stylesheet',
             type:   'text/css',
-            parent: document.getElementsByTagName('head')[0]});
+        });
         onLoad(link, f);
+        append(document.getElementsByTagName('head')[0], link);
     }
 
     function footerLoad() {
-        const footer = create('div', {id: ID_FOOTER, classes: 'footer'});
-        const cont = create('div', {classes: 'logo-container', parent: footer});
-        const link = create('a', {classes: 'logo', parent: cont, href: 'https://comentario.app/', target: '_blank'});
-        create('span', {classes: 'logo-text', parent: link, innerText: 'Comentario 🗨'});
-        return footer;
+        return create('div', {
+            id:       ID_FOOTER,
+            classes:  'footer',
+            children: [
+                create('div', {
+                    classes:  'logo-container',
+                    children: [
+                        create('a', {
+                            classes:  'logo',
+                            href:     'https://comentario.app/',
+                            target:   '_blank',
+                            children: [
+                                create('span', {classes: 'logo-text', innerText: 'Comentario 🗨'}),
+                            ],
+                        }),
+                    ],
+                }),
+            ],
+        });
     }
 
     function commentsGet(callback) {
@@ -500,9 +523,14 @@
         const textOuter        = create('div',      {id: ID_SUPER_CONTAINER + id, classes: 'button-margin'});
         const textCont         = create('div',      {id: ID_TEXTAREA_CONTAINER + id, classes: 'textarea-container', parent: textOuter});
         const textArea         = create('textarea', {id: ID_TEXTAREA + id, placeholder: 'Add a comment', parent: textCont});
-        const anonCheckboxCont = create('div',      {classes: ['round-check', 'anonymous-checkbox-container']});
-        const anonCheckbox     = create('input',    {id: ID_ANONYMOUS_CHECKBOX + id, type: 'checkbox', parent: anonCheckboxCont});
-        create('label', {for: ID_ANONYMOUS_CHECKBOX + id, innerText: 'Comment anonymously', parent: anonCheckboxCont});
+        const anonCheckbox     = create('input',    {id: ID_ANONYMOUS_CHECKBOX + id, type: 'checkbox'});
+        const anonCheckboxCont = create('div', {
+            classes:  ['round-check', 'anonymous-checkbox-container'],
+            children: [
+                anonCheckbox,
+                create('label', {for: ID_ANONYMOUS_CHECKBOX + id, innerText: 'Comment anonymously'}),
+            ],
+        });
         const submitButton = create('button', {
             id:        ID_SUBMIT_BUTTON + id,
             classes:   ['button', 'submit-button'],
@@ -512,8 +540,7 @@
         const markdownButton = create('a', {
             id:        ID_MARKDOWN_BUTTON + id,
             classes:   'markdown-button',
-            innerHTML: '<b>M &#8595;</b> &nbsp; Markdown',
-            parent:    textOuter,
+            innerHTML: '<b>M⬇</b>&nbsp;Markdown',
         });
 
         if (anonymousOnly) {
@@ -527,6 +554,7 @@
         if (!requireIdentification && !edit) {
             append(textOuter, anonCheckboxCont);
         }
+        append(textOuter, markdownButton);
         return textOuter;
     }
 
@@ -556,13 +584,10 @@
         for (let sp in sortPolicyNames) {
             const sortPolicyButton = create('a', {
                 id:        ID_SORT_POLICY +sp,
-                classes:   'sort-policy-button',
+                classes:   ['sort-policy-button', sp === sortPolicy && 'sort-policy-button-selected'],
                 innerText: sortPolicyNames[sp],
                 parent:    buttonBar,
             });
-            if (sp === sortPolicy) {
-                addClasses(sortPolicyButton, 'sort-policy-button-selected');
-            }
             onClick(sortPolicyButton, sortPolicyApply, sp);
         }
         return container;
@@ -570,15 +595,14 @@
 
     function rootCreate(callback) {
         const mainArea = byId(ID_MAIN_AREA);
-        const login     = create('div', {id: ID_LOGIN, classes: 'login'});
-        const loginText = create('div', {classes: 'login-text', innerText: 'Login'});
+        const login           = create('div', {id: ID_LOGIN, classes: 'login'});
+        const loginText       = create('div', {classes: 'login-text', innerText: 'Login'});
         const preCommentsArea = create('div', {id: ID_PRE_COMMENTS_AREA});
-        const commentsArea = create('div', {id: ID_COMMENTS_AREA, classes: 'comments'});
+        const commentsArea    = create('div', {id: ID_COMMENTS_AREA, classes: 'comments'});
         onClick(loginText, global.loginBoxShow, null);
 
-        let numOauthConfigured = 0;
-        Object.keys(configuredOauths).forEach(key => configuredOauths[key] && numOauthConfigured++);
-        if (numOauthConfigured > 0) {
+        // If there's an OAuth provider configured, add a Login button
+        if (Object.keys(configuredOauths).some(k => configuredOauths[k])) {
             append(login, loginText);
         } else if (!requireIdentification) {
             anonymousOnly = true;
@@ -589,8 +613,7 @@
                 append(mainArea, messageCreate('This thread is locked. You cannot add new comments.'));
                 remove(byId(ID_LOGIN));
             } else {
-                append(mainArea, login);
-                append(mainArea, textareaCreate('root'));
+                append(mainArea, login, textareaCreate('root'));
             }
         } else {
             if (isAuthenticated) {
@@ -604,8 +627,7 @@
         if (comments.length > 0) {
             append(mainArea, sortPolicyBox());
         }
-        append(mainArea, preCommentsArea);
-        append(mainArea, commentsArea);
+        append(mainArea, preCommentsArea, commentsArea);
         append(root, mainArea);
         call(callback);
     }
@@ -881,8 +903,7 @@
             append(options, collapse);
 
             if (!comment.deleted) {
-                append(options, downvote);
-                append(options, upvote);
+                append(options, downvote, upvote);
             }
 
             if (comment.commenterHex === selfHex) {
@@ -912,15 +933,12 @@
                 setAttr(options.childNodes[i], {style: `right: ${i * 32}px;`});
             }
 
-            append(subtitle, score);
-            append(subtitle, timeago);
+            append(subtitle, score, timeago);
 
             if (!mobileView) {
                 append(header, options);
             }
-            append(header, avatar);
-            append(header, name);
-            append(header, subtitle);
+            append(header, avatar, name, subtitle);
             append(body, text);
             append(contents, body);
             if (mobileView) {
@@ -933,8 +951,7 @@
                 append(contents, children);
             }
 
-            append(card, header);
-            append(card, contents);
+            append(card, header, contents);
 
             if (comment.deleted && (hideDeleted === 'true' || children === null)) {
                 return;
@@ -943,7 +960,7 @@
             append(cards, card);
         });
 
-        return cards.childNodes.length === 0 ? null : cards;
+        return cards.childNodes.length ? cards : null;
     }
 
     global.commentApprove = commentHex => {
@@ -1319,7 +1336,7 @@
                     selfGet(() => {
                         const loggedContainer = byId(ID_LOGGED_CONTAINER);
                         if (loggedContainer) {
-                            setAttr(loggedContainer, {style: ''});
+                            setAttr(loggedContainer, {style: null});
                         }
 
                         if (commenterTokenGet() !== 'anonymous') {
@@ -1366,15 +1383,31 @@
         const oauthButtons          = create('div', {classes: 'oauth-buttons'});
         const hr2                   = create('hr', {id: ID_LOGIN_BOX_HR2});
         const emailSubtitle         = create('div', {id: ID_LOGIN_BOX_EMAIL_SUBTITLE, classes: 'login-box-subtitle', innerText: 'Login with your email address'});
-        const emailContainer        = create('div', {classes: 'email-container'});
-        const email                 = create('div', {classes: 'email', parent: emailContainer});
-        create('input', {id: ID_LOGIN_BOX_EMAIL_INPUT, classes: 'input', name: 'email', placeholder: 'Email address', type: 'text', autocomplete: 'email', parent: email});
-        const emailButton           = create('button', {id: ID_LOGIN_BOX_EMAIL_BUTTON, classes: 'email-button', innerText: 'Continue', parent: email});
-        const forgotLinkContainer   = create('div', {id: ID_LOGIN_BOX_FORGOT_LINK_CONTAINER, classes: 'forgot-link-container'});
-        const forgotLink            = create('a', {classes: 'forgot-link', innerText: 'Forgot your password?', parent: forgotLinkContainer});
-        const loginLinkContainer    = create('div', {id: ID_LOGIN_BOX_LOGIN_LINK_CONTAINER, classes: 'login-link-container'});
-        const loginLink             = create('a', {classes: 'login-link', innerText: 'Don\'t have an account? Sign up.', parent: loginLinkContainer});
-        const close                 = create('div', {classes: 'login-box-close', parent: loginBox});
+        const emailButton           = create('button', {id: ID_LOGIN_BOX_EMAIL_BUTTON, classes: 'email-button', innerText: 'Continue'});
+        const emailContainer        = create('div', {
+            classes: 'email-container',
+            children: [
+                create('div', {
+                    classes:  'email',
+                    children: [
+                        create('input', {
+                            id:           ID_LOGIN_BOX_EMAIL_INPUT,
+                            classes:      'input',
+                            name:         'email',
+                            placeholder:  'Email address',
+                            type:         'text',
+                            autocomplete: 'email',
+                        }),
+                        emailButton,
+                    ],
+                }),
+            ],
+        });
+        const forgotLinkContainer = create('div', {id: ID_LOGIN_BOX_FORGOT_LINK_CONTAINER, classes: 'forgot-link-container'});
+        const forgotLink          = create('a',   {classes: 'forgot-link', innerText: 'Forgot your password?', parent: forgotLinkContainer});
+        const loginLinkContainer  = create('div', {id: ID_LOGIN_BOX_LOGIN_LINK_CONTAINER, classes: 'login-link-container'});
+        const loginLink           = create('a',   {classes: 'login-link', innerText: 'Don\'t have an account? Sign up.', parent: loginLinkContainer});
+        const close               = create('div', {classes: 'login-box-close', parent: loginBox});
 
         addClasses(root, 'root-min-height');
 
@@ -1383,14 +1416,12 @@
         onClick(loginLink, global.popupSwitch, id);
         onClick(close, global.loginBoxClose);
 
-        let numOauthConfigured = 0;
+        let hasOAuth = false;
         const oauthProviders = ['google', 'github', 'gitlab'];
-        oauthProviders.forEach(provider => {
-            if (configuredOauths[provider]) {
-                const button = create('button', {classes: ['button', `${provider}-button`], innerText: provider, parent: oauthButtons});
-                onClick(button, global.commentoAuth, {provider: provider, id: id});
-                numOauthConfigured++;
-            }
+        oauthProviders.filter(p => configuredOauths[p]).forEach(provider => {
+            const button = create('button', {classes: ['button', `${provider}-button`], innerText: provider, parent: oauthButtons});
+            onClick(button, global.commentoAuth, {provider: provider, id: id});
+            hasOAuth = true;
         });
 
         if (configuredOauths['sso']) {
@@ -1400,29 +1431,22 @@
             append(loginBox, ssoSubtitle);
             append(loginBox, ssoButtonContainer);
 
-            if (numOauthConfigured > 0 || configuredOauths['commento']) {
+            if (hasOAuth || configuredOauths['commento']) {
                 append(loginBox, hr1);
             }
         }
 
-        if (numOauthConfigured > 0) {
-            append(loginBox, oauthSubtitle);
+        oauthButtonsShown = hasOAuth;
+        if (hasOAuth) {
             append(oauthButtonsContainer, oauthButtons);
-            append(loginBox, oauthButtonsContainer);
-            oauthButtonsShown = true;
-        } else {
-            oauthButtonsShown = false;
-        }
-
-        if (numOauthConfigured > 0 && configuredOauths['commento']) {
-            append(loginBox, hr2);
+            append(loginBox, oauthSubtitle, oauthButtonsContainer);
+            if (configuredOauths['commento']) {
+                append(loginBox, hr2);
+            }
         }
 
         if (configuredOauths['commento']) {
-            append(loginBox, emailSubtitle);
-            append(loginBox, emailContainer);
-            append(loginBox, forgotLinkContainer);
-            append(loginBox, loginLinkContainer);
+            append(loginBox, emailSubtitle, emailContainer, forgotLinkContainer, loginLinkContainer);
         }
 
         popupBoxType = 'login';
@@ -1440,21 +1464,22 @@
         const emailSubtitle = byId(ID_LOGIN_BOX_EMAIL_SUBTITLE);
 
         if (oauthButtonsShown) {
-            remove(byId(ID_LOGIN_BOX_OAUTH_BUTTONS_CONTAINER));
-            remove(byId(ID_LOGIN_BOX_OAUTH_PRETEXT));
-            remove(byId(ID_LOGIN_BOX_HR1));
-            remove(byId(ID_LOGIN_BOX_HR2));
+            remove(
+                byId(ID_LOGIN_BOX_OAUTH_BUTTONS_CONTAINER),
+                byId(ID_LOGIN_BOX_OAUTH_PRETEXT),
+                byId(ID_LOGIN_BOX_HR1),
+                byId(ID_LOGIN_BOX_HR2));
         }
 
         if (configuredOauths['sso']) {
-            remove(byId(ID_LOGIN_BOX_SSO_BUTTON_CONTAINER));
-            remove(byId(ID_LOGIN_BOX_SSO_PRETEXT));
-            remove(byId(ID_LOGIN_BOX_HR1));
-            remove(byId(ID_LOGIN_BOX_HR2));
+            remove(
+                byId(ID_LOGIN_BOX_SSO_BUTTON_CONTAINER),
+                byId(ID_LOGIN_BOX_SSO_PRETEXT),
+                byId(ID_LOGIN_BOX_HR1),
+                byId(ID_LOGIN_BOX_HR2));
         }
 
-        remove(byId(ID_LOGIN_BOX_LOGIN_LINK_CONTAINER));
-        remove(byId(ID_LOGIN_BOX_FORGOT_LINK_CONTAINER));
+        remove(byId(ID_LOGIN_BOX_LOGIN_LINK_CONTAINER), byId(ID_LOGIN_BOX_FORGOT_LINK_CONTAINER));
 
         emailSubtitle.innerText = 'Create an account';
         popupBoxType = 'signup';
@@ -1531,15 +1556,17 @@
         const loginBox = byId(ID_LOGIN_BOX);
         const subtitle = byId(ID_LOGIN_BOX_EMAIL_SUBTITLE);
 
-        remove(byId(ID_LOGIN_BOX_EMAIL_BUTTON));
-        remove(byId(ID_LOGIN_BOX_LOGIN_LINK_CONTAINER));
-        remove(byId(ID_LOGIN_BOX_FORGOT_LINK_CONTAINER));
+        remove(
+            byId(ID_LOGIN_BOX_EMAIL_BUTTON),
+            byId(ID_LOGIN_BOX_LOGIN_LINK_CONTAINER),
+            byId(ID_LOGIN_BOX_FORGOT_LINK_CONTAINER));
         if (oauthButtonsShown) {
             if (configuredOauths.length > 0) {
-                remove(byId(ID_LOGIN_BOX_HR1));
-                remove(byId(ID_LOGIN_BOX_HR2));
-                remove(byId(ID_LOGIN_BOX_OAUTH_PRETEXT));
-                remove(byId(ID_LOGIN_BOX_OAUTH_BUTTONS_CONTAINER));
+                remove(
+                    byId(ID_LOGIN_BOX_HR1),
+                    byId(ID_LOGIN_BOX_HR2),
+                    byId(ID_LOGIN_BOX_OAUTH_PRETEXT),
+                    byId(ID_LOGIN_BOX_OAUTH_BUTTONS_CONTAINER));
             }
         }
 
@@ -1648,14 +1675,14 @@
         const modTools = byId(ID_MOD_TOOLS);
         const loggedContainer = byId(ID_LOGGED_CONTAINER);
 
-        setAttr(mainArea, {style: ''});
+        setAttr(mainArea, {style: null});
 
         if (isModerator) {
-            setAttr(modTools, {style: ''});
+            setAttr(modTools, {style: null});
         }
 
         if (loggedContainer) {
-            setAttr(loggedContainer, {style: ''});
+            setAttr(loggedContainer, {style: null});
         }
     }
 
@@ -1676,7 +1703,7 @@
         global.popupRender(id);
 
         addClasses(mainArea, 'blurred');
-        setAttr(loginBoxContainer, {style: ''});
+        setAttr(loginBoxContainer, {style: null});
 
         window.location.hash = ID_LOGIN_BOX_CONTAINER;
 

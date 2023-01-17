@@ -26,15 +26,18 @@ services:
     networks:
       - comentario_network
     volumes:
+      # Transient data volume
       - type: tmpfs
         target: /var/lib/postgresql/data
+      # Initial DB seed
+      - $PWD/etc/db-seed:/docker-entrypoint-initdb.d:ro
 
   http:
     image: nginx
     ports:
-        - '8100:80'
+      - '8100:80'
     volumes:
-        - $PWD/etc/comment-test:/usr/share/nginx/html:ro
+      - $PWD/etc/comment-test:/usr/share/nginx/html:ro
 
 networks:
   comentario_network:
