@@ -30,6 +30,8 @@ build:
   variables:
     # We want to store downloaded packages under the project dir, so we can cache them
     GOPATH: $CI_PROJECT_DIR/.go
+    # Statically link the executable so that we can run that in Alpine
+    CGO_ENABLED: 0
     # Required for the DB service (Postgres) to run
     POSTGRES_USER: postgres
     POSTGRES_PASSWORD: postgres
@@ -69,13 +71,19 @@ package:
     - docker:dind
   dependencies:
     - build
+  variables:
+    IMG_TAG_CURRENT: $CI_REGISTRY_IMAGE:$VERSION
+    IMG_TAG_LATEST:  $CI_REGISTRY_IMAGE:latest
   script:
     # Login to the Container Registry
     - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
 
-    # Determine image version
-    - IMG_TAG="$CI_REGISTRY_IMAGE:$VERSION"
-
     # Build and push the image
-    - docker build -t $IMG_TAG .
-    - docker push $IMG_TAG
+    - docker build -t "$IMG_TAG_CURRENT" .
+    - docker push "$IMG_TAG_CURRENT"
+
+    # For dev, also push it as 'latest'
+    - if [[ $CI_COMMIT_BRANCH == "dev" ]]; then
+          docker tag "$IMG_TAG_CURRENT" "$IMG_TAG_LATEST"
+          docker push "$IMG_TAG_LATEST"
+      fi

@@ -30,7 +30,8 @@ devel-go:
 
 prod-go:
 	go mod tidy
-	go build -v -o $(GO_PROD_BUILD_BINARY) -ldflags "-w -s -X main.version=$(shell git describe --tags)"
+	# -a forces a rebuild of all packages, which is what we want when we build against Alpine (using static linking)
+	go build -a -v -o $(GO_PROD_BUILD_BINARY) -ldflags "-w -s -X main.version=$(shell git describe --tags)"
 
 test-go:
 	go mod tidy
