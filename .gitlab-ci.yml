@@ -64,7 +64,7 @@ build:
 
 package:
   stage: package
-  image: docker:22.04
+  image: docker
   services:
     - docker:dind
   dependencies:
