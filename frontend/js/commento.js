@@ -221,9 +221,7 @@
     }
 
     function onLoad(node, f, arg) {
-        node.addEventListener('load', function () {
-            f(arg);
-        });
+        node.addEventListener('load', () => f(arg));
     }
 
     /**
