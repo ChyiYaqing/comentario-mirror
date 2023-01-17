@@ -74,7 +74,7 @@ package:
     - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
 
     # Determine image version
-    - IMG_TAG="$CI_REGISTRY_IMAGE/comentario:$VERSION"
+    - IMG_TAG="$CI_REGISTRY_IMAGE:$VERSION"
 
     # Build and push the image
     - docker build -t $IMG_TAG .
