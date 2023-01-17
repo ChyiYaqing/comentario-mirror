@@ -83,7 +83,8 @@ package:
     - docker push "$IMG_TAG_CURRENT"
 
     # For dev, also push it as 'latest'
-    - if [[ $CI_COMMIT_BRANCH == "dev" ]]; then
+    - |
+      if [[ $CI_COMMIT_BRANCH == "dev" ]]; then
           docker tag "$IMG_TAG_CURRENT" "$IMG_TAG_LATEST"
           docker push "$IMG_TAG_LATEST"
       fi
