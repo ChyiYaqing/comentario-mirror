@@ -1,7 +1,8 @@
 {
     "compilerOptions": {
         "outDir": "./build/",
-//TODO        "noImplicitAny": true,
+        "noImplicitAny": true,
+        "noImplicitReturns": true,
         "module": "ES2022",
         "sourceMap": true,
         "target": "ES6",

@@ -1,6 +1,10 @@
 // noinspection DuplicatedCode
 
+import { Comment, Commenter, CommentMap, CommentsMap, Email, OAuthResponse } from './models';
+
 type CallbackFunction = () => void;
+type ApiCallback = (response: any) => void;
+type SortPolicy = 'score-desc' | 'creationdate-desc' | 'creationdate-asc';
 
 interface ElementConfig {
     id?:        string;
@@ -81,49 +85,49 @@ interface ElementConfig {
     const origin = '[[[.Origin]]]';
     const cdn = '[[[.CdnPrefix]]]';
 
-    let root = null;
+    let root: HTMLElement = null;
     let pageId = parent.location.pathname;
-    let cssOverride;
-    let noFonts;
-    let hideDeleted;
-    let autoInit;
+    let cssOverride: string;
+    let noFonts = false;
+    let hideDeleted = false;
+    let autoInit = true;
     let isAuthenticated = false;
-    let comments = [];
-    const commentsMap = {};
-    let commenters = {};
+    let comments: Comment[] = [];
+    const commentsByHex: CommentMap = {};
+    let commenters: { [k: string]: Commenter } = {};
     let requireIdentification = true;
     let isModerator = false;
     let isFrozen = false;
     let chosenAnonymous = false;
     let isLocked = false;
     let stickyCommentHex = 'none';
-    let shownReply = {};
-    const shownEdit = {};
-    let configuredOauths = {};
+    let shownReply: { [k: string]: boolean } = {};
+    const shownEdit: { [k: string]: boolean } = {};
+    let configuredOauths: { [k: string]: boolean } = {};
     let anonymousOnly = false;
     let popupBoxType = 'login';
     let oauthButtonsShown = false;
-    let sortPolicy = 'score-desc';
-    let selfHex = undefined;
-    let mobileView = null;
+    let sortPolicy: SortPolicy = 'score-desc';
+    let selfHex: string = undefined;
+    let mobileView: boolean | null = null;
 
-    function byId<T extends HTMLElement>(id): T {
+    function byId<T extends HTMLElement>(id: string): T {
         return document.getElementById(id) as T;
     }
 
-    function tags(tag) {
+    function tags(tag: string) {
         return document.getElementsByTagName(tag);
     }
 
-    function prepend(root, el) {
+    function prepend(root: HTMLElement, el: HTMLElement) {
         root.prepend(el);
     }
 
-    function append(parent, ...children) {
+    function append(parent: HTMLElement, ...children: HTMLElement[]) {
         children.forEach(c => parent.appendChild(c));
     }
 
-    function insertAfter(el1, el2) {
+    function insertAfter(el1: HTMLElement, el2: HTMLElement) {
         el1.parentNode.insertBefore(el2, el1.nextSibling);
     }
 
@@ -132,7 +136,7 @@ interface ElementConfig {
      * @param el Element to add classes to.
      * @param classes string|array Class(es) to add. Falsy values are ignored.
      */
-    function addClasses(el, classes) {
+    function addClasses(el: HTMLElement, classes: string | string[]) {
         (Array.isArray(classes) ? classes : [classes]).forEach(c => c && el.classList.add(`commento-${c}`));
     }
 
@@ -141,7 +145,7 @@ interface ElementConfig {
      * @param el Element to remove classes from.
      * @param classes string|array Class(es) to remove. Falsy values are ignored.
      */
-    function removeClasses(el, classes) {
+    function removeClasses(el: HTMLElement, classes: string | string[]) {
         if (el !== null) {
             (Array.isArray(classes) ? classes : [classes]).forEach(c => c && el.classList.remove(`commento-${c}`));
         }
@@ -204,19 +208,17 @@ interface ElementConfig {
         return e;
     }
 
-    function remove(...elements) {
-        if (elements && elements.length) {
-            elements.forEach(e => e && e.parentNode.removeChild(e));
-        }
+    function remove(...elements: HTMLElement[]) {
+        elements?.forEach(e => e && e.parentNode.removeChild(e));
     }
 
-    function getAttr(node, a) {
-        const attr = node.attributes[a];
-        return attr === void 0 ? undefined : attr.value;
+    function getAttr(node: HTMLElement, attrName: string) {
+        const attr = node.attributes.getNamedItem(attrName);
+        return attr === undefined ? undefined : attr?.value;
     }
 
     function removeAllEventListeners<T extends HTMLElement>(node: T): T {
-        if (node !== null) {
+        if (node) {
             const replacement = node.cloneNode(true) as T;
             if (node.parentNode !== null) {
                 node.parentNode.replaceChild(replacement, node);
@@ -239,7 +241,7 @@ interface ElementConfig {
      * @param node HTML element to set attributes on.
      * @param values Object that provides attribute names (keys) and their values. null and undefined values cause attribute removal from the node.
      */
-    function setAttr(node, values) {
+    function setAttr(node: HTMLElement, values: { [k: string]: string }) {
         if (node) {
             Object.keys(values).forEach(k => {
                 const v = values[k];
@@ -252,40 +254,34 @@ interface ElementConfig {
         }
     }
 
-    function post(url, data, callback) {
+    function post(url: string, data: any, callback: ApiCallback) {
         const xmlDoc = new XMLHttpRequest();
-
         xmlDoc.open('POST', url, true);
         xmlDoc.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
-        xmlDoc.onload = function () {
-            callback(JSON.parse(xmlDoc.response));
-        }
-
+        xmlDoc.onload = () => callback(JSON.parse(xmlDoc.response));
         xmlDoc.send(JSON.stringify(data));
     }
 
-    function get(url, callback) {
+    function get(url:string, callback: ApiCallback) {
         const xmlDoc = new XMLHttpRequest();
         xmlDoc.open('GET', url, true);
         xmlDoc.onload = () => callback(JSON.parse(xmlDoc.response));
         xmlDoc.send(null);
     }
 
-    function call(callback) {
+    function call(callback: CallbackFunction) {
         if (typeof callback === 'function') {
             callback();
         }
     }
 
-    function cookieGet(name) {
+    function cookieGet(name: string): string {
         const c = `; ${document.cookie}`;
         const x = c.split(`; ${name}=`);
-        if (x.length === 2) {
-            return x.pop().split(';').shift();
-        }
+        return x.length === 2 ? x.pop().split(';').shift() : null;
     }
 
-    function cookieSet(name, value) {
+    function cookieSet(name: string, value: string) {
         const date = new Date();
         date.setTime(date.getTime() + (365 * 24 * 60 * 60 * 1000));
         document.cookie = `${name}=${value}; expires=${date.toUTCString()}; path=/`;
@@ -308,11 +304,11 @@ interface ElementConfig {
         window.open(`${origin}/profile?commenterToken=${commenterTokenGet()}`, '_blank');
     }
 
-    function notificationSettings(unsubscribeSecretHex) {
+    function notificationSettings(unsubscribeSecretHex: string) {
         window.open(`${origin}/unsubscribe?unsubscribeSecretHex=${unsubscribeSecretHex}`, '_blank');
     }
 
-    function selfLoad(commenter, email) {
+    function selfLoad(commenter: Commenter, email: Email) {
         commenters[commenter.commenterHex] = commenter;
         selfHex = commenter.commenterHex;
 
@@ -362,7 +358,7 @@ interface ElementConfig {
         isAuthenticated = true;
     }
 
-    function selfGet(callback) {
+    function selfGet(callback: CallbackFunction) {
         const commenterToken = commenterTokenGet();
         if (commenterToken === 'anonymous') {
             isAuthenticated = false;
@@ -418,7 +414,7 @@ interface ElementConfig {
         });
     }
 
-    function commentsGet(callback) {
+    function commentsGet(callback: CallbackFunction) {
         const data = {
             commenterToken: commenterTokenGet(),
             domain: parent.location.host,
@@ -450,7 +446,7 @@ interface ElementConfig {
         });
     }
 
-    function errorShow(text) {
+    function errorShow(text: string) {
         const el = byId<HTMLDivElement>(ID_ERROR);
         el.innerText = text;
         setAttr(el, {style: 'display: block;'});
@@ -464,14 +460,14 @@ interface ElementConfig {
         create('div', {id: ID_ERROR, classes: 'error-box', style: 'display: none;', parent: root});
     }
 
-    function autoExpander(el) {
+    function autoExpander(el: HTMLElement): CallbackFunction {
         return () => {
             el.style.height = '';
             el.style.height = `${Math.min(Math.max(el.scrollHeight, 75), 400)}px`;
         }
     }
 
-    function markdownHelpShow(id) {
+    function markdownHelpShow(id: string) {
         create('table', {
             id:       ID_MARKDOWN_HELP + id,
             classes:  'markdown-help',
@@ -521,7 +517,7 @@ interface ElementConfig {
         onClick(markdownButton, () => markdownHelpHide(id));
     }
 
-    function markdownHelpHide(id) {
+    function markdownHelpHide(id: string) {
         let markdownButton = byId<HTMLAnchorElement>(ID_MARKDOWN_BUTTON + id);
         const markdownHelp = byId(ID_MARKDOWN_HELP + id);
 
@@ -569,13 +565,13 @@ interface ElementConfig {
         return textOuter;
     }
 
-    const sortPolicyNames = {
+    const sortPolicyNames: { [k in SortPolicy]: string } = {
         'score-desc':        'Upvotes',
         'creationdate-desc': 'Newest',
         'creationdate-asc':  'Oldest',
     };
 
-    function sortPolicyApply(policy) {
+    function sortPolicyApply(policy: SortPolicy) {
         removeClasses(byId(ID_SORT_POLICY + sortPolicy), 'sort-policy-button-selected');
 
         const commentsArea = byId<HTMLDivElement>(ID_COMMENTS_AREA);
@@ -589,22 +585,22 @@ interface ElementConfig {
         addClasses(byId(ID_SORT_POLICY + policy), 'sort-policy-button-selected');
     }
 
-    function sortPolicyBox() {
+    function sortPolicyBox(): HTMLDivElement {
         const container = create('div', {classes: 'sort-policy-buttons-container'});
         const buttonBar = create('div', {classes: 'sort-policy-buttons', parent: container});
-        for (const sp in sortPolicyNames) {
+        Object.keys(sortPolicyNames).forEach((sp: SortPolicy) => {
             const sortPolicyButton = create('a', {
-                id:        ID_SORT_POLICY +sp,
+                id:        ID_SORT_POLICY + sp,
                 classes:   ['sort-policy-button', sp === sortPolicy && 'sort-policy-button-selected'],
                 innerText: sortPolicyNames[sp],
                 parent:    buttonBar,
             });
             onClick(sortPolicyButton, () => sortPolicyApply(sp));
-        }
+        });
         return container;
     }
 
-    function rootCreate(callback) {
+    function rootCreate(callback: CallbackFunction) {
         const mainArea = byId(ID_MAIN_AREA);
         const login           = create('div', {id: ID_LOGIN, classes: 'login'});
         const loginText       = create('div', {classes: 'login-text', innerText: 'Login'});
@@ -643,13 +639,13 @@ interface ElementConfig {
         call(callback);
     }
 
-    function messageCreate(text) {
+    function messageCreate(text: string): HTMLDivElement {
         return create('div', {classes: 'moderation-notice', innerText: text});
     }
 
-    global.commentNew = (id, commenterToken, appendCard, callback) => {
-        const textareaSuperContainer = byId<HTMLDivElement>(ID_SUPER_CONTAINER + id);
-        const textarea = byId<HTMLTextAreaElement>(ID_TEXTAREA + id);
+    global.commentNew = (id: string, commenterToken: string, appendCard: boolean, callback?: CallbackFunction) => {
+        const container   = byId<HTMLDivElement>(ID_SUPER_CONTAINER + id);
+        const textarea    = byId<HTMLTextAreaElement>(ID_TEXTAREA + id);
         const replyButton = byId<HTMLButtonElement>(ID_REPLY + id);
 
         const markdown = textarea.value;
@@ -661,15 +657,15 @@ interface ElementConfig {
 
         removeClasses(textarea, 'red-border');
 
-        const json = {
-            commenterToken: commenterToken,
+        const data = {
+            commenterToken,
             domain: parent.location.host,
             path: pageId,
             parentHex: id,
-            markdown: markdown,
+            markdown,
         };
 
-        post(`${origin}/api/comment/new`, json, resp => {
+        post(`${origin}/api/comment/new`, data, resp => {
             if (!resp.success) {
                 errorShow(resp.message);
                 return;
@@ -691,24 +687,24 @@ interface ElementConfig {
                 prepend(byId(ID_SUPER_CONTAINER + id), messageCreate(message));
             }
 
-            const comment = {
-                commentHex: resp.commentHex,
+            const comment: Comment = {
+                commentHex:   resp.commentHex,
                 commenterHex: selfHex === undefined || commenterToken === 'anonymous' ? 'anonymous' : selfHex,
-                markdown: markdown,
-                html: resp.html,
-                parentHex: 'root',
-                score: 0,
-                state: 'approved',
-                direction: 0,
-                creationDate: new Date(),
+                markdown,
+                html:         resp.html,
+                parentHex:    'root',
+                score:        0,
+                state:        'approved',
+                direction:    0,
+                creationDate: new Date().toISOString(),
             };
 
             const newCard = commentsRecurse({root: [comment]}, 'root');
 
-            commentsMap[resp.commentHex] = comment;
+            commentsByHex[resp.commentHex] = comment;
             if (appendCard) {
                 if (id !== 'root') {
-                    textareaSuperContainer.replaceWith(newCard);
+                    container.replaceWith(newCard);
 
                     shownReply[id] = false;
 
@@ -730,7 +726,7 @@ interface ElementConfig {
         });
     }
 
-    function colorGet(name) {
+    function colorGet(name: string) {
         const colors = [
             '#396ab1',
             '#da7c30',
@@ -748,7 +744,7 @@ interface ElementConfig {
         return colors[total % colors.length];
     }
 
-    function timeDifference(current, previous) { // thanks stackoverflow
+    function timeDifference(current: number, previous: number) {
         // Times are defined in milliseconds
         const msPerSecond = 1000;
         const msPerMinute = 60 * msPerSecond;
@@ -784,17 +780,17 @@ interface ElementConfig {
         }
     }
 
-    function scorify(score) {
-        return score === 1 ? `${score} point` : `${score} points`;
+    function scorify(score: number) {
+        return score === 1 ? 'One point' : `${score} points`;
     }
 
-    const sortPolicyFunctions = {
+    const sortPolicyFunctions: { [k in SortPolicy]: (a: Comment, b: Comment) => number } = {
         'score-desc':        (a, b) => b.score - a.score,
-        'creationdate-desc': (a, b) => a.creationDate < b.creationDate ? 1 : -1,
-        'creationdate-asc':  (a, b) => a.creationDate < b.creationDate ? -1 : 1,
+        'creationdate-desc': (a, b) => a.creationMs < b.creationMs ? 1 : -1,
+        'creationdate-asc':  (a, b) => a.creationMs < b.creationMs ? -1 : 1,
     };
 
-    function commentsRecurse(parentMap, parentHex) {
+    function commentsRecurse(parentMap: CommentsMap, parentHex: string) {
         const cur = parentMap[parentHex];
         if (!cur || !cur.length) {
             return null;
@@ -827,7 +823,7 @@ interface ElementConfig {
             const timeago = create('div', {
                 id:        ID_TIMEAGO + hex,
                 classes:   'timeago',
-                innerHTML: timeDifference(curTime, comment.creationDate),
+                innerHTML: timeDifference(curTime, comment.creationMs),
                 title:     comment.creationDate.toString(),
             });
             const score = create('div', {id: ID_SCORE + hex, classes: 'score', innerText: scorify(comment.score)});
@@ -862,7 +858,7 @@ interface ElementConfig {
 
                 if (comment.commenterHex === 'anonymous') {
                     avatar.innerHTML = '?';
-                    avatar.style['font-weight'] = 'bold';
+                    avatar.style.fontWeight = 'bold';
                 } else {
                     avatar.innerHTML = commenter.name[0].toUpperCase();
                 }
@@ -941,7 +937,7 @@ interface ElementConfig {
 
             setAttr(options, {style: `width: ${(options.childNodes.length + 1) * 32}px;`});
             for (let i = 0; i < options.childNodes.length; i++) {
-                setAttr(options.childNodes[i], {style: `right: ${i * 32}px;`});
+                setAttr(options.children[i] as HTMLElement, {style: `right: ${i * 32}px;`});
             }
 
             append(subtitle, score, timeago);
@@ -964,7 +960,7 @@ interface ElementConfig {
 
             append(card, header, contents);
 
-            if (comment.deleted && (hideDeleted === 'true' || children === null)) {
+            if (comment.deleted && (hideDeleted || children === null)) {
                 return;
             }
 
@@ -974,10 +970,10 @@ interface ElementConfig {
         return cards.childNodes.length ? cards : null;
     }
 
-    global.commentApprove = commentHex => {
+    global.commentApprove = (commentHex: string) => {
         const data = {
             commenterToken: commenterTokenGet(),
-            commentHex: commentHex,
+            commentHex,
         };
 
         post(`${origin}/api/comment/approve`, data, resp => {
@@ -998,14 +994,14 @@ interface ElementConfig {
         });
     }
 
-    global.commentDelete = commentHex => {
+    global.commentDelete = (commentHex: string) => {
         if (!confirm('Are you sure you want to delete this comment?')) {
             return;
         }
 
         const json = {
             commenterToken: commenterTokenGet(),
-            commentHex: commentHex,
+            commentHex,
         };
 
         post(`${origin}/api/comment/delete`, json, resp => {
@@ -1024,11 +1020,11 @@ interface ElementConfig {
         const els = document.getElementsByClassName('commento-name');
 
         for (let i = 0; i < els.length; i++) {
-            setAttr(els[i], {style: `max-width: ${els[i].getBoundingClientRect()['width'] + 20}px;`})
+            setAttr(els[i] as HTMLElement, {style: `max-width: ${els[i].getBoundingClientRect()['width'] + 20}px;`})
         }
     }
 
-    function upDownOnClickSet(upvote, downvote, commentHex, direction) {
+    function upDownOnClickSet(upvote: HTMLButtonElement, downvote: HTMLButtonElement, commentHex: string, direction: number): [HTMLButtonElement, HTMLButtonElement] {
         upvote = removeAllEventListeners(upvote);
         downvote = removeAllEventListeners(downvote);
 
@@ -1046,7 +1042,7 @@ interface ElementConfig {
         return [upvote, downvote];
     }
 
-    global.vote = data => {
+    global.vote = (data: any /* TODO */) => {
         const commentHex = data[0];
         const oldDirection = data[1][0];
         const newDirection = data[1][1];
@@ -1057,7 +1053,7 @@ interface ElementConfig {
 
         const json = {
             commenterToken: commenterTokenGet(),
-            commentHex: commentHex,
+            commentHex,
             direction: newDirection,
         };
 
@@ -1088,7 +1084,7 @@ interface ElementConfig {
         });
     }
 
-    function commentEdit(id) {
+    function commentEdit(id: string) {
         const textarea = byId<HTMLTextAreaElement>(ID_TEXTAREA + id);
         const markdown = textarea.value;
         if (markdown === '') {
@@ -1098,13 +1094,13 @@ interface ElementConfig {
 
         removeClasses(textarea, 'red-border');
 
-        const json = {
+        const data = {
             commenterToken: commenterTokenGet(),
             commentHex: id,
-            markdown: markdown,
+            markdown,
         };
 
-        post(`${origin}/api/comment/edit`, json, resp => {
+        post(`${origin}/api/comment/edit`, data, resp => {
             if (!resp.success) {
                 errorShow(resp.message);
                 return;
@@ -1112,13 +1108,13 @@ interface ElementConfig {
 
             errorHide();
 
-            commentsMap[id].markdown = markdown;
-            commentsMap[id].html = resp.html;
+            commentsByHex[id].markdown = markdown;
+            commentsByHex[id].html = resp.html;
 
             let editButton = byId<HTMLButtonElement>(ID_EDIT + id);
             const textarea = byId<HTMLTextAreaElement>(ID_SUPER_CONTAINER + id);
 
-            textarea.innerHTML = commentsMap[id].html;
+            textarea.innerHTML = commentsByHex[id].html;
             textarea.id = ID_TEXT + id;
             delete shownEdit[id];
 
@@ -1146,8 +1142,8 @@ interface ElementConfig {
         });
     }
 
-    global.editShow = id => {
-        if (id in shownEdit && shownEdit[id]) {
+    global.editShow = (id: string) => {
+        if (shownEdit[id]) {
             return;
         }
 
@@ -1156,7 +1152,7 @@ interface ElementConfig {
         text.replaceWith(textareaCreate(id, true));
 
         const textarea = byId<HTMLTextAreaElement>(ID_TEXTAREA + id);
-        textarea.value = commentsMap[id].markdown;
+        textarea.value = commentsByHex[id].markdown;
 
         let editButton = byId<HTMLButtonElement>(ID_EDIT + id);
 
@@ -1169,11 +1165,11 @@ interface ElementConfig {
         onClick(editButton, () => global.editCollapse(id));
     };
 
-    global.editCollapse = id => {
+    global.editCollapse = (id: string) => {
         let editButton = byId(ID_EDIT + id);
         const textarea = byId(ID_SUPER_CONTAINER + id);
 
-        textarea.innerHTML = commentsMap[id].html;
+        textarea.innerHTML = commentsByHex[id].html;
         textarea.id = ID_TEXT + id;
         delete shownEdit[id];
 
@@ -1186,7 +1182,7 @@ interface ElementConfig {
         onClick(editButton, () => global.editShow(id))
     }
 
-    global.replyShow = id => {
+    global.replyShow = (id: string) => {
         if (id in shownReply && shownReply[id]) {
             return;
         }
@@ -1206,7 +1202,7 @@ interface ElementConfig {
         onClick(replyButton, () => global.replyCollapse(id));
     };
 
-    global.replyCollapse = id => {
+    global.replyCollapse = (id: string) => {
         let replyButton = byId(ID_REPLY + id);
         const el = byId(ID_SUPER_CONTAINER + id);
 
@@ -1222,7 +1218,7 @@ interface ElementConfig {
         onClick(replyButton, () => global.replyShow(id))
     }
 
-    global.commentCollapse = id => {
+    global.commentCollapse = (id: string) => {
         const children = byId(ID_CHILDREN + id);
         let button = byId(ID_COLLAPSE + id);
 
@@ -1239,7 +1235,7 @@ interface ElementConfig {
         onClick(button, () => global.commentUncollapse(id));
     }
 
-    global.commentUncollapse = id => {
+    global.commentUncollapse = (id: string) => {
         const children = byId(ID_CHILDREN + id);
         let button = byId(ID_COLLAPSE + id);
 
@@ -1256,18 +1252,18 @@ interface ElementConfig {
         onClick(button, () => global.commentCollapse(id));
     }
 
-    function parentMap(comments) {
-        const m = {};
+    function parentMap(comments: Comment[]): CommentsMap {
+        const m: CommentsMap = {};
         comments.forEach(comment => {
             const parentHex = comment.parentHex;
             if (!(parentHex in m)) {
                 m[parentHex] = [];
             }
 
-            comment.creationDate = new Date(comment.creationDate);
+            comment.creationMs = new Date(comment.creationDate).getTime();
 
             m[parentHex].push(comment);
-            commentsMap[comment.commentHex] = {
+            commentsByHex[comment.commentHex] = {
                 html: comment.html,
                 markdown: comment.markdown,
             };
@@ -1286,7 +1282,7 @@ interface ElementConfig {
         }
     }
 
-    function submitAuthenticated(id) {
+    function submitAuthenticated(id: string) {
         if (isAuthenticated) {
             global.commentNew(id, commenterTokenGet(), true);
             return;
@@ -1295,12 +1291,12 @@ interface ElementConfig {
         global.loginBoxShow(id);
     }
 
-    function submitAnonymous(id) {
+    function submitAnonymous(id: string) {
         chosenAnonymous = true;
         global.commentNew(id, 'anonymous', true);
     }
 
-    function submitAccountDecide(id) {
+    function submitAccountDecide(id: string) {
         if (requireIdentification) {
             submitAuthenticated(id);
             return;
@@ -1325,7 +1321,7 @@ interface ElementConfig {
     }
 
     // OAuth logic
-    global.commentoAuth = data => {
+    global.commentoAuth = (data: OAuthResponse) => {
         const provider = data.provider;
         const id = data.id;
         const popup = window.open('', '_blank');
@@ -1379,7 +1375,7 @@ interface ElementConfig {
         append(root, create('div', {id: ID_LOGIN_BOX_CONTAINER}));
     }
 
-    global.popupRender = id => {
+    global.popupRender = (id: string) => {
         const loginBoxContainer     = byId(ID_LOGIN_BOX_CONTAINER);
         addClasses(loginBoxContainer, 'login-box-container');
         setAttr(loginBoxContainer, {style: 'display: none; opacity: 0;'});
@@ -1423,7 +1419,7 @@ interface ElementConfig {
         addClasses(root, 'root-min-height');
 
         onClick(emailButton, () => global.passwordAsk(id));
-        onClick(forgotLink,  () => global.forgotPassword(id));
+        onClick(forgotLink,  () => global.forgotPassword());
         onClick(loginLink,   () => global.popupSwitch(id));
         onClick(close,       () => global.loginBoxClose());
 
@@ -1431,13 +1427,13 @@ interface ElementConfig {
         const oauthProviders = ['google', 'github', 'gitlab'];
         oauthProviders.filter(p => configuredOauths[p]).forEach(provider => {
             const button = create('button', {classes: ['button', `${provider}-button`], innerText: provider, parent: oauthButtons});
-            onClick(button, () => global.commentoAuth({provider: provider, id: id}));
+            onClick(button, () => global.commentoAuth({provider, id}));
             hasOAuth = true;
         });
 
         if (configuredOauths['sso']) {
             const button = create('button', {classes: ['button', 'sso-button'], innerText: 'Single Sign-On', parent: ssoButton});
-            onClick(button, () => global.commentoAuth({provider: 'sso', id: id}));
+            onClick(button, () => global.commentoAuth({provider: 'sso', id}));
             append(ssoButtonContainer, ssoButton);
             append(loginBox, ssoSubtitle);
             append(loginBox, ssoButtonContainer);
@@ -1471,7 +1467,7 @@ interface ElementConfig {
         global.loginBoxClose();
     }
 
-    global.popupSwitch = id => {
+    global.popupSwitch = (id: string) => {
         const emailSubtitle = byId(ID_LOGIN_BOX_EMAIL_SUBTITLE);
 
         if (oauthButtonsShown) {
@@ -1498,10 +1494,10 @@ interface ElementConfig {
         byId(ID_LOGIN_BOX_EMAIL_INPUT).focus();
     }
 
-    function loginUP(username, password, id) {
+    function loginUP(username: string, password: string, id: string) {
         const json = {
             email: username,
-            password: password,
+            password,
         };
 
         post(`${origin}/api/commenter/login`, json, resp => {
@@ -1535,13 +1531,13 @@ interface ElementConfig {
         });
     }
 
-    global.login = id => {
+    global.login = (id: string) => {
         const email    = byId<HTMLInputElement>(ID_LOGIN_BOX_EMAIL_INPUT);
         const password = byId<HTMLInputElement>(ID_LOGIN_BOX_PASSWORD_INPUT);
         loginUP(email.value, password.value, id);
     }
 
-    global.signup = id => {
+    global.signup = (id: string) => {
         const email    = byId<HTMLInputElement>(ID_LOGIN_BOX_EMAIL_INPUT);
         const name     = byId<HTMLInputElement>(ID_LOGIN_BOX_NAME_INPUT);
         const website  = byId<HTMLInputElement>(ID_LOGIN_BOX_WEBSITE_INPUT);
@@ -1566,7 +1562,7 @@ interface ElementConfig {
         });
     }
 
-    global.passwordAsk = id => {
+    global.passwordAsk = (id: string) => {
         const isSignup = popupBoxType === 'signup';
         const loginBox = byId(ID_LOGIN_BOX);
         const subtitle = byId(ID_LOGIN_BOX_EMAIL_SUBTITLE);
@@ -1613,12 +1609,12 @@ interface ElementConfig {
         byId(isSignup ? ID_LOGIN_BOX_NAME_INPUT : ID_LOGIN_BOX_PASSWORD_INPUT).focus();
     }
 
-    function pageUpdate(callback) {
+    function pageUpdate(callback: CallbackFunction) {
         const data = {
             commenterToken: commenterTokenGet(),
             domain: parent.location.host,
             path: pageId,
-            attributes: {isLocked: isLocked, stickyCommentHex: stickyCommentHex},
+            attributes: {isLocked, stickyCommentHex},
         };
 
         post(`${origin}/api/page/update`, data, resp => {
@@ -1644,7 +1640,7 @@ interface ElementConfig {
         });
     }
 
-    global.commentSticky = commentHex => {
+    global.commentSticky = (commentHex: string) => {
         if (stickyCommentHex !== 'none') {
             const sticky = byId(ID_STICKY + stickyCommentHex);
             removeClasses(sticky, 'option-unsticky');
@@ -1709,7 +1705,7 @@ interface ElementConfig {
         setAttr(loginBoxContainer, {style: 'display: none'});
     }
 
-    global.loginBoxShow = id => {
+    global.loginBoxShow = (id: string) => {
         const mainArea = byId(ID_MAIN_AREA);
         const loginBoxContainer = byId(ID_LOGIN_BOX_CONTAINER);
 
@@ -1726,20 +1722,20 @@ interface ElementConfig {
     function dataTagsLoad() {
         const scripts = tags('script');
         for (let i = 0; i < scripts.length; i++) {
-            const scr = scripts[i];
+            const scr = scripts[i] as HTMLScriptElement;
             if (scr.src.match(/\/js\/commento\.js$/)) {
                 const pid = getAttr(scr, 'data-page-id');
                 if (pid !== undefined) {
                     pageId = pid;
                 }
                 cssOverride = getAttr(scr, 'data-css-override');
-                autoInit = getAttr(scr, 'data-auto-init');
+                autoInit = getAttr(scr, 'data-auto-init') !== 'false';
                 ID_ROOT = getAttr(scr, 'data-id-root');
                 if (ID_ROOT === undefined) {
                     ID_ROOT = 'commento';
                 }
-                noFonts = getAttr(scr, 'data-no-fonts');
-                hideDeleted = getAttr(scr, 'data-hide-deleted');
+                noFonts = getAttr(scr, 'data-no-fonts') === 'true';
+                hideDeleted = getAttr(scr, 'data-hide-deleted') === 'true';
             }
         }
     }
@@ -1765,7 +1761,7 @@ interface ElementConfig {
         }
     }
 
-    global.main = callback => {
+    global.main = (callback: CallbackFunction) => {
         root = byId(ID_ROOT);
         if (root === null) {
             console.log(`[commento] error: no root element with ID '${ID_ROOT}' found`);
@@ -1777,7 +1773,7 @@ interface ElementConfig {
         }
 
         addClasses(root, 'root');
-        if (noFonts !== 'true') {
+        if (!noFonts) {
             addClasses(root, 'root-font');
         }
 
@@ -1814,10 +1810,8 @@ interface ElementConfig {
 
         dataTagsLoad();
 
-        if (autoInit === 'true' || autoInit === undefined) {
+        if (autoInit) {
             global.main(undefined);
-        } else if (autoInit !== 'false') {
-            console.log('[commento] error: invalid value for data-auto-init; allowed values: true, false');
         }
     }
 
