@@ -173,7 +173,7 @@ gulp.task('js-devel', function (done) {
 
     gulp.src('src/index.ts')
         .pipe(webpack(webpackConfig))
-        .pipe(gulp.dest(`${prodPath}js`))
+        .pipe(gulp.dest(`${develPath}js`))
     done();
 });
 
