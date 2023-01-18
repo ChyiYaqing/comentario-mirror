@@ -1,7 +1,19 @@
 // noinspection DuplicatedCode
 
+type CallbackFunction = () => void;
+
+interface ElementConfig {
+    id?:        string;
+    classes?:   string | string[];
+    innerText?: string;
+    innerHTML?: string;
+    parent?:    HTMLElement;
+    children?:  HTMLElement[];
+
+    [ k: string ]: any;
+}
+
 (function (global, document) {
-    'use strict';
 
     // Do not use other files like utils.js and http.js in the gulpfile to build
     // commento.js for the following reasons:
@@ -77,7 +89,7 @@
     let autoInit;
     let isAuthenticated = false;
     let comments = [];
-    let commentsMap = {};
+    const commentsMap = {};
     let commenters = {};
     let requireIdentification = true;
     let isModerator = false;
@@ -86,7 +98,7 @@
     let isLocked = false;
     let stickyCommentHex = 'none';
     let shownReply = {};
-    let shownEdit = {};
+    const shownEdit = {};
     let configuredOauths = {};
     let anonymousOnly = false;
     let popupBoxType = 'login';
@@ -95,8 +107,8 @@
     let selfHex = undefined;
     let mobileView = null;
 
-    function byId(id) {
-        return document.getElementById(id);
+    function byId<T extends HTMLElement>(id): T {
+        return document.getElementById(id) as T;
     }
 
     function tags(tag) {
@@ -137,13 +149,13 @@
 
     /**
      * Create a new HTML element with the given tag and configuration.
-     * @param tagName name of the tag.
-     * @param config configuration object, optionally providing id, classes, parent, innerText, and other attributes.
+     * @param tagName Name of the tag.
+     * @param config Optional configuration object.
      * @returns {*} The created and configured HTML element.
      */
-    function create(tagName, config) {
+    function create<K extends keyof HTMLElementTagNameMap>(tagName: K, config?: ElementConfig): HTMLElementTagNameMap[K] {
         // Create a new HTML element
-        const e = document.createElement(tagName);
+        const e = document.createElement(tagName) as HTMLElementTagNameMap[K];
 
         // If there's any config passed
         if (config) {
@@ -169,7 +181,7 @@
             }
 
             // Set up the parent, if given, and clean it up from the config
-            let parent;
+            let parent: HTMLElement;
             if ('parent' in config) {
                 parent = config.parent;
                 delete config.parent;
@@ -203,9 +215,9 @@
         return attr === void 0 ? undefined : attr.value;
     }
 
-    function removeAllEventListeners(node) {
+    function removeAllEventListeners<T extends HTMLElement>(node: T): T {
         if (node !== null) {
-            const replacement = node.cloneNode(true);
+            const replacement = node.cloneNode(true) as T;
             if (node.parentNode !== null) {
                 node.parentNode.replaceChild(replacement, node);
                 return replacement;
@@ -214,12 +226,12 @@
         return node;
     }
 
-    function onClick(node, f, arg) {
-        node.addEventListener('click', () => f(arg), false);
+    function onClick(node: HTMLElement, handler: CallbackFunction) {
+        node.addEventListener('click', handler, false);
     }
 
-    function onLoad(node, f, arg) {
-        node.addEventListener('load', () => f(arg));
+    function onLoad(node: HTMLElement, handler: CallbackFunction) {
+        node.addEventListener('load', handler);
     }
 
     /**
@@ -318,7 +330,7 @@
         }
 
         onClick(btnLogout, global.logout);
-        onClick(btnSettings, notificationSettings, email.unsubscribeSecretHex);
+        onClick(btnSettings, () => notificationSettings(email.unsubscribeSecretHex));
         onClick(btnEditProfile, profileEdit);
 
         // Add an avatar
@@ -374,13 +386,13 @@
         });
     }
 
-    function cssLoad(file, f) {
+    function cssLoad(url: string, handler: CallbackFunction) {
         const link = create('link', {
-            href:   file,
+            href:   url,
             rel:    'stylesheet',
             type:   'text/css',
         });
-        onLoad(link, f);
+        onLoad(link, handler);
         append(document.getElementsByTagName('head')[0], link);
     }
 
@@ -439,7 +451,7 @@
     }
 
     function errorShow(text) {
-        const el = byId(ID_ERROR);
+        const el = byId<HTMLDivElement>(ID_ERROR);
         el.innerText = text;
         setAttr(el, {style: 'display: block;'});
     }
@@ -505,21 +517,20 @@
         });
 
         // Add a collapse button
-        let markdownButton = removeAllEventListeners(byId(ID_MARKDOWN_BUTTON + id));
-        onClick(markdownButton, markdownHelpHide, id);
+        const markdownButton = removeAllEventListeners(byId<HTMLAnchorElement>(ID_MARKDOWN_BUTTON + id));
+        onClick(markdownButton, () => markdownHelpHide(id));
     }
 
     function markdownHelpHide(id) {
-        let markdownButton = byId(ID_MARKDOWN_BUTTON + id);
+        let markdownButton = byId<HTMLAnchorElement>(ID_MARKDOWN_BUTTON + id);
         const markdownHelp = byId(ID_MARKDOWN_HELP + id);
 
         markdownButton = removeAllEventListeners(markdownButton);
-        onClick(markdownButton, markdownHelpShow, id);
-
+        onClick(markdownButton, () => markdownHelpShow(id));
         remove(markdownHelp);
     }
 
-    function textareaCreate(id, edit) {
+    function textareaCreate(id: string, edit: boolean) {
         const textOuter        = create('div',      {id: ID_SUPER_CONTAINER + id, classes: 'button-margin'});
         const textCont         = create('div',      {id: ID_TEXTAREA_CONTAINER + id, classes: 'textarea-container', parent: textOuter});
         const textArea         = create('textarea', {id: ID_TEXTAREA + id, placeholder: 'Add a comment', parent: textCont});
@@ -545,12 +556,12 @@
 
         if (anonymousOnly) {
             anonCheckbox.checked = true;
-            anonCheckbox.setAttribute('disabled', true);
+            anonCheckbox.setAttribute('disabled', 'true');
         }
 
         textArea.oninput = autoExpander(textArea);
-        onClick(submitButton, edit ? commentEdit : submitAccountDecide, id);
-        onClick(markdownButton, markdownHelpShow, id);
+        onClick(submitButton, () => edit ? commentEdit(id) : submitAccountDecide(id));
+        onClick(markdownButton, () => markdownHelpShow(id));
         if (!requireIdentification && !edit) {
             append(textOuter, anonCheckboxCont);
         }
@@ -567,7 +578,7 @@
     function sortPolicyApply(policy) {
         removeClasses(byId(ID_SORT_POLICY + sortPolicy), 'sort-policy-button-selected');
 
-        const commentsArea = byId(ID_COMMENTS_AREA);
+        const commentsArea = byId<HTMLDivElement>(ID_COMMENTS_AREA);
         commentsArea.innerHTML = '';
         sortPolicy = policy;
         const cards = commentsRecurse(parentMap(comments), 'root');
@@ -581,14 +592,14 @@
     function sortPolicyBox() {
         const container = create('div', {classes: 'sort-policy-buttons-container'});
         const buttonBar = create('div', {classes: 'sort-policy-buttons', parent: container});
-        for (let sp in sortPolicyNames) {
+        for (const sp in sortPolicyNames) {
             const sortPolicyButton = create('a', {
                 id:        ID_SORT_POLICY +sp,
                 classes:   ['sort-policy-button', sp === sortPolicy && 'sort-policy-button-selected'],
                 innerText: sortPolicyNames[sp],
                 parent:    buttonBar,
             });
-            onClick(sortPolicyButton, sortPolicyApply, sp);
+            onClick(sortPolicyButton, () => sortPolicyApply(sp));
         }
         return container;
     }
@@ -599,7 +610,7 @@
         const loginText       = create('div', {classes: 'login-text', innerText: 'Login'});
         const preCommentsArea = create('div', {id: ID_PRE_COMMENTS_AREA});
         const commentsArea    = create('div', {id: ID_COMMENTS_AREA, classes: 'comments'});
-        onClick(loginText, global.loginBoxShow, null);
+        onClick(loginText, () => global.loginBoxShow(null));
 
         // If there's an OAuth provider configured, add a Login button
         if (Object.keys(configuredOauths).some(k => configuredOauths[k])) {
@@ -613,7 +624,7 @@
                 append(mainArea, messageCreate('This thread is locked. You cannot add new comments.'));
                 remove(byId(ID_LOGIN));
             } else {
-                append(mainArea, login, textareaCreate('root'));
+                append(mainArea, login, textareaCreate('root', false));
             }
         } else {
             if (isAuthenticated) {
@@ -621,7 +632,7 @@
             } else {
                 append(mainArea, login);
             }
-            append(mainArea, textareaCreate('root'));
+            append(mainArea, textareaCreate('root', false));
         }
 
         if (comments.length > 0) {
@@ -637,9 +648,9 @@
     }
 
     global.commentNew = (id, commenterToken, appendCard, callback) => {
-        const textareaSuperContainer = byId(ID_SUPER_CONTAINER + id);
-        const textarea = byId(ID_TEXTAREA + id);
-        const replyButton = byId(ID_REPLY + id);
+        const textareaSuperContainer = byId<HTMLDivElement>(ID_SUPER_CONTAINER + id);
+        const textarea = byId<HTMLTextAreaElement>(ID_TEXTAREA + id);
+        const replyButton = byId<HTMLButtonElement>(ID_REPLY + id);
 
         const markdown = textarea.value;
 
@@ -706,7 +717,7 @@
 
                     replyButton.title = 'Reply to this comment';
 
-                    onClick(replyButton, global.replyShow, id)
+                    onClick(replyButton, () => global.replyShow(id))
                 } else {
                     textarea.value = '';
                     insertAfter(byId(ID_PRE_COMMENTS_AREA), newCard);
@@ -879,22 +890,22 @@
                 }
             }
 
-            onClick(edit, global.editShow, hex);
-            onClick(collapse, global.commentCollapse, hex);
-            onClick(approve, global.commentApprove, hex);
-            onClick(remove, global.commentDelete, hex);
-            onClick(sticky, global.commentSticky, hex);
+            onClick(edit,     () => global.editShow(hex));
+            onClick(collapse, () => global.commentCollapse(hex));
+            onClick(approve,  () => global.commentApprove(hex));
+            onClick(remove,   () => global.commentDelete(hex));
+            onClick(sticky,   () => global.commentSticky(hex));
 
             if (isAuthenticated) {
                 const upDown = upDownOnClickSet(upvote, downvote, hex, comment.direction);
                 upvote = upDown[0];
                 downvote = upDown[1];
             } else {
-                onClick(upvote, global.loginBoxShow, null);
-                onClick(downvote, global.loginBoxShow, null);
+                onClick(upvote,   () => global.loginBoxShow(null));
+                onClick(downvote, () => global.loginBoxShow(null));
             }
 
-            onClick(reply, global.replyShow, hex);
+            onClick(reply, () => global.replyShow(hex));
 
             if (commenter.link !== 'undefined' && commenter.link !== 'https://undefined' && commenter.link !== '') {
                 setAttr(name, {href: commenter.link});
@@ -1004,7 +1015,7 @@
             }
 
             errorHide();
-            const text = byId(ID_TEXT + commentHex);
+            const text = byId<HTMLDivElement>(ID_TEXT + commentHex);
             text.innerText = '[deleted]';
         });
     }
@@ -1022,14 +1033,14 @@
         downvote = removeAllEventListeners(downvote);
 
         if (direction > 0) {
-            onClick(upvote, global.vote, [commentHex, [1, 0]]);
-            onClick(downvote, global.vote, [commentHex, [1, -1]]);
+            onClick(upvote,   () => global.vote([commentHex, [1, 0]]));
+            onClick(downvote, () => global.vote([commentHex, [1, -1]]));
         } else if (direction < 0) {
-            onClick(upvote, global.vote, [commentHex, [-1, 1]]);
-            onClick(downvote, global.vote, [commentHex, [-1, 0]]);
+            onClick(upvote,   () => global.vote([commentHex, [-1, 1]]));
+            onClick(downvote, () => global.vote([commentHex, [-1, 0]]));
         } else {
-            onClick(upvote, global.vote, [commentHex, [0, 1]]);
-            onClick(downvote, global.vote, [commentHex, [0, -1]]);
+            onClick(upvote,   () => global.vote([commentHex, [0, 1]]));
+            onClick(downvote, () => global.vote([commentHex, [0, -1]]));
         }
 
         return [upvote, downvote];
@@ -1040,9 +1051,9 @@
         const oldDirection = data[1][0];
         const newDirection = data[1][1];
 
-        let upvote = byId(ID_UPVOTE + commentHex);
-        let downvote = byId(ID_DOWNVOTE + commentHex);
-        const score = byId(ID_SCORE + commentHex);
+        let upvote   = byId<HTMLButtonElement>(ID_UPVOTE + commentHex);
+        let downvote = byId<HTMLButtonElement>(ID_DOWNVOTE + commentHex);
+        const score  = byId<HTMLDivElement>(ID_SCORE + commentHex);
 
         const json = {
             commenterToken: commenterTokenGet(),
@@ -1078,7 +1089,7 @@
     }
 
     function commentEdit(id) {
-        const textarea = byId(ID_TEXTAREA + id);
+        const textarea = byId<HTMLTextAreaElement>(ID_TEXTAREA + id);
         const markdown = textarea.value;
         if (markdown === '') {
             addClasses(textarea, 'red-border');
@@ -1104,8 +1115,8 @@
             commentsMap[id].markdown = markdown;
             commentsMap[id].html = resp.html;
 
-            let editButton = byId(ID_EDIT + id);
-            const textarea = byId(ID_SUPER_CONTAINER + id);
+            let editButton = byId<HTMLButtonElement>(ID_EDIT + id);
+            const textarea = byId<HTMLTextAreaElement>(ID_SUPER_CONTAINER + id);
 
             textarea.innerHTML = commentsMap[id].html;
             textarea.id = ID_TEXT + id;
@@ -1117,7 +1128,7 @@
             editButton.title = 'Edit comment';
 
             editButton = removeAllEventListeners(editButton);
-            onClick(editButton, global.editShow, id)
+            onClick(editButton, () => global.editShow(id))
 
             let message = '';
             switch (resp.state) {
@@ -1140,14 +1151,14 @@
             return;
         }
 
-        const text = byId(ID_TEXT + id);
+        const text = byId<HTMLDivElement>(ID_TEXT + id);
         shownEdit[id] = true;
         text.replaceWith(textareaCreate(id, true));
 
-        const textarea = byId(ID_TEXTAREA + id);
+        const textarea = byId<HTMLTextAreaElement>(ID_TEXTAREA + id);
         textarea.value = commentsMap[id].markdown;
 
-        let editButton = byId(ID_EDIT + id);
+        let editButton = byId<HTMLButtonElement>(ID_EDIT + id);
 
         removeClasses(editButton, 'option-edit');
         addClasses(editButton, 'option-cancel');
@@ -1155,7 +1166,7 @@
         editButton.title = 'Cancel edit';
 
         editButton = removeAllEventListeners(editButton);
-        onClick(editButton, global.editCollapse, id);
+        onClick(editButton, () => global.editCollapse(id));
     };
 
     global.editCollapse = id => {
@@ -1172,7 +1183,7 @@
         editButton.title = 'Edit comment';
 
         editButton = removeAllEventListeners(editButton);
-        onClick(editButton, global.editShow, id)
+        onClick(editButton, () => global.editShow(id))
     }
 
     global.replyShow = id => {
@@ -1181,7 +1192,7 @@
         }
 
         const text = byId(ID_TEXT + id);
-        insertAfter(text, textareaCreate(id));
+        insertAfter(text, textareaCreate(id, false));
         shownReply[id] = true;
 
         let replyButton = byId(ID_REPLY + id);
@@ -1192,7 +1203,7 @@
         replyButton.title = 'Cancel reply';
 
         replyButton = removeAllEventListeners(replyButton);
-        onClick(replyButton, global.replyCollapse, id);
+        onClick(replyButton, () => global.replyCollapse(id));
     };
 
     global.replyCollapse = id => {
@@ -1208,7 +1219,7 @@
         replyButton.title = 'Reply to this comment';
 
         replyButton = removeAllEventListeners(replyButton);
-        onClick(replyButton, global.replyShow, id)
+        onClick(replyButton, () => global.replyShow(id))
     }
 
     global.commentCollapse = id => {
@@ -1225,7 +1236,7 @@
         button.title = 'Expand children';
 
         button = removeAllEventListeners(button);
-        onClick(button, global.commentUncollapse, id);
+        onClick(button, () => global.commentUncollapse(id));
     }
 
     global.commentUncollapse = id => {
@@ -1242,7 +1253,7 @@
         button.title = 'Collapse children';
 
         button = removeAllEventListeners(button);
-        onClick(button, global.commentCollapse, id);
+        onClick(button, () => global.commentCollapse(id));
     }
 
     function parentMap(comments) {
@@ -1295,8 +1306,8 @@
             return;
         }
 
-        const anonymousCheckbox = byId(ID_ANONYMOUS_CHECKBOX + id);
-        const textarea = byId(ID_TEXTAREA + id);
+        const anonCheckbox = byId<HTMLInputElement>(ID_ANONYMOUS_CHECKBOX + id);
+        const textarea = byId<HTMLTextAreaElement>(ID_TEXTAREA + id);
         const markdown = textarea.value;
 
         if (markdown === '') {
@@ -1306,7 +1317,7 @@
             removeClasses(textarea, 'red-border');
         }
 
-        if (!anonymousCheckbox.checked) {
+        if (!anonCheckbox.checked) {
             submitAuthenticated(id);
         } else {
             submitAnonymous(id);
@@ -1358,7 +1369,7 @@
         });
     }
 
-    function refreshAll(callback) {
+    function refreshAll(callback?: CallbackFunction) {
         byId(ID_ROOT).innerHTML = '';
         shownReply = {};
         global.main(callback);
@@ -1411,22 +1422,22 @@
 
         addClasses(root, 'root-min-height');
 
-        onClick(emailButton, global.passwordAsk, id);
-        onClick(forgotLink, global.forgotPassword, id);
-        onClick(loginLink, global.popupSwitch, id);
-        onClick(close, global.loginBoxClose);
+        onClick(emailButton, () => global.passwordAsk(id));
+        onClick(forgotLink,  () => global.forgotPassword(id));
+        onClick(loginLink,   () => global.popupSwitch(id));
+        onClick(close,       () => global.loginBoxClose());
 
         let hasOAuth = false;
         const oauthProviders = ['google', 'github', 'gitlab'];
         oauthProviders.filter(p => configuredOauths[p]).forEach(provider => {
             const button = create('button', {classes: ['button', `${provider}-button`], innerText: provider, parent: oauthButtons});
-            onClick(button, global.commentoAuth, {provider: provider, id: id});
+            onClick(button, () => global.commentoAuth({provider: provider, id: id}));
             hasOAuth = true;
         });
 
         if (configuredOauths['sso']) {
             const button = create('button', {classes: ['button', 'sso-button'], innerText: 'Single Sign-On', parent: ssoButton});
-            onClick(button, global.commentoAuth, {provider: 'sso', id: id});
+            onClick(button, () => global.commentoAuth({provider: 'sso', id: id}));
             append(ssoButtonContainer, ssoButton);
             append(loginBox, ssoSubtitle);
             append(loginBox, ssoButtonContainer);
@@ -1525,21 +1536,21 @@
     }
 
     global.login = id => {
-        const email = byId(ID_LOGIN_BOX_EMAIL_INPUT);
-        const password = byId(ID_LOGIN_BOX_PASSWORD_INPUT);
+        const email    = byId<HTMLInputElement>(ID_LOGIN_BOX_EMAIL_INPUT);
+        const password = byId<HTMLInputElement>(ID_LOGIN_BOX_PASSWORD_INPUT);
         loginUP(email.value, password.value, id);
     }
 
     global.signup = id => {
-        const email = byId(ID_LOGIN_BOX_EMAIL_INPUT);
-        const name = byId(ID_LOGIN_BOX_NAME_INPUT);
-        const website = byId(ID_LOGIN_BOX_WEBSITE_INPUT);
-        const password = byId(ID_LOGIN_BOX_PASSWORD_INPUT);
+        const email    = byId<HTMLInputElement>(ID_LOGIN_BOX_EMAIL_INPUT);
+        const name     = byId<HTMLInputElement>(ID_LOGIN_BOX_NAME_INPUT);
+        const website  = byId<HTMLInputElement>(ID_LOGIN_BOX_WEBSITE_INPUT);
+        const password = byId<HTMLInputElement>(ID_LOGIN_BOX_PASSWORD_INPUT);
 
         const json = {
-            email: email.value,
-            name: name.value,
-            website: website.value,
+            email:    email.value,
+            name:     name.value,
+            website:  website.value,
             password: password.value,
         };
 
@@ -1564,14 +1575,12 @@
             byId(ID_LOGIN_BOX_EMAIL_BUTTON),
             byId(ID_LOGIN_BOX_LOGIN_LINK_CONTAINER),
             byId(ID_LOGIN_BOX_FORGOT_LINK_CONTAINER));
-        if (oauthButtonsShown) {
-            if (configuredOauths.length > 0) {
-                remove(
-                    byId(ID_LOGIN_BOX_HR1),
-                    byId(ID_LOGIN_BOX_HR2),
-                    byId(ID_LOGIN_BOX_OAUTH_PRETEXT),
-                    byId(ID_LOGIN_BOX_OAUTH_BUTTONS_CONTAINER));
-            }
+        if (oauthButtonsShown && Object.keys(configuredOauths).length) {
+            remove(
+                byId(ID_LOGIN_BOX_HR1),
+                byId(ID_LOGIN_BOX_HR2),
+                byId(ID_LOGIN_BOX_OAUTH_PRETEXT),
+                byId(ID_LOGIN_BOX_OAUTH_BUTTONS_CONTAINER));
         }
 
         const controls = isSignup ?
@@ -1596,7 +1605,7 @@
 
             if (c.type === 'password') {
                 const fieldButton = create('button', {classes: 'email-button', innerText: popupBoxType, parent: field});
-                onClick(fieldButton, isSignup ? global.signup : global.login, id);
+                onClick(fieldButton, isSignup ? () => global.signup(id) : () => global.login(id));
             }
             append(loginBox, fieldContainer);
         });
@@ -1624,7 +1633,7 @@
     }
 
     global.threadLockToggle = () => {
-        const lock = byId(ID_MOD_TOOLS_LOCK_BUTTON);
+        const lock = byId<HTMLButtonElement>(ID_MOD_TOOLS_LOCK_BUTTON);
 
         isLocked = !isLocked;
 
@@ -1838,4 +1847,4 @@
 
     readyLoad();
 
-}(window.commento, document));
+}((window as any).commento, document));

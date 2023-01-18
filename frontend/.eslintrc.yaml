@@ -1,7 +1,9 @@
+# It's our root config
+root: true
+
 env:
   es6: true
-globals:
-  $: true
+
 rules:
   no-bitwise: 2
   camelcase: 2
@@ -33,3 +35,22 @@ rules:
   strict:
   - error
   - function
+
+overrides:
+  # JavaScript files
+  - files: '*.js'
+    globals:
+      $: true
+
+  # TypeScript files
+  - files: '*.ts'
+    parser: '@typescript-eslint/parser'
+    plugins:
+      - '@typescript-eslint'
+    extends:
+      - 'eslint:recommended'
+      - 'plugin:@typescript-eslint/eslint-recommended'
+      - 'plugin:@typescript-eslint/recommended'
+    rules:
+      '@typescript-eslint/no-explicit-any': off
+

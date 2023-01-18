@@ -10,6 +10,8 @@ const terser = require('gulp-terser');
 const concat = require('gulp-concat');
 const rename = require('gulp-rename');
 const eslint = require('gulp-eslint');
+const webpack = require('webpack-stream');
+const webpackConfig = require('./webpack.config.js')
 
 const develPath = 'build/devel/';
 const prodPath = 'build/prod/';
@@ -84,7 +86,6 @@ const jsCompileMap = {
         'js/utils.js',
         'js/logout.js'
     ],
-    'js/commento.js': ['js/commento.js'],
     'js/count.js': ['js/count.js'],
     'js/unsubscribe.js': [
         'js/constants.js',
@@ -169,6 +170,10 @@ gulp.task('js-devel', function (done) {
             .pipe(sourcemaps.write())
             .pipe(gulp.dest(develPath))
     }
+
+    gulp.src('src/index.ts')
+        .pipe(webpack(webpackConfig))
+        .pipe(gulp.dest(`${prodPath}js`))
     done();
 });
 
@@ -181,6 +186,10 @@ gulp.task('js-prod', function (done) {
             .pipe(terser())
             .pipe(gulp.dest(prodPath))
     }
+
+    gulp.src('src/index.ts')
+        .pipe(webpack(webpackConfig))
+        .pipe(gulp.dest(`${prodPath}js`))
     done();
 });
 
