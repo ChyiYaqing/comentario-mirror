@@ -215,9 +215,7 @@
     }
 
     function onClick(node, f, arg) {
-        node.addEventListener('click', function () {
-            f(arg);
-        }, false);
+        node.addEventListener('click', () => f(arg), false);
     }
 
     function onLoad(node, f, arg) {
@@ -230,14 +228,16 @@
      * @param values Object that provides attribute names (keys) and their values. null and undefined values cause attribute removal from the node.
      */
     function setAttr(node, values) {
-        Object.keys(values).forEach(k => {
-            const v = values[k];
-            if (v === undefined || v === null) {
-                node.removeAttribute(k);
-            } else {
-                node.setAttribute(k, v)
-            }
-        });
+        if (node) {
+            Object.keys(values).forEach(k => {
+                const v = values[k];
+                if (v === undefined || v === null) {
+                    node.removeAttribute(k);
+                } else {
+                    node.setAttribute(k, v)
+                }
+            });
+        }
     }
 
     function post(url, data, callback) {
@@ -247,7 +247,7 @@
         xmlDoc.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
         xmlDoc.onload = function () {
             callback(JSON.parse(xmlDoc.response));
-        };
+        }
 
         xmlDoc.send(JSON.stringify(data));
     }
@@ -260,7 +260,7 @@
     }
 
     function call(callback) {
-        if (typeof (callback) === 'function') {
+        if (typeof callback === 'function') {
             callback();
         }
     }
@@ -1505,17 +1505,21 @@
             cookieSet('commentoCommenterToken', resp.commenterToken);
 
             selfLoad(resp.commenter, resp.email);
-            allShow();
 
             remove(byId(ID_LOGIN));
-            if (id !== null) {
-                global.commentNew(id, resp.commenterToken, false, () => {
-                    global.loginBoxClose();
-                    commentsGet(commentsRender);
-                });
-            } else {
+
+            const postLogin = () => {
                 global.loginBoxClose();
-                commentsGet(commentsRender);
+                commentsGet(() => {
+                    commentsRender();
+                    allShow();
+                });
+            }
+
+            if (id !== null) {
+                global.commentNew(id, resp.commenterToken, false, postLogin);
+            } else {
+                postLogin();
             }
         });
     }
@@ -1777,7 +1781,7 @@
         const footer = footerLoad();
         cssLoad(`${cdn}/css/commento.css`, loadCssOverride);
 
-        selfGet(() => {
+        selfGet(() =>
             commentsGet(() => {
                 modToolsCreate();
                 rootCreate(() => {
@@ -1788,8 +1792,7 @@
                     nameWidthFix();
                     call(callback);
                 });
-            });
-        });
+            }));
     }
 
     let initted = false;

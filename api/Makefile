@@ -26,12 +26,15 @@ clean:
 
 devel-go:
 	go mod tidy
-	go build -v -o $(GO_DEVEL_BUILD_BINARY) -ldflags "-X main.version=$(shell git describe --tags)"
+    # Statically link the executable so that we can run that in Alpine
+	# -a forces a rebuild of all packages, which is what we want when we build against Alpine (using static linking)
+	CGO_ENABLED=0 go build -a -v -o $(GO_DEVEL_BUILD_BINARY) -ldflags "-X main.version=$(shell git describe --tags)"
 
 prod-go:
 	go mod tidy
+    # Statically link the executable so that we can run that in Alpine
 	# -a forces a rebuild of all packages, which is what we want when we build against Alpine (using static linking)
-	go build -a -v -o $(GO_PROD_BUILD_BINARY) -ldflags "-w -s -X main.version=$(shell git describe --tags)"
+	CGO_ENABLED=0 go build -a -v -o $(GO_PROD_BUILD_BINARY) -ldflags "-w -s -X main.version=$(shell git describe --tags)"
 
 test-go:
 	go mod tidy

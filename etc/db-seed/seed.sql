@@ -1,3 +1,5 @@
+-- noinspection SpellCheckingInspectionForFile
+
 --
 -- PostgreSQL database dump
 --
