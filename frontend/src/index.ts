@@ -50,6 +50,7 @@ interface ElementConfig {
     const ID_LOGIN_BOX = 'commento-login-box';
     const ID_LOGIN_BOX_EMAIL_SUBTITLE = 'commento-login-box-email-subtitle';
     const ID_LOGIN_BOX_EMAIL_INPUT = 'commento-login-box-email-input';
+    const ID_LOGIN_BOX_PASSWORD_BUTTON = 'commento-login-box-password-button';
     const ID_LOGIN_BOX_PASSWORD_INPUT = 'commento-login-box-password-input';
     const ID_LOGIN_BOX_NAME_INPUT = 'commento-login-box-name-input';
     const ID_LOGIN_BOX_WEBSITE_INPUT = 'commento-login-box-website-input';
@@ -121,6 +122,7 @@ interface ElementConfig {
     let sortPolicy: SortPolicy = 'score-desc';
     let selfHex: string = undefined;
     let mobileView: boolean | null = null;
+    const loadedCss: { [k: string]: boolean } = {};
 
     function byId<T extends HTMLElement>(id: string): T {
         return document.getElementById(id) as T;
@@ -370,11 +372,15 @@ interface ElementConfig {
      * @param url Stylesheet URL.
      */
     function cssLoad(url: string): Promise<void> {
-        return new Promise(resolve => {
-            const link = create('link', {href: url, rel: 'stylesheet', type: 'text/css'});
-            link.addEventListener('load', () => resolve());
-            append(document.getElementsByTagName('head')[0], link);
-        });
+        // Don't bother if the stylesheet has been loaded already
+        return loadedCss[url] ?
+            Promise.resolve() :
+            new Promise(resolve => {
+                loadedCss[url] = true;
+                const link = create('link', {href: url, rel: 'stylesheet', type: 'text/css'});
+                link.addEventListener('load', () => resolve());
+                append(document.getElementsByTagName('head')[0], link);
+            });
     }
 
     function footerLoad() {
@@ -1338,21 +1344,33 @@ interface ElementConfig {
     }
 
     global.popupRender = (id: string) => {
-        const loginBoxContainer     = byId(ID_LOGIN_BOX_CONTAINER);
+        const loginBoxContainer = byId(ID_LOGIN_BOX_CONTAINER);
         addClasses(loginBoxContainer, 'login-box-container');
         setAttr(loginBoxContainer, {style: 'display: none; opacity: 0;'});
 
-        const loginBox              = create('div', {id: ID_LOGIN_BOX, classes: 'login-box'});
-        const ssoSubtitle           = create('div', {id: ID_LOGIN_BOX_SSO_PRETEXT, classes: 'login-box-subtitle', innerText: `Proceed with ${parent.location.host} authentication`});
-        const ssoButtonContainer    = create('div', {id: ID_LOGIN_BOX_SSO_BUTTON_CONTAINER, classes: 'oauth-buttons-container'});
-        const ssoButton             = create('div', {classes: 'oauth-buttons'});
-        const hr1                   = create('hr', {id: ID_LOGIN_BOX_HR1});
-        const oauthSubtitle         = create('div', {id: ID_LOGIN_BOX_OAUTH_PRETEXT, classes: 'login-box-subtitle', innerText: 'Proceed with social login'});
-        const oauthButtonsContainer = create('div', {id: ID_LOGIN_BOX_OAUTH_BUTTONS_CONTAINER, classes: 'oauth-buttons-container'});
-        const oauthButtons          = create('div', {classes: 'oauth-buttons'});
-        const hr2                   = create('hr', {id: ID_LOGIN_BOX_HR2});
-        const emailSubtitle         = create('div', {id: ID_LOGIN_BOX_EMAIL_SUBTITLE, classes: 'login-box-subtitle', innerText: 'Login with your email address'});
-        const emailButton           = create('button', {id: ID_LOGIN_BOX_EMAIL_BUTTON, classes: 'email-button', innerText: 'Continue'});
+        const loginBox = create('form', {id: ID_LOGIN_BOX, classes: 'login-box'});
+        // This is ugly, must redesign the whole bloody login/signup form
+        loginBox.addEventListener('submit', (e) => {
+            e.preventDefault();
+            if (!byId<HTMLButtonElement>(ID_LOGIN_BOX_PASSWORD_BUTTON)) {
+                global.showPasswordField();
+            } else if (popupBoxType === 'login') {
+                global.login(id);
+            } else {
+                global.signup(id);
+            }
+        })
+
+        const ssoSubtitle           = create('div',    {id: ID_LOGIN_BOX_SSO_PRETEXT, classes: 'login-box-subtitle', innerText: `Proceed with ${parent.location.host} authentication`});
+        const ssoButtonContainer    = create('div',    {id: ID_LOGIN_BOX_SSO_BUTTON_CONTAINER, classes: 'oauth-buttons-container'});
+        const ssoButton             = create('div',    {classes: 'oauth-buttons'});
+        const hr1                   = create('hr',     {id: ID_LOGIN_BOX_HR1});
+        const oauthSubtitle         = create('div',    {id: ID_LOGIN_BOX_OAUTH_PRETEXT, classes: 'login-box-subtitle', innerText: 'Proceed with social login'});
+        const oauthButtonsContainer = create('div',    {id: ID_LOGIN_BOX_OAUTH_BUTTONS_CONTAINER, classes: 'oauth-buttons-container'});
+        const oauthButtons          = create('div',    {classes: 'oauth-buttons'});
+        const hr2                   = create('hr',     {id: ID_LOGIN_BOX_HR2});
+        const emailSubtitle         = create('div',    {id: ID_LOGIN_BOX_EMAIL_SUBTITLE, classes: 'login-box-subtitle', innerText: 'Login with your email address'});
+        const emailButton           = create('button', {id: ID_LOGIN_BOX_EMAIL_BUTTON, type: 'submit', classes: 'email-button', innerText: 'Continue'});
         const emailContainer        = create('div', {
             classes: 'email-container',
             children: [
@@ -1380,9 +1398,8 @@ interface ElementConfig {
 
         addClasses(root, 'root-min-height');
 
-        onClick(emailButton, () => global.passwordAsk(id));
         onClick(forgotLink,  () => global.forgotPassword());
-        onClick(loginLink,   () => global.popupSwitch(id));
+        onClick(loginLink,   () => global.popupSwitch());
         onClick(close,       () => global.loginBoxClose());
 
         let hasOAuth = false;
@@ -1429,7 +1446,7 @@ interface ElementConfig {
         global.loginBoxClose();
     }
 
-    global.popupSwitch = (id: string) => {
+    global.popupSwitch = () => {
         const emailSubtitle = byId(ID_LOGIN_BOX_EMAIL_SUBTITLE);
 
         if (oauthButtonsShown) {
@@ -1452,7 +1469,7 @@ interface ElementConfig {
 
         emailSubtitle.innerText = 'Create an account';
         popupBoxType = 'signup';
-        global.passwordAsk(id);
+        global.showPasswordField();
         byId(ID_LOGIN_BOX_EMAIL_INPUT).focus();
     }
 
@@ -1510,7 +1527,7 @@ interface ElementConfig {
             .then(() => loginUP(data.email, data.password, id));
     }
 
-    global.passwordAsk = (id: string) => {
+    global.showPasswordField = () => {
         const isSignup = popupBoxType === 'signup';
         const loginBox = byId(ID_LOGIN_BOX);
         const subtitle = byId(ID_LOGIN_BOX_EMAIL_SUBTITLE);
@@ -1546,10 +1563,15 @@ interface ElementConfig {
             const field          = create('div', {classes: 'email', parent: fieldContainer});
             const fieldInput     = create('input', c);
             append(field, fieldInput);
-
+            // Add a submit button next to the password input
             if (c.type === 'password') {
-                const fieldButton = create('button', {classes: 'email-button', innerText: popupBoxType, parent: field});
-                onClick(fieldButton, isSignup ? () => global.signup(id) : () => global.login(id));
+                create('button', {
+                    id:        ID_LOGIN_BOX_PASSWORD_BUTTON,
+                    type:      'submit',
+                    classes:   'email-button',
+                    innerText: popupBoxType,
+                    parent:    field,
+                });
             }
             append(loginBox, fieldContainer);
         });
