@@ -41,3 +41,5 @@ export interface OAuthResponse {
     provider?: string;
     id?:       string;
 }
+
+export type SortPolicy = 'score-desc' | 'creationdate-desc' | 'creationdate-asc';

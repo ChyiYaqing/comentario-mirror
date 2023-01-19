@@ -1,10 +1,18 @@
 // noinspection DuplicatedCode
 
-import { Comment, Commenter, CommentMap, CommentsMap, Email, OAuthResponse } from './models';
+import { Comment, Commenter, CommentMap, CommentsMap, Email, OAuthResponse, SortPolicy } from './models';
+import { HttpClient } from './http-client';
+import {
+    ApiCommentEditResponse,
+    ApiCommenterLoginResponse,
+    ApiCommenterTokenNewResponse,
+    ApiCommentListResponse,
+    ApiCommentNewResponse,
+    ApiResponseBase,
+    ApiSelfResponse,
+} from './api';
 
 type CallbackFunction = () => void;
-type ApiCallback = (response: any) => void;
-type SortPolicy = 'score-desc' | 'creationdate-desc' | 'creationdate-asc';
 
 interface ElementConfig {
     id?:        string;
@@ -18,6 +26,12 @@ interface ElementConfig {
 }
 
 (function (global, document) {
+
+    const origin = '[[[.Origin]]]';
+    const cdn = '[[[.CdnPrefix]]]';
+
+    /** HTTP client we'll use for API requests. */
+    const apiClient = new HttpClient(`${origin}/api`);
 
     // Do not use other files like utils.js and http.js in the gulpfile to build
     // commento.js for the following reasons:
@@ -82,9 +96,6 @@ interface ElementConfig {
     const ID_MARKDOWN_HELP = 'commento-markdown-help-';
     const ID_FOOTER = 'commento-footer';
 
-    const origin = '[[[.Origin]]]';
-    const cdn = '[[[.CdnPrefix]]]';
-
     let root: HTMLElement = null;
     let pageId = parent.location.pathname;
     let cssOverride: string;
@@ -113,10 +124,6 @@ interface ElementConfig {
 
     function byId<T extends HTMLElement>(id: string): T {
         return document.getElementById(id) as T;
-    }
-
-    function tags(tag: string) {
-        return document.getElementsByTagName(tag);
     }
 
     function prepend(root: HTMLElement, el: HTMLElement) {
@@ -228,12 +235,13 @@ interface ElementConfig {
         return node;
     }
 
-    function onClick(node: HTMLElement, handler: CallbackFunction) {
-        node.addEventListener('click', handler, false);
-    }
-
-    function onLoad(node: HTMLElement, handler: CallbackFunction) {
-        node.addEventListener('load', handler);
+    /**
+     * Bind a handler to the onClick event of the given element.
+     * @param e Element to bind a handler to.
+     * @param handler Handler to bind.
+     */
+    function onClick(e: HTMLElement, handler: CallbackFunction) {
+        e.addEventListener('click', handler, false);
     }
 
     /**
@@ -254,27 +262,6 @@ interface ElementConfig {
         }
     }
 
-    function post(url: string, data: any, callback: ApiCallback) {
-        const xmlDoc = new XMLHttpRequest();
-        xmlDoc.open('POST', url, true);
-        xmlDoc.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
-        xmlDoc.onload = () => callback(JSON.parse(xmlDoc.response));
-        xmlDoc.send(JSON.stringify(data));
-    }
-
-    function get(url:string, callback: ApiCallback) {
-        const xmlDoc = new XMLHttpRequest();
-        xmlDoc.open('GET', url, true);
-        xmlDoc.onload = () => callback(JSON.parse(xmlDoc.response));
-        xmlDoc.send(null);
-    }
-
-    function call(callback: CallbackFunction) {
-        if (typeof callback === 'function') {
-            callback();
-        }
-    }
-
     function cookieGet(name: string): string {
         const c = `; ${document.cookie}`;
         const x = c.split(`; ${name}=`);
@@ -292,12 +279,12 @@ interface ElementConfig {
         return commenterToken === undefined ? 'anonymous' : commenterToken;
     }
 
-    global.logout = function () {
+    global.logout = (): Promise<void> => {
         cookieSet('commentoCommenterToken', 'anonymous');
         isAuthenticated = false;
         isModerator = false;
         selfHex = undefined;
-        refreshAll();
+        return refreshAll();
     }
 
     function profileEdit() {
@@ -325,9 +312,9 @@ interface ElementConfig {
             setAttr(name, {href: commenter.link});
         }
 
-        onClick(btnLogout, global.logout);
-        onClick(btnSettings, () => notificationSettings(email.unsubscribeSecretHex));
-        onClick(btnEditProfile, profileEdit);
+        onClick(btnLogout,      () => global.logout());
+        onClick(btnSettings,    () => notificationSettings(email.unsubscribeSecretHex));
+        onClick(btnEditProfile, () => profileEdit);
 
         // Add an avatar
         if (commenter.photo === 'undefined') {
@@ -358,38 +345,36 @@ interface ElementConfig {
         isAuthenticated = true;
     }
 
-    function selfGet(callback: CallbackFunction) {
+    function selfGet(): Promise<void> {
         const commenterToken = commenterTokenGet();
         if (commenterToken === 'anonymous') {
             isAuthenticated = false;
-            call(callback);
-            return;
+            return Promise.resolve();
         }
 
-        const json = {commenterToken: commenterTokenGet()};
+        return apiClient.post<ApiSelfResponse>('commenter/self', {commenterToken: commenterTokenGet()})
+            .then(resp => {
+                if (!resp.success) {
+                    cookieSet('commentoCommenterToken', 'anonymous');
+                    return Promise.reject(resp.message);
+                }
 
-        post(`${origin}/api/commenter/self`, json, resp => {
-            if (!resp.success) {
-                cookieSet('commentoCommenterToken', 'anonymous');
-                call(callback);
-                return;
-            }
-
-            selfLoad(resp.commenter, resp.email);
-            allShow();
-
-            call(callback);
-        });
+                selfLoad(resp.commenter, resp.email);
+                allShow();
+                return undefined;
+            });
     }
 
-    function cssLoad(url: string, handler: CallbackFunction) {
-        const link = create('link', {
-            href:   url,
-            rel:    'stylesheet',
-            type:   'text/css',
+    /**
+     * Load the stylesheet with the provided URL into the DOM
+     * @param url Stylesheet URL.
+     */
+    function cssLoad(url: string): Promise<void> {
+        return new Promise(resolve => {
+            const link = create('link', {href: url, rel: 'stylesheet', type: 'text/css'});
+            link.addEventListener('load', () => resolve());
+            append(document.getElementsByTagName('head')[0], link);
         });
-        onLoad(link, handler);
-        append(document.getElementsByTagName('head')[0], link);
     }
 
     function footerLoad() {
@@ -414,36 +399,35 @@ interface ElementConfig {
         });
     }
 
-    function commentsGet(callback: CallbackFunction) {
-        const data = {
-            commenterToken: commenterTokenGet(),
-            domain: parent.location.host,
-            path: pageId,
-        };
+    function commentsGet(): Promise<void> {
+        return apiClient.post<ApiCommentListResponse>(
+            'comment/list',
+            {
+                commenterToken: commenterTokenGet(),
+                domain:         parent.location.host,
+                path:           pageId,
+            })
+            .then(resp => {
+                if (!resp.success) {
+                    errorShow(resp.message);
+                    return;
+                }
 
-        post(`${origin}/api/comment/list`, data, resp => {
-            if (!resp.success) {
-                errorShow(resp.message);
-                return;
-            }
+                errorHide();
 
-            errorHide();
+                requireIdentification = resp.requireIdentification;
+                isModerator = resp.isModerator;
+                isFrozen = resp.isFrozen;
 
-            requireIdentification = resp.requireIdentification;
-            isModerator = resp.isModerator;
-            isFrozen = resp.isFrozen;
+                isLocked = resp.attributes.isLocked;
+                stickyCommentHex = resp.attributes.stickyCommentHex;
 
-            isLocked = resp.attributes.isLocked;
-            stickyCommentHex = resp.attributes.stickyCommentHex;
+                comments = resp.comments;
+                commenters = Object.assign({}, commenters, resp.commenters);
+                configuredOauths = resp.configuredOauths;
 
-            comments = resp.comments;
-            commenters = Object.assign({}, commenters, resp.commenters)
-            configuredOauths = resp.configuredOauths;
-
-            sortPolicy = resp.defaultSortPolicy;
-
-            call(callback);
-        });
+                sortPolicy = resp.defaultSortPolicy;
+            });
     }
 
     function errorShow(text: string) {
@@ -600,7 +584,7 @@ interface ElementConfig {
         return container;
     }
 
-    function rootCreate(callback: CallbackFunction) {
+    function rootCreate(): void {
         const mainArea = byId(ID_MAIN_AREA);
         const login           = create('div', {id: ID_LOGIN, classes: 'login'});
         const loginText       = create('div', {classes: 'login-text', innerText: 'Login'});
@@ -636,14 +620,13 @@ interface ElementConfig {
         }
         append(mainArea, preCommentsArea, commentsArea);
         append(root, mainArea);
-        call(callback);
     }
 
     function messageCreate(text: string): HTMLDivElement {
         return create('div', {classes: 'moderation-notice', innerText: text});
     }
 
-    global.commentNew = (id: string, commenterToken: string, appendCard: boolean, callback?: CallbackFunction) => {
+    global.commentNew = (id: string, commenterToken: string, appendCard: boolean): Promise<void> => {
         const container   = byId<HTMLDivElement>(ID_SUPER_CONTAINER + id);
         const textarea    = byId<HTMLTextAreaElement>(ID_TEXTAREA + id);
         const replyButton = byId<HTMLButtonElement>(ID_REPLY + id);
@@ -652,7 +635,7 @@ interface ElementConfig {
 
         if (markdown === '') {
             addClasses(textarea, 'red-border');
-            return;
+            return Promise.reject();
         }
 
         removeClasses(textarea, 'red-border');
@@ -665,65 +648,64 @@ interface ElementConfig {
             markdown,
         };
 
-        post(`${origin}/api/comment/new`, data, resp => {
-            if (!resp.success) {
-                errorShow(resp.message);
-                return;
-            }
-
-            errorHide();
-
-            let message = '';
-            switch (resp.state) {
-            case 'unapproved':
-                message = 'Your comment is under moderation.';
-                break;
-            case 'flagged':
-                message = 'Your comment was flagged as spam and is under moderation.';
-                break;
-            }
-
-            if (message !== '') {
-                prepend(byId(ID_SUPER_CONTAINER + id), messageCreate(message));
-            }
-
-            const comment: Comment = {
-                commentHex:   resp.commentHex,
-                commenterHex: selfHex === undefined || commenterToken === 'anonymous' ? 'anonymous' : selfHex,
-                markdown,
-                html:         resp.html,
-                parentHex:    'root',
-                score:        0,
-                state:        'approved',
-                direction:    0,
-                creationDate: new Date().toISOString(),
-            };
-
-            const newCard = commentsRecurse({root: [comment]}, 'root');
-
-            commentsByHex[resp.commentHex] = comment;
-            if (appendCard) {
-                if (id !== 'root') {
-                    container.replaceWith(newCard);
-
-                    shownReply[id] = false;
-
-                    addClasses(replyButton, 'option-reply');
-                    removeClasses(replyButton, 'option-cancel');
-
-                    replyButton.title = 'Reply to this comment';
-
-                    onClick(replyButton, () => global.replyShow(id))
-                } else {
-                    textarea.value = '';
-                    insertAfter(byId(ID_PRE_COMMENTS_AREA), newCard);
+        return apiClient.post<ApiCommentNewResponse>('comment/new', data)
+            .then(resp => {
+                if (!resp.success) {
+                    errorShow(resp.message);
+                    return;
                 }
-            } else if (id === 'root') {
-                textarea.value = '';
-            }
 
-            call(callback);
-        });
+                errorHide();
+
+                let message = '';
+                switch (resp.state) {
+                case 'unapproved':
+                    message = 'Your comment is under moderation.';
+                    break;
+                case 'flagged':
+                    message = 'Your comment was flagged as spam and is under moderation.';
+                    break;
+                }
+
+                if (message !== '') {
+                    prepend(byId(ID_SUPER_CONTAINER + id), messageCreate(message));
+                }
+
+                const comment: Comment = {
+                    commentHex: resp.commentHex,
+                    commenterHex: selfHex === undefined || commenterToken === 'anonymous' ? 'anonymous' : selfHex,
+                    markdown,
+                    html: resp.html,
+                    parentHex: 'root',
+                    score: 0,
+                    state: 'approved',
+                    direction: 0,
+                    creationDate: new Date().toISOString(),
+                };
+
+                const newCard = commentsRecurse({root: [comment]}, 'root');
+
+                commentsByHex[resp.commentHex] = comment;
+                if (appendCard) {
+                    if (id !== 'root') {
+                        container.replaceWith(newCard);
+
+                        shownReply[id] = false;
+
+                        addClasses(replyButton, 'option-reply');
+                        removeClasses(replyButton, 'option-cancel');
+
+                        replyButton.title = 'Reply to this comment';
+
+                        onClick(replyButton, () => global.replyShow(id));
+                    } else {
+                        textarea.value = '';
+                        insertAfter(byId(ID_PRE_COMMENTS_AREA), newCard);
+                    }
+                } else if (id === 'root') {
+                    textarea.value = '';
+                }
+            });
     }
 
     function colorGet(name: string) {
@@ -970,50 +952,40 @@ interface ElementConfig {
         return cards.childNodes.length ? cards : null;
     }
 
-    global.commentApprove = (commentHex: string) => {
-        const data = {
-            commenterToken: commenterTokenGet(),
-            commentHex,
-        };
-
-        post(`${origin}/api/comment/approve`, data, resp => {
-            if (!resp.success) {
-                errorShow(resp.message);
-                return
-            } else {
+    global.commentApprove = (commentHex: string): Promise<void> =>
+        apiClient.post<ApiResponseBase>('comment/approve', {commenterToken: commenterTokenGet(), commentHex})
+            .then(resp => {
+                if (!resp.success) {
+                    errorShow(resp.message);
+                    return;
+                }
                 errorHide();
-            }
 
-            const card = byId(ID_CARD + commentHex);
-            const name = byId(ID_NAME + commentHex);
-            const tick = byId(ID_APPROVE + commentHex);
+                const card = byId(ID_CARD + commentHex);
+                const name = byId(ID_NAME + commentHex);
+                const tick = byId(ID_APPROVE + commentHex);
 
-            removeClasses(card, 'dark-card');
-            removeClasses(name, 'flagged');
-            remove(tick);
-        });
-    }
+                removeClasses(card, 'dark-card');
+                removeClasses(name, 'flagged');
+                remove(tick);
+            })
 
-    global.commentDelete = (commentHex: string) => {
+    global.commentDelete = (commentHex: string): Promise<void> => {
         if (!confirm('Are you sure you want to delete this comment?')) {
-            return;
+            return Promise.reject();
         }
 
-        const json = {
-            commenterToken: commenterTokenGet(),
-            commentHex,
-        };
+        return apiClient.post<ApiResponseBase>('comment/delete', {commenterToken: commenterTokenGet(), commentHex})
+            .then(resp => {
+                if (!resp.success) {
+                    errorShow(resp.message);
+                    return;
+                }
 
-        post(`${origin}/api/comment/delete`, json, resp => {
-            if (!resp.success) {
-                errorShow(resp.message);
-                return
-            }
-
-            errorHide();
-            const text = byId<HTMLDivElement>(ID_TEXT + commentHex);
-            text.innerText = '[deleted]';
-        });
+                errorHide();
+                const text = byId<HTMLDivElement>(ID_TEXT + commentHex);
+                text.innerText = '[deleted]';
+            });
     }
 
     function nameWidthFix() {
@@ -1029,67 +1001,58 @@ interface ElementConfig {
         downvote = removeAllEventListeners(downvote);
 
         if (direction > 0) {
-            onClick(upvote,   () => global.vote([commentHex, [1, 0]]));
-            onClick(downvote, () => global.vote([commentHex, [1, -1]]));
+            onClick(upvote,   () => global.vote(commentHex, 1, 0));
+            onClick(downvote, () => global.vote(commentHex, 1, -1));
         } else if (direction < 0) {
-            onClick(upvote,   () => global.vote([commentHex, [-1, 1]]));
-            onClick(downvote, () => global.vote([commentHex, [-1, 0]]));
+            onClick(upvote,   () => global.vote(commentHex, -1, 1));
+            onClick(downvote, () => global.vote(commentHex, -1, 0));
         } else {
-            onClick(upvote,   () => global.vote([commentHex, [0, 1]]));
-            onClick(downvote, () => global.vote([commentHex, [0, -1]]));
+            onClick(upvote,   () => global.vote(commentHex, 0, 1));
+            onClick(downvote, () => global.vote(commentHex, 0, -1));
         }
 
         return [upvote, downvote];
     }
 
-    global.vote = (data: any /* TODO */) => {
-        const commentHex = data[0];
-        const oldDirection = data[1][0];
-        const newDirection = data[1][1];
-
+    global.vote = (commentHex: string, oldDirection: number, direction: number): Promise<void> => {
         let upvote   = byId<HTMLButtonElement>(ID_UPVOTE + commentHex);
         let downvote = byId<HTMLButtonElement>(ID_DOWNVOTE + commentHex);
         const score  = byId<HTMLDivElement>(ID_SCORE + commentHex);
 
-        const json = {
-            commenterToken: commenterTokenGet(),
-            commentHex,
-            direction: newDirection,
-        };
-
-        const upDown = upDownOnClickSet(upvote, downvote, commentHex, newDirection);
+        const upDown = upDownOnClickSet(upvote, downvote, commentHex, direction);
         upvote = upDown[0];
         downvote = upDown[1];
 
         removeClasses(upvote, 'upvoted');
         removeClasses(downvote, 'downvoted');
-        if (newDirection > 0) {
+        if (direction > 0) {
             addClasses(upvote, 'upvoted');
-        } else if (newDirection < 0) {
+        } else if (direction < 0) {
             addClasses(downvote, 'downvoted');
         }
 
-        score.innerText = scorify(parseInt(score.innerText.replace(/[^\d-.]/g, '')) + newDirection - oldDirection);
+        score.innerText = scorify(parseInt(score.innerText.replace(/[^\d-.]/g, '')) + direction - oldDirection);
 
-        post(`${origin}/api/comment/vote`, json, resp => {
-            if (!resp.success) {
-                errorShow(resp.message);
-                removeClasses(upvote, 'upvoted');
-                removeClasses(downvote, 'downvoted');
-                score.innerText = scorify(parseInt(score.innerText.replace(/[^\d-.]/g, '')) - newDirection + oldDirection);
-                upDownOnClickSet(upvote, downvote, commentHex, oldDirection);
-            } else {
+        return apiClient.post<ApiResponseBase>('comment/vote', {commenterToken: commenterTokenGet(), commentHex, direction})
+            .then(resp => {
+                if (!resp.success) {
+                    errorShow(resp.message);
+                    removeClasses(upvote, 'upvoted');
+                    removeClasses(downvote, 'downvoted');
+                    score.innerText = scorify(parseInt(score.innerText.replace(/[^\d-.]/g, '')) - direction + oldDirection);
+                    upDownOnClickSet(upvote, downvote, commentHex, oldDirection);
+                    return;
+                }
                 errorHide();
-            }
-        });
+            });
     }
 
-    function commentEdit(id: string) {
+    function commentEdit(id: string): Promise<void> {
         const textarea = byId<HTMLTextAreaElement>(ID_TEXTAREA + id);
         const markdown = textarea.value;
         if (markdown === '') {
             addClasses(textarea, 'red-border');
-            return;
+            return Promise.reject();
         }
 
         removeClasses(textarea, 'red-border');
@@ -1100,46 +1063,47 @@ interface ElementConfig {
             markdown,
         };
 
-        post(`${origin}/api/comment/edit`, data, resp => {
-            if (!resp.success) {
-                errorShow(resp.message);
-                return;
-            }
+        return apiClient.post<ApiCommentEditResponse>('comment/edit', data)
+            .then(resp => {
+                if (!resp.success) {
+                    errorShow(resp.message);
+                    return;
+                }
 
-            errorHide();
+                errorHide();
 
-            commentsByHex[id].markdown = markdown;
-            commentsByHex[id].html = resp.html;
+                commentsByHex[id].markdown = markdown;
+                commentsByHex[id].html = resp.html;
 
-            let editButton = byId<HTMLButtonElement>(ID_EDIT + id);
-            const textarea = byId<HTMLTextAreaElement>(ID_SUPER_CONTAINER + id);
+                let editButton = byId<HTMLButtonElement>(ID_EDIT + id);
+                const textarea = byId<HTMLTextAreaElement>(ID_SUPER_CONTAINER + id);
 
-            textarea.innerHTML = commentsByHex[id].html;
-            textarea.id = ID_TEXT + id;
-            delete shownEdit[id];
+                textarea.innerHTML = commentsByHex[id].html;
+                textarea.id = ID_TEXT + id;
+                delete shownEdit[id];
 
-            addClasses(editButton, 'option-edit');
-            removeClasses(editButton, 'option-cancel');
+                addClasses(editButton, 'option-edit');
+                removeClasses(editButton, 'option-cancel');
 
-            editButton.title = 'Edit comment';
+                editButton.title = 'Edit comment';
 
-            editButton = removeAllEventListeners(editButton);
-            onClick(editButton, () => global.editShow(id))
+                editButton = removeAllEventListeners(editButton);
+                onClick(editButton, () => global.editShow(id));
 
-            let message = '';
-            switch (resp.state) {
-            case 'unapproved':
-                message = 'Your comment is under moderation.';
-                break;
-            case 'flagged':
-                message = 'Your comment was flagged as spam and is under moderation.';
-                break;
-            }
+                let message = '';
+                switch (resp.state) {
+                case 'unapproved':
+                    message = 'Your comment is under moderation.';
+                    break;
+                case 'flagged':
+                    message = 'Your comment was flagged as spam and is under moderation.';
+                    break;
+                }
 
-            if (message !== '') {
-                prepend(byId(ID_SUPER_CONTAINER + id), messageCreate(message));
-            }
-        });
+                if (message !== '') {
+                    prepend(byId(ID_SUPER_CONTAINER + id), messageCreate(message));
+                }
+            });
     }
 
     global.editShow = (id: string) => {
@@ -1220,12 +1184,11 @@ interface ElementConfig {
 
     global.commentCollapse = (id: string) => {
         const children = byId(ID_CHILDREN + id);
-        let button = byId(ID_COLLAPSE + id);
-
         if (children) {
             addClasses(children, 'hidden');
         }
 
+        let button = byId(ID_COLLAPSE + id);
         removeClasses(button, 'option-collapse');
         addClasses(button, 'option-uncollapse');
 
@@ -1321,54 +1284,53 @@ interface ElementConfig {
     }
 
     // OAuth logic
-    global.commentoAuth = (data: OAuthResponse) => {
+    global.commentoAuth = (data: OAuthResponse): Promise<void> => {
         const provider = data.provider;
         const id = data.id;
         const popup = window.open('', '_blank');
 
-        get(`${origin}/api/commenter/token/new`, resp => {
-            if (!resp.success) {
-                errorShow(resp.message);
-                return;
-            }
-            errorHide();
-
-            cookieSet('commentoCommenterToken', resp.commenterToken);
-
-            popup.location = `${origin}/api/oauth/${provider}/redirect?commenterToken=${resp.commenterToken}`;
-
-            const interval = setInterval(() => {
-                if (popup.closed) {
-                    clearInterval(interval);
-                    selfGet(() => {
-                        const loggedContainer = byId(ID_LOGGED_CONTAINER);
-                        if (loggedContainer) {
-                            setAttr(loggedContainer, {style: null});
-                        }
-
-                        if (commenterTokenGet() !== 'anonymous') {
-                            remove(byId(ID_LOGIN));
-                        }
-
-                        if (id !== null) {
-                            global.commentNew(id, resp.commenterToken, false, () => {
-                                global.loginBoxClose();
-                                commentsGet(commentsRender);
-                            });
-                        } else {
-                            global.loginBoxClose();
-                            commentsGet(commentsRender);
-                        }
-                    });
+        return apiClient.get<ApiCommenterTokenNewResponse>('commenter/token/new')
+            .then(resp => {
+                if (!resp.success) {
+                    errorShow(resp.message);
+                    return;
                 }
-            }, 250);
-        });
+                errorHide();
+
+                cookieSet('commentoCommenterToken', resp.commenterToken);
+
+                popup.location = `${origin}/api/oauth/${provider}/redirect?commenterToken=${resp.commenterToken}`;
+
+                const interval = setInterval(
+                    () => {
+                        if (popup.closed) {
+                            clearInterval(interval);
+                            selfGet()
+                                .then(() => {
+                                    const loggedContainer = byId(ID_LOGGED_CONTAINER);
+                                    if (loggedContainer) {
+                                        setAttr(loggedContainer, {style: null});
+                                    }
+
+                                    if (commenterTokenGet() !== 'anonymous') {
+                                        remove(byId(ID_LOGIN));
+                                    }
+
+                                    (id ? global.commentNew(id, resp.commenterToken, false) : Promise.resolve())
+                                        .then(() => global.loginBoxClose())
+                                        .then(() => commentsGet())
+                                        .then(() => commentsRender());
+                                });
+                        }
+                    },
+                    250);
+            });
     }
 
-    function refreshAll(callback?: CallbackFunction) {
+    function refreshAll(): Promise<void> {
         byId(ID_ROOT).innerHTML = '';
         shownReply = {};
-        global.main(callback);
+        return global.main();
     }
 
     function loginBoxCreate() {
@@ -1494,72 +1456,58 @@ interface ElementConfig {
         byId(ID_LOGIN_BOX_EMAIL_INPUT).focus();
     }
 
-    function loginUP(username: string, password: string, id: string) {
-        const json = {
-            email: username,
-            password,
-        };
+    function loginUP(email: string, password: string, id: string): Promise<void> {
+        return apiClient.post<ApiCommenterLoginResponse>('commenter/login', {email, password})
+            .then(resp => {
+                if (!resp.success) {
+                    global.loginBoxClose();
+                    errorShow(resp.message);
+                    return Promise.reject();
+                }
 
-        post(`${origin}/api/commenter/login`, json, resp => {
-            if (!resp.success) {
-                global.loginBoxClose();
-                errorShow(resp.message);
-                return
-            } else {
                 errorHide();
-            }
-
-            cookieSet('commentoCommenterToken', resp.commenterToken);
-
-            selfLoad(resp.commenter, resp.email);
-
-            remove(byId(ID_LOGIN));
-
-            const postLogin = () => {
-                global.loginBoxClose();
-                commentsGet(() => {
-                    commentsRender();
-                    allShow();
-                });
-            }
-
-            if (id !== null) {
-                global.commentNew(id, resp.commenterToken, false, postLogin);
-            } else {
-                postLogin();
-            }
-        });
+                cookieSet('commentoCommenterToken', resp.commenterToken);
+                selfLoad(resp.commenter, resp.email);
+                remove(byId(ID_LOGIN));
+                return (id ? global.commentNew(id, resp.commenterToken, false) : undefined);
+            })
+            .then(() => global.loginBoxClose())
+            .then(() => commentsGet())
+            .then(() => commentsRender())
+            .then(() => allShow());
     }
 
-    global.login = (id: string) => {
+    global.login = (id: string): Promise<void> => {
         const email    = byId<HTMLInputElement>(ID_LOGIN_BOX_EMAIL_INPUT);
         const password = byId<HTMLInputElement>(ID_LOGIN_BOX_PASSWORD_INPUT);
-        loginUP(email.value, password.value, id);
+        return loginUP(email.value, password.value, id);
     }
 
-    global.signup = (id: string) => {
+    global.signup = (id: string): Promise<void> => {
         const email    = byId<HTMLInputElement>(ID_LOGIN_BOX_EMAIL_INPUT);
         const name     = byId<HTMLInputElement>(ID_LOGIN_BOX_NAME_INPUT);
         const website  = byId<HTMLInputElement>(ID_LOGIN_BOX_WEBSITE_INPUT);
         const password = byId<HTMLInputElement>(ID_LOGIN_BOX_PASSWORD_INPUT);
 
-        const json = {
+        const data = {
             email:    email.value,
             name:     name.value,
             website:  website.value,
             password: password.value,
         };
 
-        post(`${origin}/api/commenter/new`, json, resp => {
-            if (!resp.success) {
-                global.loginBoxClose();
-                errorShow(resp.message);
-                return
-            }
+        return apiClient.post<ApiResponseBase>('commenter/new', data)
+            .then(resp => {
+                if (!resp.success) {
+                    global.loginBoxClose();
+                    errorShow(resp.message);
+                    return Promise.reject();
+                }
 
-            errorHide();
-            loginUP(email.value, password.value, id);
-        });
+                errorHide();
+                return undefined;
+            })
+            .then(() => loginUP(data.email, data.password, id));
     }
 
     global.passwordAsk = (id: string) => {
@@ -1609,38 +1557,36 @@ interface ElementConfig {
         byId(isSignup ? ID_LOGIN_BOX_NAME_INPUT : ID_LOGIN_BOX_PASSWORD_INPUT).focus();
     }
 
-    function pageUpdate(callback: CallbackFunction) {
+    function pageUpdate(): Promise<void> {
         const data = {
             commenterToken: commenterTokenGet(),
-            domain: parent.location.host,
-            path: pageId,
-            attributes: {isLocked, stickyCommentHex},
+            domain:         parent.location.host,
+            path:           pageId,
+            attributes:     {isLocked, stickyCommentHex},
         };
 
-        post(`${origin}/api/page/update`, data, resp => {
-            if (!resp.success) {
-                errorShow(resp.message);
-                return
-            }
+        return apiClient.post<ApiResponseBase>('page/update', data)
+            .then(resp => {
+                if (!resp.success) {
+                    errorShow(resp.message);
+                    return Promise.reject();
+                }
 
-            errorHide();
-            call(callback);
-        });
+                errorHide();
+                return undefined;
+            });
     }
 
-    global.threadLockToggle = () => {
+    global.threadLockToggle = (): Promise<void> => {
         const lock = byId<HTMLButtonElement>(ID_MOD_TOOLS_LOCK_BUTTON);
-
         isLocked = !isLocked;
-
         lock.disabled = true;
-        pageUpdate(() => {
-            lock.disabled = false;
-            refreshAll();
-        });
+        return pageUpdate()
+            .then(() => lock.disabled = false)
+            .then(() => refreshAll());
     }
 
-    global.commentSticky = (commentHex: string) => {
+    global.commentSticky = (commentHex: string): Promise<void> => {
         if (stickyCommentHex !== 'none') {
             const sticky = byId(ID_STICKY + stickyCommentHex);
             removeClasses(sticky, 'option-unsticky');
@@ -1649,16 +1595,17 @@ interface ElementConfig {
 
         stickyCommentHex = stickyCommentHex === commentHex ? 'none' : commentHex;
 
-        pageUpdate(() => {
-            const sticky = byId(ID_STICKY + commentHex);
-            if (stickyCommentHex === commentHex) {
-                removeClasses(sticky, 'option-sticky');
-                addClasses(sticky, 'option-unsticky');
-            } else {
-                removeClasses(sticky, 'option-unsticky');
-                addClasses(sticky, 'option-sticky');
-            }
-        });
+        return pageUpdate()
+            .then(() => {
+                const sticky = byId(ID_STICKY + commentHex);
+                if (stickyCommentHex === commentHex) {
+                    removeClasses(sticky, 'option-sticky');
+                    addClasses(sticky, 'option-unsticky');
+                } else {
+                    removeClasses(sticky, 'option-unsticky');
+                    addClasses(sticky, 'option-sticky');
+                }
+            });
     }
 
     function mainAreaCreate() {
@@ -1669,14 +1616,6 @@ interface ElementConfig {
         const modTools = create('div', {id: ID_MOD_TOOLS, classes: 'mod-tools', style: 'display: none', parent: root});
         const lock = create('button', {id: ID_MOD_TOOLS_LOCK_BUTTON, innerHTML: isLocked ? 'Unlock Thread' : 'Lock Thread', parent: modTools});
         onClick(lock, global.threadLockToggle);
-    }
-
-    function loadCssOverride() {
-        if (cssOverride === undefined) {
-            allShow();
-        } else {
-            cssLoad(cssOverride, allShow);
-        }
     }
 
     function allShow() {
@@ -1720,22 +1659,21 @@ interface ElementConfig {
     }
 
     function dataTagsLoad() {
-        const scripts = tags('script');
-        for (let i = 0; i < scripts.length; i++) {
-            const scr = scripts[i] as HTMLScriptElement;
-            if (scr.src.match(/\/js\/commento\.js$/)) {
-                const pid = getAttr(scr, 'data-page-id');
-                if (pid !== undefined) {
-                    pageId = pid;
+        for (const script of document.getElementsByTagName('script')) {
+            if (script.src.match(/\/js\/commento\.js$/)) {
+                let s = getAttr(script, 'data-page-id');
+                if (s) {
+                    pageId = s;
                 }
-                cssOverride = getAttr(scr, 'data-css-override');
-                autoInit = getAttr(scr, 'data-auto-init') !== 'false';
-                ID_ROOT = getAttr(scr, 'data-id-root');
-                if (ID_ROOT === undefined) {
-                    ID_ROOT = 'commento';
+                cssOverride = getAttr(script, 'data-css-override');
+                autoInit = getAttr(script, 'data-auto-init') !== 'false';
+                s = getAttr(script, 'data-id-root');
+                if (s) {
+                    ID_ROOT = s;
                 }
-                noFonts = getAttr(scr, 'data-no-fonts') === 'true';
-                hideDeleted = getAttr(scr, 'data-hide-deleted') === 'true';
+                noFonts = getAttr(script, 'data-no-fonts') === 'true';
+                hideDeleted = getAttr(script, 'data-hide-deleted') === 'true';
+                break;
             }
         }
     }
@@ -1761,43 +1699,41 @@ interface ElementConfig {
         }
     }
 
-    global.main = (callback: CallbackFunction) => {
+    global.main = (): Promise<void> => {
         root = byId(ID_ROOT);
-        if (root === null) {
-            console.log(`[commento] error: no root element with ID '${ID_ROOT}' found`);
-            return;
+        if (!root) {
+            console.error(`[commento] No root element with ID '${ID_ROOT}' found`);
+            return Promise.reject();
         }
 
         if (mobileView === null) {
             mobileView = root.getBoundingClientRect()['width'] < 450;
         }
 
-        addClasses(root, 'root');
-        if (!noFonts) {
-            addClasses(root, 'root-font');
-        }
+        addClasses(root, ['root', !noFonts && 'root-font']);
 
         loginBoxCreate();
-
         errorElementCreate();
-
         mainAreaCreate();
 
-        const footer = footerLoad();
-        cssLoad(`${cdn}/css/commento.css`, loadCssOverride);
-
-        selfGet(() =>
-            commentsGet(() => {
+        // Begin by loading the stylesheet
+        return cssLoad(`${cdn}/css/commento.css`)
+            // Load stylesheet override, if any
+            .then(() => cssOverride && cssLoad(cssOverride))
+            // Load information about ourselves
+            .then(() => selfGet())
+            // Fetch comments
+            .then(() => commentsGet())
+            // Create the layout
+            .then(() => {
                 modToolsCreate();
-                rootCreate(() => {
-                    commentsRender();
-                    append(root, footer);
-                    loadHash();
-                    allShow();
-                    nameWidthFix();
-                    call(callback);
-                });
-            }));
+                rootCreate();
+                commentsRender();
+                append(root, footerLoad());
+                loadHash();
+                allShow();
+                nameWidthFix();
+            });
     }
 
     let initted = false;
@@ -1811,7 +1747,7 @@ interface ElementConfig {
         dataTagsLoad();
 
         if (autoInit) {
-            global.main(undefined);
+            global.main();
         }
     }
 
