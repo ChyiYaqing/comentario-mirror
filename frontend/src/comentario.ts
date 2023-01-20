@@ -9,6 +9,7 @@ import {
     ApiResponseBase,
     ApiSelfResponse,
 } from './api';
+import { Wrap } from './element-wrap';
 
 const IDS = {
     mainArea:                      'main-area',
@@ -81,8 +82,6 @@ interface ElementConfig {
 
 export class Comentario {
 
-    private static readonly idPrefix = 'comentario-';
-
     private readonly origin = '[[[.Origin]]]';
     private readonly cdn = '[[[.CdnPrefix]]]';
 
@@ -92,7 +91,7 @@ export class Comentario {
     /** Default ID of the container element Comentario will be embedded into. */
     private rootId = 'commento';
 
-    private root: HTMLElement = null;
+    private root: Wrap<any>;
     private pageId = parent.location.pathname;
     private cssOverride: string;
     private noFonts = false;
@@ -137,16 +136,17 @@ export class Comentario {
      * @return Promise that resolves as soon as Comentario setup is complete
      */
     main(): Promise<void> {
-        this.root = this.byId(this.rootId, true);
-        if (!this.root) {
+        this.root = Wrap.byId(this.rootId, true);
+        if (!this.root.ok) {
             return this.reject(`No root element with id='${this.rootId}' found. Check your configuration and HTML.`);
         }
 
-        if (this.mobileView === null) {
-            this.mobileView = this.root.getBoundingClientRect()['width'] < 450;
-        }
+        // TODO refactor this
+        //if (this.mobileView === null) {
+        //    this.mobileView = this.root.getBoundingClientRect()['width'] < 450;
+        //}
 
-        this.addClasses(this.root, ['root', !this.noFonts && 'root-font']);
+        this.root.classes('root', !this.noFonts && 'root-font');
 
         // Begin by loading the stylesheet
         return this.cssLoad(`${this.cdn}/css/commento.css`)
@@ -161,7 +161,7 @@ export class Comentario {
      */
     private reload() {
         // Remove any content from the root
-        this.byId(this.rootId, true).innerHTML = '';
+        Wrap.byId(this.rootId, true).html('');
         this.shownReply = {};
 
         // Create base elements
@@ -178,7 +178,7 @@ export class Comentario {
                 this.modToolsCreate();
                 this.rootCreate();
                 this.commentsRender();
-                this.append(this.root, this.footerLoad());
+                this.root.append(this.footerLoad());
                 this.loadHash();
                 this.allShow();
                 this.nameWidthFix();
@@ -232,152 +232,6 @@ export class Comentario {
         return this.autoInit ? this.main() : Promise.resolve();
     }
 
-    /**
-     * Finds and returns an HTML element with the given ID (optionally prepending it with idPrefix), or null if no such
-     * element exists.
-     * @param id ID of the element to find (excluding the prefix).
-     * @param noPrefix Whether skip prepending the ID with idPrefix.
-     */
-    byId<T extends HTMLElement>(id: string, noPrefix?: boolean): T {
-        return this.doc.getElementById(noPrefix ? id : Comentario.idPrefix + id) as T;
-    }
-
-    prepend(root: HTMLElement, el: HTMLElement) {
-        root.prepend(el);
-    }
-
-    append(parent: HTMLElement, ...children: HTMLElement[]) {
-        children.forEach(c => parent.appendChild(c));
-    }
-
-    insertAfter(el1: HTMLElement, el2: HTMLElement) {
-        el1.parentNode.insertBefore(el2, el1.nextSibling);
-    }
-
-    /**
-     * Add the provided class or classes to the element.
-     * @param el Element to add classes to.
-     * @param classes string|array Class(es) to add. Falsy values are ignored.
-     */
-    addClasses(el: HTMLElement, classes: string | string[]) {
-        (Array.isArray(classes) ? classes : [classes]).forEach(c => c && el.classList.add(`commento-${c}`));
-    }
-
-    /**
-     * Remove the provided class or classes from the element.
-     * @param el Element to remove classes from.
-     * @param classes string|array Class(es) to remove. Falsy values are ignored.
-     */
-    removeClasses(el: HTMLElement, classes: string | string[]) {
-        if (el !== null) {
-            (Array.isArray(classes) ? classes : [classes]).forEach(c => c && el.classList.remove(`commento-${c}`));
-        }
-    }
-
-    /**
-     * Create a new HTML element with the given tag and configuration.
-     * @param tagName Name of the tag.
-     * @param config Optional configuration object.
-     * @returns {*} The created and configured HTML element.
-     */
-    createElement<K extends keyof HTMLElementTagNameMap>(tagName: K, config?: ElementConfig): HTMLElementTagNameMap[K] {
-        // Create a new HTML element
-        const e = this.doc.createElement(tagName) as HTMLElementTagNameMap[K];
-
-        // If there's any config passed
-        if (config) {
-            // Set up the ID, if given, and clean it up from the config
-            if ('id' in config) {
-                e.id = Comentario.idPrefix + config.id;
-                delete config.id;
-            }
-
-            // Set up the classes, if given, and clean them up from the config
-            if ('classes' in config) {
-                this.addClasses(e, config.classes);
-                delete config.classes;
-            }
-
-            // Set up the inner text/HTML, if given, and clean it up from the config
-            if ('innerText' in config) {
-                e.innerText = config.innerText;
-                delete config.innerText;
-            } else if ('innerHTML' in config) {
-                e.innerHTML = config.innerHTML;
-                delete config.innerHTML;
-            }
-
-            // Set up the parent, if given, and clean it up from the config
-            let parent: HTMLElement;
-            if ('parent' in config) {
-                parent = config.parent;
-                delete config.parent;
-            }
-
-            // Add any children
-            if ('children' in config) {
-                config.children.forEach(child => e.appendChild(child));
-                delete config.children;
-            }
-
-            // Set up the remaining attributes
-            this.setAttr(e, config);
-
-            // Add the child to the parent, if any
-            if (parent) {
-                parent.appendChild(e);
-            }
-        }
-        return e;
-    }
-
-    remove(...elements: HTMLElement[]) {
-        elements?.forEach(e => e && e.parentNode.removeChild(e));
-    }
-
-    getAttr(node: HTMLElement, attrName: string) {
-        const attr = node.attributes.getNamedItem(attrName);
-        return attr === undefined ? undefined : attr?.value;
-    }
-
-    removeAllEventListeners<T extends HTMLElement>(node: T): T {
-        if (node) {
-            const replacement = node.cloneNode(true) as T;
-            if (node.parentNode !== null) {
-                node.parentNode.replaceChild(replacement, node);
-                return replacement;
-            }
-        }
-        return node;
-    }
-
-    /**
-     * Bind a handler to the this.onClick event of the given element.
-     * @param e Element to bind a handler to.
-     * @param handler Handler to bind.
-     */
-    onClick(e: HTMLElement, handler: CallbackFunction) {
-        e.addEventListener('click', handler, false);
-    }
-
-    /**
-     * Set node attributes from the provided object.
-     * @param node HTML element to set attributes on.
-     * @param values Object that provides attribute names (keys) and their values. null and undefined values cause attribute removal from the node.
-     */
-    setAttr(node: HTMLElement, values: { [k: string]: string }) {
-        if (node) {
-            Object.keys(values).forEach(k => {
-                const v = values[k];
-                if (v === undefined || v === null) {
-                    node.removeAttribute(k);
-                } else {
-                    node.setAttribute(k, v);
-                }
-            });
-        }
-    }
-
     cookieGet(name: string): string {
         const c = `; ${this.doc.cookie}`;
         const x = c.split(`; ${name}=`);
@@ -415,49 +269,41 @@ export class Comentario {
         this.commenters[commenter.commenterHex] = commenter;
         this.selfHex = commenter.commenterHex;
 
-        const loggedContainer = this.createElement('div', {id: IDS.loggedContainer, classes: 'logged-container', style: 'display: none'});
-        const loggedInAs      = this.createElement('div', {classes: 'logged-in-as', parent: loggedContainer});
-        const name            = this.createElement(commenter.link !== 'undefined' ? 'a' : 'div', {classes: 'name', innerText: commenter.name, parent: loggedInAs});
-        const btnSettings     = this.createElement('div', {classes: 'profile-button', innerText: 'Notification Settings'});
-        const btnEditProfile  = this.createElement('div', {classes: 'profile-button', innerText: 'Edit Profile'});
-        const btnLogout       = this.createElement('div', {classes: 'profile-button', innerText: 'Logout', parent: loggedContainer});
+        const loggedContainer = Wrap.new('div').id(IDS.loggedContainer).classes('logged-container').style('display: none');
+        const loggedInAs      = Wrap.new('div').classes('logged-in-as').appendTo(loggedContainer);
+        const name            = Wrap.new(commenter.link !== 'undefined' ? 'a' : 'div').classes('name').inner(commenter.name).appendTo(loggedInAs);
+        const btnSettings     = Wrap.new('div').classes('profile-button').inner('Notification Settings').click(() => this.notificationSettings(email.unsubscribeSecretHex));
+        const btnEditProfile  = Wrap.new('div').classes('profile-button').inner('Edit Profile').click(() => this.profileEdit());
+        Wrap.new('div').classes('profile-button').inner('Logout').click(() => this.logout()).appendTo(loggedContainer);
         const color = this.colorGet(`${commenter.commenterHex}-${commenter.name}`);
 
         // Set the profile href for the commenter, if any
         if (commenter.link !== 'undefined') {
-            this.setAttr(name, {href: commenter.link});
+            name.attr({href: commenter.link});
         }
-
-        this.onClick(btnLogout,      () => this.logout());
-        this.onClick(btnSettings,    () => this.notificationSettings(email.unsubscribeSecretHex));
-        this.onClick(btnEditProfile, () => this.profileEdit);
 
         // Add an avatar
         if (commenter.photo === 'undefined') {
-            this.createElement('div', {
-                classes:   'avatar',
-                innerHTML: commenter.name[0].toUpperCase(),
-                style:     `background-color: ${color}`,
-                parent:    loggedInAs,
-            });
+            Wrap.new('div')
+                .classes('avatar')
+                .html(commenter.name[0].toUpperCase())
+                .style(`background-color: ${color}`)
+                .appendTo(loggedInAs);
         } else {
-            this.createElement('img', {
-                classes: 'avatar-img',
-                src:     `${this.cdn}/api/commenter/photo?commenterHex=${commenter.commenterHex}`,
-                loading: 'lazy',
-                alt:     '',
-                parent:  loggedInAs,
-            });
+            Wrap.new('img')
+                .classes('avatar-img')
+                .attr({src: `${this.cdn}/api/commenter/photo?commenterHex=${commenter.commenterHex}`, loading: 'lazy', alt: ''})
+                .appendTo(loggedInAs);
         }
 
         // If it's a local user, add an Edit profile button
         if (commenter.provider === 'commento') {
-            this.append(loggedContainer, btnEditProfile);
+            loggedContainer.append(btnEditProfile);
         }
-        this.append(loggedContainer, btnSettings);
+        loggedContainer.append(btnSettings);
 
         // Add the container to the root
-        this.prepend(this.root, loggedContainer);
+        loggedContainer.prependTo(this.root);
         this.isAuthenticated = true;
     }
 
@@ -493,32 +339,24 @@ export class Comentario {
             Promise.resolve() :
             new Promise(resolve => {
                 this.loadedCss[url] = true;
-                const link = this.createElement('link', {href: url, rel: 'stylesheet', type: 'text/css'});
-                link.addEventListener('load', () => resolve());
-                this.append(this.doc.getElementsByTagName('head')[0], link);
+                new Wrap(this.doc.getElementsByTagName('head')[0])
+                    .append(
+                        Wrap.new('link').attr({href: url, rel: 'stylesheet', type: 'text/css'}).load(resolve));
             });
     }
 
-    footerLoad() {
-        return this.createElement('div', {
-            id:       IDS.footer,
-            classes:  'footer',
-            children: [
-                this.createElement('div', {
-                    classes:  'logo-container',
-                    children: [
-                        this.createElement('a', {
-                            classes:  'logo',
-                            href:     'https://comentario.app/',
-                            target:   '_blank',
-                            children: [
-                                this.createElement('span', {classes: 'logo-text', innerText: 'Comentario 🗨'}),
-                            ],
-                        }),
-                    ],
-                }),
-            ],
-        });
+    footerLoad(): Wrap<HTMLDivElement> {
+        return Wrap.new('div')
+            .id(IDS.footer)
+            .classes('footer')
+            .append(
+                Wrap.new('div')
+                    .classes('logo-container')
+                    .append(
+                        Wrap.new('a')
+                            .classes('logo')
+                            .attr({href: 'https://comentario.app/', target: '_blank'})
+                            .append(Wrap.new('span').classes('logo-text').inner('Comentario 🗨'))));
     }
 
     commentsGet(): Promise<void> {
@@ -550,17 +388,15 @@ export class Comentario {
     }
 
     errorShow(text: string) {
-        const el = this.byId<HTMLDivElement>(IDS.error);
-        el.innerText = text;
-        this.setAttr(el, {style: 'display: block;'});
+        Wrap.byId(IDS.error).inner(text).style('display: block;');
     }
 
     errorHide() {
-        this.setAttr(this.byId(IDS.error), {style: 'display: none;'});
+        Wrap.byId(IDS.error).style('display: none;');
     }
 
     errorElementCreate() {
-        this.createElement('div', {id: IDS.error, classes: 'error-box', style: 'display: none;', parent: this.root});
+        Wrap.new('div').id(IDS.error).classes('error-box').style('display: none;').append(this.root);
     }
 
     autoExpander(el: HTMLElement): CallbackFunction {
@@ -570,63 +406,44 @@ export class Comentario {
         };
     }
 
-    markdownHelpShow(id: string) {
-        this.createElement('table', {
-            id:       IDS.markdownHelp + id,
-            classes:  'markdown-help',
-            parent:   this.byId(IDS.superContainer + id),
-            children: [
-                this.createElement('tr', {
-                    children: [
-                        this.createElement('td', {innerHTML: '<i>italics</i>'}),
-                        this.createElement('td', {innerHTML: 'surround text with <pre>*asterisks*</pre>'}),
-                    ],
-                }),
-                this.createElement('tr', {
-                    children: [
-                        this.createElement('td', {innerHTML: '<b>bold</b>'}),
-                        this.createElement('td', {innerHTML: 'surround text with <pre>**two asterisks**</pre>'}),
-                    ],
-                }),
-                this.createElement('tr', {
-                    children: [
-                        this.createElement('td', {innerHTML: '<pre>code</pre>'}),
-                        this.createElement('td', {innerHTML: 'surround text with <pre>`backticks`</pre>'}),
-                    ],
-                }),
-                this.createElement('tr', {
-                    children: [
-                        this.createElement('td', {innerHTML: '<del>strikethrough</del>'}),
-                        this.createElement('td', {innerHTML: 'surround text with <pre>~~two tilde characters~~</pre>'}),
-                    ],
-                }),
-                this.createElement('tr', {
-                    children: [
-                        this.createElement('td', {innerHTML: '<a href="https://example.com">hyperlink</a>'}),
-                        this.createElement('td', {innerHTML: '<pre>[hyperlink](https://example.com)</pre> or just a bare URL'}),
-                    ],
-                }),
-                this.createElement('tr', {
-                    children: [
-                        this.createElement('td', {innerHTML: '<blockquote>quote</blockquote>'}),
-                        this.createElement('td', {innerHTML: 'prefix with <pre>&gt;</pre>'}),
-                    ],
-                }),
-            ],
-        });
+    markdownHelpShow(commentHex: string) {
+        Wrap.new('table')
+            .id(IDS.markdownHelp + commentHex)
+            .classes('markdown-help')
+            .appendTo(Wrap.byId(IDS.superContainer + commentHex))
+            .append(
+                Wrap.new('tr')
+                    .append(
+                        Wrap.new('td').html('<i>italics</i>'),
+                        Wrap.new('td').html('surround text with <pre>*asterisks*</pre>')),
+                Wrap.new('tr')
+                    .append(
+                        Wrap.new('td').html('<b>bold</b>'),
+                        Wrap.new('td').html('surround text with <pre>**two asterisks**</pre>')),
+                Wrap.new('tr')
+                    .append(
+                        Wrap.new('td').html('<pre>code</pre>'),
+                        Wrap.new('td').html('surround text with <pre>`backticks`</pre>')),
+                Wrap.new('tr')
+                    .append(
+                        Wrap.new('td').html('<del>strikethrough</del>'),
+                        Wrap.new('td').html('surround text with <pre>~~two tilde characters~~</pre>')),
+                Wrap.new('tr')
+                    .append(
+                        Wrap.new('td').html('<a href="https://example.com">hyperlink</a>'),
+                        Wrap.new('td').html('<pre>[hyperlink](https://example.com)</pre> or just a bare URL')),
+                Wrap.new('tr')
+                    .append(
+                        Wrap.new('td').html('<blockquote>quote</blockquote>'),
+                        Wrap.new('td').html('prefix with <pre>&gt;</pre>')));
 
         // Add a collapse button
-        const markdownButton = this.removeAllEventListeners(this.byId<HTMLAnchorElement>(IDS.markdownButton + id));
-        this.onClick(markdownButton, () => this.markdownHelpHide(id));
+        Wrap.byId(IDS.markdownButton + commentHex).unlisten().click(() => this.markdownHelpHide(commentHex));
     }
 
-    markdownHelpHide(id: string) {
-        let markdownButton = this.byId<HTMLAnchorElement>(IDS.markdownButton + id);
-        const markdownHelp = this.byId(IDS.markdownHelp + id);
-
-        markdownButton = this.removeAllEventListeners(markdownButton);
-        this.onClick(markdownButton, () => this.markdownHelpShow(id));
-        this.remove(markdownHelp);
+    markdownHelpHide(commentHex: string) {
+        Wrap.byId(IDS.markdownButton + commentHex).unlisten().click(() => this.markdownHelpShow(commentHex));
+        Wrap.byId(IDS.markdownHelp + commentHex).remove();
     }
 
     /**
@@ -634,74 +451,70 @@ export class Comentario {
      * @param commentHex Comment's hex ID.
      * @param isEdit Whether it's adding a new comment (false) or editing an existing one (true)
      */
-    textareaCreate(commentHex: string, isEdit: boolean): HTMLDivElement {
-        const textOuter        = this.createElement('div',      {id: IDS.superContainer + commentHex, classes: 'button-margin'});
-        const textCont         = this.createElement('div',      {id: IDS.textareaContainer + commentHex, classes: 'textarea-container', parent: textOuter});
-        const textArea         = this.createElement('textarea', {id: IDS.textarea + commentHex, placeholder: 'Add a comment', parent: textCont});
-        const anonCheckbox     = this.createElement('input',    {id: IDS.anonymousCheckbox + commentHex, type: 'checkbox'});
-        const anonCheckboxCont = this.createElement('div', {
-            classes:  ['round-check', 'anonymous-checkbox-container'],
-            children: [
-                anonCheckbox,
-                this.createElement(
-                    'label',
-                    {for: Comentario.idPrefix + IDS.anonymousCheckbox + commentHex, innerText: 'Comment anonymously'}),
-            ],
-        });
-        const submitButton = this.createElement('button', {
-            id:        IDS.submitButton + commentHex,
-            type:      'submit',
-            classes:   ['button', 'submit-button'],
-            innerText: isEdit ? 'Save Changes' : 'Add Comment',
-            parent:    textOuter,
-        });
-        const markdownButton = this.createElement('a', {
-            id:        IDS.markdownButton + commentHex,
-            classes:   'markdown-button',
-            innerHTML: '<b>M⬇</b>&nbsp;Markdown',
-        });
+    textareaCreate(commentHex: string, isEdit: boolean): Wrap<HTMLDivElement> {
+        const textOuter = Wrap.new('div').id(IDS.superContainer + commentHex).classes('button-margin')
+            .append(
+                // Text area in a container
+                Wrap.new('div').id(IDS.textareaContainer + commentHex).classes('textarea-container')
+                    .append(
+                        Wrap.new('textarea').id(IDS.textarea + commentHex).attr({placeholder: 'Add a comment'}).autoExpand()),
+                // Save button
+                Wrap.new('button')
+                    .id(IDS.submitButton + commentHex)
+                    .attr({type: 'submit'})
+                    .classes('button', 'submit-button')
+                    .inner(isEdit ? 'Save Changes' : 'Add Comment')
+                    .click(() => isEdit ? this.saveCommentEdits(commentHex) : this.submitAccountDecide(commentHex)));
 
+        // "Comment anonymously" checkbox
+        const anonCheckbox = Wrap.new('input').id(IDS.anonymousCheckbox + commentHex).attr({type: 'checkbox'});
         if (this.anonymousOnly) {
-            anonCheckbox.checked = true;
-            anonCheckbox.setAttribute('disabled', 'true');
+            anonCheckbox.checked(true).attr({disabled: 'true'});
+        }
+        const anonCheckboxCont = Wrap.new('div')
+            .classes('round-check', 'anonymous-checkbox-container')
+            .append(
+                anonCheckbox,
+                Wrap.new('label').attr({for: Wrap.idPrefix + IDS.anonymousCheckbox + commentHex}).inner('Comment anonymously'));
+
+        if (!this.requireIdentification && !isEdit) {
+            textOuter.append(anonCheckboxCont);
         }
 
-        textArea.oninput = this.autoExpander(textArea);
-        this.onClick(submitButton, () => isEdit ? this.saveCommentEdits(commentHex) : this.submitAccountDecide(commentHex));
-        this.onClick(markdownButton, () => this.markdownHelpShow(commentHex));
-        if (!this.requireIdentification && !isEdit) {
-            this.append(textOuter, anonCheckboxCont);
-        }
-        this.append(textOuter, markdownButton);
+        // Markdown help button
+        Wrap.new('a')
+            .id(IDS.markdownButton + commentHex)
+            .classes('markdown-button')
+            .html('<b>M⬇</b>&nbsp;Markdown')
+            .click(() => this.markdownHelpShow(commentHex))
+            .appendTo(textOuter);
         return textOuter;
     }
 
     sortPolicyApply(policy: SortPolicy) {
-        this.removeClasses(this.byId(IDS.sortPolicy + this.sortPolicy), 'sort-policy-button-selected');
+        Wrap.byId(IDS.sortPolicy + this.sortPolicy).noClasses('sort-policy-button-selected');
 
-        const commentsArea = this.byId<HTMLDivElement>(IDS.commentsArea);
+        const commentsArea = Wrap.byId(IDS.commentsArea);
         commentsArea.innerHTML = '';
         this.sortPolicy = policy;
         const cards = this.commentsRecurse(this.parentMap(this.comments), 'root');
         if (cards) {
-            this.append(commentsArea, cards);
+            commentsArea.append(cards);
         }
 
-        this.addClasses(this.byId(IDS.sortPolicy + policy), 'sort-policy-button-selected');
+        this.addClasses(Wrap.byId(IDS.sortPolicy + policy), 'sort-policy-button-selected');
     }
 
-    sortPolicyBox(): HTMLDivElement {
-        const container = this.createElement('div', {classes: 'sort-policy-buttons-container'});
-        const buttonBar = this.createElement('div', {classes: 'sort-policy-buttons', parent: container});
-        Object.keys(this.sortingProps).forEach((sp: SortPolicy) => {
-            const sortPolicyButton = this.createElement('a', {
-                id:        IDS.sortPolicy + sp,
-                classes:   ['sort-policy-button', sp === this.sortPolicy && 'sort-policy-button-selected'],
-                innerText: this.sortingProps[sp].label,
-                parent:    buttonBar,
-            });
-            this.onClick(sortPolicyButton, () => this.sortPolicyApply(sp));
-        });
+    sortPolicyBox(): Wrap<HTMLDivElement> {
+        const container = Wrap.new('div').classes('sort-policy-buttons-container');
+        const buttonBar = Wrap.new('div').classes('sort-policy-buttons').appendTo(container);
+        Object.keys(this.sortingProps).forEach((sp: SortPolicy) =>
+            Wrap.new('a')
+                .id(IDS.sortPolicy + sp)
+                .classes('sort-policy-button', sp === this.sortPolicy && 'sort-policy-button-selected')
+                .inner(this.sortingProps[sp].label)
+                .appendTo(buttonBar)
+                .click(() => this.sortPolicyApply(sp)));
         return container;
     }
 
@@ -709,54 +522,52 @@ export class Comentario {
      * Create the top-level ("main area") elements in the root.
      */
     rootCreate(): void {
-        const mainArea = this.byId(IDS.mainArea);
-        const login           = this.createElement('div', {id: IDS.login, classes: 'login'});
-        const loginText       = this.createElement('div', {classes: 'login-text', innerText: 'Login'});
-        const preCommentsArea = this.createElement('div', {id: IDS.preCommentsArea});
-        const commentsArea    = this.createElement('div', {id: IDS.commentsArea, classes: 'comments'});
-        this.onClick(loginText, () => this.loginBoxShow(null));
+        const mainArea = Wrap.byId(IDS.mainArea);
+        const login           = Wrap.new('div').id(IDS.login).classes('login');
+        const loginText       = Wrap.new('div').classes('login-text').inner('Login').click(() => this.loginBoxShow(null));
+        const preCommentsArea = Wrap.new('div').id(IDS.preCommentsArea);
+        const commentsArea    = Wrap.new('div').id(IDS.commentsArea).classes('comments');
 
         // If there's an OAuth provider configured, add a Login button
         if (Object.keys(this.configuredOauths).some(k => this.configuredOauths[k])) {
-            this.append(login, loginText);
+            login.append(loginText);
         } else if (!this.requireIdentification) {
             this.anonymousOnly = true;
         }
 
         if (this.isLocked || this.isFrozen) {
             if (this.isAuthenticated || this.chosenAnonymous) {
-                this.append(mainArea, this.messageCreate('This thread is locked. You cannot add new comments.'));
-                this.remove(this.byId(IDS.login));
+                mainArea.append(this.messageCreate('This thread is locked. You cannot add new comments.'));
+                login.remove();
             } else {
                 // Add a root editor (for creating a new comment)
-                this.append(mainArea, login, this.textareaCreate('root', false));
+                mainArea.append(login, this.textareaCreate('root', false));
             }
         } else {
             if (this.isAuthenticated) {
-                this.remove(this.byId(IDS.login));
+                login.remove();
             } else {
-                this.append(mainArea, login);
+                mainArea.append(login);
             }
             // Add a root editor (for creating a new comment)
-            this.append(mainArea, this.textareaCreate('root', false));
+            mainArea.append(this.textareaCreate('root', false));
         }
 
         // If there's any comment, add sort buttons
-        if (this.comments.length > 0) {
-            this.append(mainArea, this.sortPolicyBox());
+        if (this.comments.length) {
+            mainArea.append(this.sortPolicyBox());
         }
-        this.append(mainArea, preCommentsArea, commentsArea);
-        this.append(this.root, mainArea);
+        mainArea.append(preCommentsArea, commentsArea).appendTo(this.root);
     }
 
-    messageCreate(text: string): HTMLDivElement {
-        return this.createElement('div', {classes: 'moderation-notice', innerText: text});
+    messageCreate(text: string): Wrap<HTMLDivElement> {
+        return Wrap.new('div').classes('moderation-notice').inner(text);
     }
 
     commentNew(commentHex: string, commenterToken: string, appendCard: boolean): Promise<void> {
-        const container   = this.byId<HTMLDivElement>(IDS.superContainer + commentHex);
-        const textarea    = this.byId<HTMLTextAreaElement>(IDS.textarea + commentHex);
-        const replyButton = this.byId<HTMLButtonElement>(IDS.reply + commentHex);
+        const container   = Wrap.byId(IDS.superContainer + commentHex);
+        const textarea    = Wrap.byId(IDS.textarea + commentHex);
+        const replyButton = Wrap.byId(IDS.reply + commentHex);
 
         const markdown = textarea.value;
 
@@ -795,7 +606,7 @@ export class Comentario {
                 }
 
                 if (message !== '') {
-                    this.prepend(this.byId(IDS.superContainer + commentHex), this.messageCreate(message));
+                    this.prepend(Wrap.byId(IDS.superContainer + commentHex), this.messageCreate(message));
                 }
 
                 const comment: Comment = {
@@ -827,7 +638,7 @@ export class Comentario {
                         this.onClick(replyButton, () => this.replyShow(commentHex));
                     } else {
                         textarea.value = '';
-                        this.insertAfter(this.byId(IDS.preCommentsArea), newCard);
+                        this.insertAfter(Wrap.byId(IDS.preCommentsArea), newCard);
                     }
                 } else if (commentHex === 'root') {
                     textarea.value = '';
@@ -893,7 +704,7 @@ export class Comentario {
         return score === 1 ? 'One point' : `${score} points`;
     }
 
-    commentsRecurse(parentMap: CommentsMap, parentHex: string) {
+    commentsRecurse(parentMap: CommentsMap, parentHex: string): Wrap<HTMLDivElement> {
         const cur = parentMap[parentHex];
         if (!cur || !cur.length) {
             return null;
@@ -908,94 +719,76 @@ export class Comentario {
         });
 
         const curTime = (new Date()).getTime();
-        const cards = this.createElement('div');
+        const cards = Wrap.new('div');
         cur.forEach(comment => {
             const commenter = this.commenters[comment.commenterHex];
             const hex = comment.commentHex;
-            const header = this.createElement('div', {classes: 'header'});
-            const name = this.createElement(
-                commenter.link !== 'undefined' && commenter.link !== 'https://undefined' && commenter.link !== '' ? 'a' : 'div',
-                {
-                    id:        IDS.name + hex,
-                    innerText: comment.deleted ? '[deleted]' : commenter.name,
-                    classes:   'name',
-                });
+            const header = Wrap.new('div').classes('header');
+            const name = Wrap.new(commenter.link !== 'undefined' && commenter.link !== 'https://undefined' && commenter.link !== '' ? 'a' : 'div')
+                .id(IDS.name + hex)
+                .inner(comment.deleted ? '[deleted]' : commenter.name)
+                .classes('name');
             const color = this.colorGet(`${comment.commenterHex}-${commenter.name}`);
-            const card     = this.createElement('div', {id: IDS.card     + hex, style: `border-left: 2px solid ${color}`, classes: 'card'});
-            const subtitle = this.createElement('div', {id: IDS.subtitle + hex, classes: 'subtitle'});
-            const timeago = this.createElement('div', {
-                id:        IDS.timeago + hex,
-                classes:   'timeago',
-                innerHTML: this.timeDifference(curTime, comment.creationMs),
-                title:     comment.creationDate.toString(),
-            });
-            const score = this.createElement('div', {id: IDS.score + hex, classes: 'score', innerText: this.scorify(comment.score)});
-            const body     = this.createElement('div',    {id: IDS.body     + hex, classes: 'body'});
-            const text     = this.createElement('div',    {id: IDS.text     + hex, innerHTML: comment.html});
-            const options  = this.createElement('div',    {id: IDS.options  + hex, classes: 'options'});
-            const edit     = this.createElement('button', {id: IDS.edit     + hex, type: 'button', classes: ['option-button', 'option-edit'],     title: 'Edit'});
-            const reply    = this.createElement('button', {id: IDS.reply    + hex, type: 'button', classes: ['option-button', 'option-reply'],    title: 'Reply'});
-            const collapse = this.createElement('button', {id: IDS.collapse + hex, type: 'button', classes: ['option-button', 'option-collapse'], title: 'Collapse children'});
-            let   upvote   = this.createElement('button', {id: IDS.upvote   + hex, type: 'button', classes: ['option-button', 'option-upvote'],   title: 'Upvote'});
-            let   downvote = this.createElement('button', {id: IDS.downvote + hex, type: 'button', classes: ['option-button', 'option-downvote'], title: 'Downvote'});
-            const approve  = this.createElement('button', {id: IDS.approve  + hex, type: 'button', classes: ['option-button', 'option-approve'],  title: 'Approve'});
-            const remove   = this.createElement('button', {id: IDS.remove   + hex, type: 'button', classes: ['option-button', 'option-remove'],   title: 'Remove'});
-            const sticky   = this.createElement('button', {
-                id:      IDS.sticky + hex,
-                type:    'button',
-                classes: ['option-button', this.stickyCommentHex === hex ? 'option-unsticky' : 'option-sticky'],
-                title:   this.stickyCommentHex === hex ? this.isModerator ? 'Unsticky' : 'This comment has been stickied' : 'Sticky',
-            });
-            const contents = this.createElement('div',    {id: IDS.contents + hex});
-            if (this.mobileView) {
-                this.addClasses(options, 'options-mobile');
-            }
+            const card     = Wrap.new('div').id(IDS.card     + hex).style(`border-left: 2px solid ${color}`).classes('card');
+            const subtitle = Wrap.new('div').id(IDS.subtitle + hex).classes('subtitle');
+            const timeago = Wrap.new('div')
+                .id(IDS.timeago + hex)
+                .classes('timeago')
+                .html(this.timeDifference(curTime, comment.creationMs))
+                .attr({title: comment.creationDate.toString()});
+            const score    = Wrap.new('div')   .id(IDS.score    + hex).classes('score').inner(this.scorify(comment.score));
+            const body     = Wrap.new('div')   .id(IDS.body     + hex).classes('body');
+            const text     = Wrap.new('div')   .id(IDS.text     + hex).html(comment.html);
+            const options  = Wrap.new('div')   .id(IDS.options  + hex).classes('options');
+            const edit     = Wrap.new('button').id(IDS.edit     + hex).classes('option-button', 'option-edit')    .attr({type: 'button', title: 'Edit'}).click(() => this.startEditing(hex));
+            const reply    = Wrap.new('button').id(IDS.reply    + hex).classes('option-button', 'option-reply')   .attr({type: 'button', title: 'Reply'});
+            const collapse = Wrap.new('button').id(IDS.collapse + hex).classes('option-button', 'option-collapse').attr({type: 'button', title: 'Collapse children'}).click(() => this.commentCollapse(hex));
+            let   upvote   = Wrap.new('button').id(IDS.upvote   + hex).classes('option-button', 'option-upvote')  .attr({type: 'button', title: 'Upvote'});
+            let   downvote = Wrap.new('button').id(IDS.downvote + hex).classes('option-button', 'option-downvote').attr({type: 'button', title: 'Downvote'});
+            const approve  = Wrap.new('button').id(IDS.approve  + hex).classes('option-button', 'option-approve') .attr({type: 'button', title: 'Approve'}).click(() => this.commentApprove(hex));
+            const remove   = Wrap.new('button').id(IDS.remove   + hex).classes('option-button', 'option-remove')  .attr({type: 'button', title: 'Remove'}).click(() => this.commentDelete(hex));
+            const sticky   = Wrap.new('button')
+                .id(IDS.sticky + hex)
+                .classes('option-button', this.stickyCommentHex === hex ? 'option-unsticky' : 'option-sticky')
+                .attr({
+                    title: this.stickyCommentHex === hex ? this.isModerator ? 'Unsticky' : 'This comment has been stickied' : 'Sticky',
+                    type: 'button',
+                })
+                .click(() => this.commentSticky(hex));
+            const contents = Wrap.new('div').id(IDS.contents + hex);
 
-            const children = this.commentsRecurse(parentMap, hex);
-            if (children) {
-                children.id = IDS.children + hex;
-            }
+            // TODO refactor
+            // if (this.mobileView) {
+            //     this.addClasses(options, 'options-mobile');
+            // }
+
+            const children = this.commentsRecurse(parentMap, hex).id(IDS.children + hex);
 
             let avatar;
             if (commenter.photo === 'undefined') {
-                avatar = this.createElement('div', {style: `background-color: ${color}`, classes: 'avatar'});
-
-                if (comment.commenterHex === 'anonymous') {
-                    avatar.innerHTML = '?';
-                    avatar.style.fontWeight = 'bold';
-                } else {
-                    avatar.innerHTML = commenter.name[0].toUpperCase();
-                }
+                avatar = Wrap.new('div')
+                    .style(`background-color: ${color}`)
+                    .classes('avatar')
+                    .html(comment.commenterHex === 'anonymous' ? '?' : commenter.name[0].toUpperCase());
             } else {
-                this.createElement('img', {
-                    src:     `${this.cdn}/api/commenter/photo?commenterHex=${commenter.commenterHex}`,
-                    classes: 'avatar-img',
-                });
+                avatar = Wrap.new('img')
+                    .classes('avatar-img')
+                    .attr({src: `${this.cdn}/api/commenter/photo?commenterHex=${commenter.commenterHex}`, alt: ''});
             }
             if (this.isModerator && comment.state !== 'approved') {
-                this.addClasses(card, 'dark-card');
+                card.classes('dark-card');
             }
-            if (commenter.isModerator) {
-                this.addClasses(name, 'moderator');
-            }
-            if (comment.state === 'flagged') {
-                this.addClasses(name, 'flagged');
-            }
+            name.classes(
+                commenter.isModerator && 'moderator',
+                comment.state === 'flagged' && 'flagged');
 
             if (this.isAuthenticated) {
                 if (comment.direction > 0) {
-                    this.addClasses(upvote, 'upvoted');
+                    upvote.classes('upvoted');
                 } else if (comment.direction < 0) {
-                    this.addClasses(downvote, 'downvoted');
+                    downvote.classes('downvoted');
                 }
             }
-
-            // Add comment toolbar buttons
-            this.onClick(edit,     () => this.startEditing(hex));
-            this.onClick(collapse, () => this.commentCollapse(hex));
-            this.onClick(approve,  () => this.commentApprove(hex));
-            this.onClick(remove,   () => this.commentDelete(hex));
-            this.onClick(sticky,   () => this.commentSticky(hex));
 
             if (this.isAuthenticated) {
                 const upDown = this.upDownOnClickSet(upvote, downvote, hex, comment.direction);
@@ -1055,7 +848,7 @@ export class Comentario {
             this.append(contents, body);
             if (this.mobileView) {
                 this.append(contents, options);
-                this.createElement('div', {classes: 'options-clearfix', parent: contents});
+                Wrap.new('div'), {classes: 'options-clearfix', parent: contents});
             }
 
             if (children) {
@@ -1087,9 +880,9 @@ export class Comentario {
                 }
                 this.errorHide();
 
-                const card = this.byId(IDS.card + commentHex);
-                const name = this.byId(IDS.name + commentHex);
-                const tick = this.byId(IDS.approve + commentHex);
+                const card = Wrap.byId(IDS.card + commentHex);
+                const name = Wrap.byId(IDS.name + commentHex);
+                const tick = Wrap.byId(IDS.approve + commentHex);
 
                 this.removeClasses(card, 'dark-card');
                 this.removeClasses(name, 'flagged');
@@ -1110,7 +903,7 @@ export class Comentario {
                 }
 
                 this.errorHide();
-                const text = this.byId<HTMLDivElement>(IDS.text + commentHex);
+                const text = Wrap.byId(IDS.text + commentHex);
                 text.innerText = '[deleted]';
             });
     }
@@ -1143,8 +936,8 @@ export class Comentario {
 
     vote(commentHex: string, oldDirection: number, direction: number): Promise<void> {
         const [upvote, downvote] = this.upDownOnClickSet(
-            this.byId<HTMLButtonElement>(IDS.upvote   + commentHex),
-            this.byId<HTMLButtonElement>(IDS.downvote + commentHex),
+            Wrap.byId(IDS.upvote   + commentHex),
+            Wrap.byId(IDS.downvote + commentHex),
             commentHex,
             direction);
 
@@ -1156,7 +949,7 @@ export class Comentario {
             this.addClasses(downvote, 'downvoted');
         }
 
-        const score  = this.byId<HTMLDivElement>(IDS.score + commentHex);
+        const score  = Wrap.byId(IDS.score + commentHex);
         score.innerText = this.scorify(parseInt(score.innerText.replace(/[^\d-.]/g, '')) + direction - oldDirection);
 
         return this.apiClient.post<ApiResponseBase>('comment/vote', {commenterToken: this.commenterTokenGet(), commentHex, direction})
@@ -1179,7 +972,7 @@ export class Comentario {
      * @param commentHex Comment's hex ID
      */
     saveCommentEdits(commentHex: string): Promise<void> {
-        const textarea = this.byId<HTMLTextAreaElement>(IDS.textarea + commentHex);
+        const textarea = Wrap.byId(IDS.textarea + commentHex);
         const markdown = textarea.value.trim();
         if (markdown === '') {
             this.addClasses(textarea, 'red-border');
@@ -1214,7 +1007,7 @@ export class Comentario {
                 }
 
                 if (message !== '') {
-                    this.prepend(this.byId(IDS.superContainer + commentHex), this.messageCreate(message));
+                    this.prepend(Wrap.byId(IDS.superContainer + commentHex), this.messageCreate(message));
                 }
             });
     }
@@ -1228,15 +1021,15 @@ export class Comentario {
             return;
         }
 
-        const text = this.byId<HTMLDivElement>(IDS.text + commentHex);
+        const text = Wrap.byId(IDS.text + commentHex);
         this.shownEdit[commentHex] = true;
         text.replaceWith(this.textareaCreate(commentHex, true));
 
-        const textarea = this.byId<HTMLTextAreaElement>(IDS.textarea + commentHex);
+        const textarea = Wrap.byId(IDS.textarea + commentHex);
         textarea.value = this.commentsByHex[commentHex].markdown;
 
         // Turn the Edit button into a Cancel edit button
-        const editButton = this.byId<HTMLButtonElement>(IDS.edit + commentHex);
+        const editButton = Wrap.byId(IDS.edit + commentHex);
         this.removeClasses(editButton, 'option-edit');
         this.addClasses(editButton, 'option-cancel');
         editButton.title = 'Cancel edit';
@@ -1248,13 +1041,13 @@ export class Comentario {
      * @param commentHex Comment's hex ID.
      */
     stopEditing(commentHex: string) {
-        const cont = this.byId(IDS.superContainer + commentHex);
+        const cont = Wrap.byId(IDS.superContainer + commentHex);
         cont.innerHTML = this.commentsByHex[commentHex].html;
         cont.id = Comentario.idPrefix + IDS.text + commentHex;
         delete this.shownEdit[commentHex];
 
         // Turn the Cancel edit button back into the Edit button
-        const editButton = this.byId(IDS.edit + commentHex);
+        const editButton = Wrap.byId(IDS.edit + commentHex);
         this.addClasses(editButton, 'option-edit');
         this.removeClasses(editButton, 'option-cancel');
         editButton.title = 'Edit comment';
@@ -1273,11 +1066,11 @@ export class Comentario {
             return;
         }
 
-        const text = this.byId(IDS.text + commentHex);
+        const text = Wrap.byId(IDS.text + commentHex);
         this.insertAfter(text, this.textareaCreate(commentHex, false));
         this.shownReply[commentHex] = true;
 
-        let replyButton = this.byId(IDS.reply + commentHex);
+        let replyButton = Wrap.byId(IDS.reply + commentHex);
 
         this.removeClasses(replyButton, 'option-reply');
         this.addClasses(replyButton, 'option-cancel');
@@ -1293,8 +1086,8 @@ export class Comentario {
      * @param commentHex Comment's hex ID.
      */
     replyCollapse(commentHex: string) {
-        let replyButton = this.byId(IDS.reply + commentHex);
-        const el = this.byId(IDS.superContainer + commentHex);
+        let replyButton = Wrap.byId(IDS.reply + commentHex);
+        const el = Wrap.byId(IDS.superContainer + commentHex);
 
         el.remove();
         delete this.shownReply[commentHex];
@@ -1309,12 +1102,12 @@ export class Comentario {
     }
 
     commentCollapse(id: string) {
-        const children = this.byId(IDS.children + id);
+        const children = Wrap.byId(IDS.children + id);
         if (children) {
             this.addClasses(children, 'hidden');
         }
 
-        let button = this.byId(IDS.collapse + id);
+        let button = Wrap.byId(IDS.collapse + id);
         this.removeClasses(button, 'option-collapse');
         this.addClasses(button, 'option-uncollapse');
 
@@ -1325,8 +1118,8 @@ export class Comentario {
     }
 
     commentUncollapse(id: string) {
-        const children = this.byId(IDS.children + id);
-        let button = this.byId(IDS.collapse + id);
+        const children = Wrap.byId(IDS.children + id);
+        let button = Wrap.byId(IDS.collapse + id);
 
         if (children) {
             this.removeClasses(children, 'hidden');
@@ -1362,7 +1155,7 @@ export class Comentario {
     }
 
     commentsRender() {
-        const commentsArea = this.byId(IDS.commentsArea);
+        const commentsArea = Wrap.byId(IDS.commentsArea);
         commentsArea.innerHTML = '';
 
         const cards = this.commentsRecurse(this.parentMap(this.comments), 'root');
@@ -1390,8 +1183,8 @@ export class Comentario {
             return this.submitAuthenticated(id);
         }
 
-        const anonCheckbox = this.byId<HTMLInputElement>(IDS.anonymousCheckbox + id);
-        const textarea = this.byId<HTMLTextAreaElement>(IDS.textarea + id);
+        const anonCheckbox = Wrap.byId(IDS.anonymousCheckbox + id);
+        const textarea = Wrap.byId(IDS.textarea + id);
         const markdown = textarea.value.trim();
 
         if (markdown === '') {
@@ -1436,10 +1229,10 @@ export class Comentario {
             .then(() => this.selfGet())
             // Update the login controls
             .then(() => {
-                this.setAttr(this.byId(IDS.loggedContainer), {style: null});
+                this.setAttr(Wrap.byId(IDS.loggedContainer), {style: null});
 
                 // Hide the login button
-                this.remove(this.byId(IDS.login));
+                this.remove(Wrap.byId(IDS.login));
 
                 // Submit the pending comment, if there was one
                 return commentHex && this.commentNew(commentHex, this.commenterTokenGet(), false);
@@ -1450,19 +1243,19 @@ export class Comentario {
     }
 
     loginBoxCreate() {
-        this.append(this.root, this.createElement('div', {id: IDS.loginBoxContainer}));
+        Wrap.new('div').id(IDS.loginBoxContainer).appendTo(this.root);
     }
 
     popupRender(commentHex: string) {
-        const loginBoxContainer = this.byId(IDS.loginBoxContainer);
+        const loginBoxContainer = Wrap.byId(IDS.loginBoxContainer);
         this.addClasses(loginBoxContainer, 'login-box-container');
         this.setAttr(loginBoxContainer, {style: 'display: none; opacity: 0;'});
 
-        const loginBox = this.createElement('form', {id: IDS.loginBox, classes: 'login-box'});
+        const loginBox = Wrap.new('form'), {id: IDS.loginBox, classes: 'login-box'});
         // This is ugly, must redesign the whole bloody login/signup form
         loginBox.addEventListener('submit', (e) => {
             e.preventDefault();
-            if (!this.byId<HTMLButtonElement>(IDS.loginBoxPasswordButton)) {
+            if (!Wrap.byId(IDS.loginBoxPasswordButton)) {
                 this.showPasswordField();
             } else if (this.popupBoxType === 'login') {
                 this.login(commentHex);
@@ -1471,23 +1264,23 @@ export class Comentario {
             }
         });
 
-        const ssoSubtitle           = this.createElement('div',    {id: IDS.loginBoxSsoPretext, classes: 'login-box-subtitle', innerText: `Proceed with ${parent.location.host} authentication`});
-        const ssoButtonContainer    = this.createElement('div',    {id: IDS.loginBoxSsoButtonContainer, classes: 'oauth-buttons-container'});
-        const ssoButton             = this.createElement('div',    {classes: 'oauth-buttons'});
-        const hr1                   = this.createElement('hr',     {id: IDS.loginBoxHr1});
-        const oauthSubtitle         = this.createElement('div',    {id: IDS.loginBoxOauthPretext, classes: 'login-box-subtitle', innerText: 'Proceed with social login'});
-        const oauthButtonsContainer = this.createElement('div',    {id: IDS.loginBoxOauthButtonsContainer, classes: 'oauth-buttons-container'});
-        const oauthButtons          = this.createElement('div',    {classes: 'oauth-buttons'});
-        const hr2                   = this.createElement('hr',     {id: IDS.loginBoxHr2});
-        const emailSubtitle         = this.createElement('div',    {id: IDS.loginBoxEmailSubtitle, classes: 'login-box-subtitle', innerText: 'Login with your email address'});
-        const emailButton           = this.createElement('button', {id: IDS.loginBoxEmailButton, type: 'submit', classes: 'email-button', innerText: 'Continue'});
-        const emailContainer        = this.createElement('div', {
+        const ssoSubtitle           = Wrap.new('div'),    {id: IDS.loginBoxSsoPretext, classes: 'login-box-subtitle', innerText: `Proceed with ${parent.location.host} authentication`});
+        const ssoButtonContainer    = Wrap.new('div'),    {id: IDS.loginBoxSsoButtonContainer, classes: 'oauth-buttons-container'});
+        const ssoButton             = Wrap.new('div'),    {classes: 'oauth-buttons'});
+        const hr1                   = Wrap.new('hr'),     {id: IDS.loginBoxHr1});
+        const oauthSubtitle         = Wrap.new('div'),    {id: IDS.loginBoxOauthPretext, classes: 'login-box-subtitle', innerText: 'Proceed with social login'});
+        const oauthButtonsContainer = Wrap.new('div'),    {id: IDS.loginBoxOauthButtonsContainer, classes: 'oauth-buttons-container'});
+        const oauthButtons          = Wrap.new('div'),    {classes: 'oauth-buttons'});
+        const hr2                   = Wrap.new('hr'),     {id: IDS.loginBoxHr2});
+        const emailSubtitle         = Wrap.new('div'),    {id: IDS.loginBoxEmailSubtitle, classes: 'login-box-subtitle', innerText: 'Login with your email address'});
+        const emailButton           = Wrap.new('button'), {id: IDS.loginBoxEmailButton, type: 'submit', classes: 'email-button', innerText: 'Continue'});
+        const emailContainer        = Wrap.new('div'), {
             classes: 'email-container',
             children: [
-                this.createElement('div', {
+                Wrap.new('div'), {
                     classes:  'email',
-                    children: [
-                        this.createElement('input', {
+                    .append(
+                        Wrap.new('input'), {
                             id:           IDS.loginBoxEmailInput,
                             classes:      'input',
                             name:         'email',
@@ -1500,13 +1293,13 @@ export class Comentario {
                 }),
             ],
         });
-        const forgotLinkContainer = this.createElement('div', {id: IDS.loginBoxForgotLinkContainer, classes: 'forgot-link-container'});
-        const forgotLink          = this.createElement('a',   {classes: 'forgot-link', innerText: 'Forgot your password?', parent: forgotLinkContainer});
-        const loginLinkContainer  = this.createElement('div', {id: IDS.loginBoxLoginLinkContainer, classes: 'login-link-container'});
-        const loginLink           = this.createElement('a',   {classes: 'login-link', innerText: 'Don\'t have an account? Sign up.', parent: loginLinkContainer});
-        const close               = this.createElement('div', {classes: 'login-box-close', parent: loginBox});
+        const forgotLinkContainer = Wrap.new('div'), {id: IDS.loginBoxForgotLinkContainer, classes: 'forgot-link-container'});
+        const forgotLink          = Wrap.new('a'),   {classes: 'forgot-link', innerText: 'Forgot your password?', parent: forgotLinkContainer});
+        const loginLinkContainer  = Wrap.new('div'), {id: IDS.loginBoxLoginLinkContainer, classes: 'login-link-container'});
+        const loginLink           = Wrap.new('a'),   {classes: 'login-link', innerText: 'Don\'t have an account? Sign up.', parent: loginLinkContainer});
+        const close               = Wrap.new('div'), {classes: 'login-box-close', parent: loginBox});
 
-        this.addClasses(this.root, 'root-min-height');
+        this.root.classes('root-min-height');
 
         this.onClick(forgotLink,  () => this.forgotPassword());
         this.onClick(loginLink,   () => this.popupSwitch());
@@ -1515,16 +1308,16 @@ export class Comentario {
         let hasOAuth = false;
         const oauthProviders = ['google', 'github', 'gitlab'];
         oauthProviders.filter(p => this.configuredOauths[p]).forEach(provider => {
-            const button = this.createElement(
-                'button',
+            const button = Wrap.new(
+                'b)utton',
                 {classes: ['button', `${provider}-button`], type: 'button', innerText: provider, parent: oauthButtons});
             this.onClick(button, () => this.commentoAuth(provider, commentHex));
             hasOAuth = true;
         });
 
         if (this.configuredOauths['sso']) {
-            const button = this.createElement(
-                'button',
+            const button = Wrap.new(
+                'b)utton',
                 {classes: ['button', 'sso-button'], type: 'button', innerText: 'Single Sign-On', parent: ssoButton});
             this.onClick(button, () => this.commentoAuth('sso', commentHex));
             this.append(ssoButtonContainer, ssoButton);
@@ -1561,30 +1354,30 @@ export class Comentario {
     }
 
     popupSwitch() {
-        const emailSubtitle = this.byId(IDS.loginBoxEmailSubtitle);
+        const emailSubtitle = Wrap.byId(IDS.loginBoxEmailSubtitle);
 
         if (this.oauthButtonsShown) {
             this.remove(
-                this.byId(IDS.loginBoxOauthButtonsContainer),
-                this.byId(IDS.loginBoxOauthPretext),
-                this.byId(IDS.loginBoxHr1),
-                this.byId(IDS.loginBoxHr2));
+                Wrap.byId(IDS.loginBoxOauthButtonsContainer),
+                Wrap.byId(IDS.loginBoxOauthPretext),
+                Wrap.byId(IDS.loginBoxHr1),
+                Wrap.byId(IDS.loginBoxHr2));
         }
 
         if (this.configuredOauths['sso']) {
             this.remove(
-                this.byId(IDS.loginBoxSsoButtonContainer),
-                this.byId(IDS.loginBoxSsoPretext),
-                this.byId(IDS.loginBoxHr1),
-                this.byId(IDS.loginBoxHr2));
+                Wrap.byId(IDS.loginBoxSsoButtonContainer),
+                Wrap.byId(IDS.loginBoxSsoPretext),
+                Wrap.byId(IDS.loginBoxHr1),
+                Wrap.byId(IDS.loginBoxHr2));
         }
 
-        this.remove(this.byId(IDS.loginBoxLoginLinkContainer), this.byId(IDS.loginBoxForgotLinkContainer));
+        this.remove(Wrap.byId(IDS.loginBoxLoginLinkContainer), Wrap.byId(IDS.loginBoxForgotLinkContainer));
 
         emailSubtitle.innerText = 'Create an account';
         this.popupBoxType = 'signup';
         this.showPasswordField();
-        this.byId(IDS.loginBoxEmailInput).focus();
+        Wrap.byId(IDS.loginBoxEmailInput).focus();
     }
 
     loginUP(email: string, password: string, id: string): Promise<void> {
@@ -1599,7 +1392,7 @@ export class Comentario {
                 this.errorHide();
                 this.cookieSet('commentoCommenterToken', resp.commenterToken);
                 this.selfLoad(resp.commenter, resp.email);
-                this.remove(this.byId(IDS.login));
+                this.remove(Wrap.byId(IDS.login));
                 return (id ? this.commentNew(id, resp.commenterToken, false) : undefined);
             })
             .then(() => this.loginBoxClose())
@@ -1609,16 +1402,16 @@ export class Comentario {
     }
 
     login(id: string): Promise<void> {
-        const email    = this.byId<HTMLInputElement>(IDS.loginBoxEmailInput);
-        const password = this.byId<HTMLInputElement>(IDS.loginBoxPasswordInput);
+        const email    = Wrap.byId(IDS.loginBoxEmailInput);
+        const password = Wrap.byId(IDS.loginBoxPasswordInput);
         return this.loginUP(email.value, password.value, id);
     }
 
     signup(id: string): Promise<void> {
-        const email    = this.byId<HTMLInputElement>(IDS.loginBoxEmailInput);
-        const name     = this.byId<HTMLInputElement>(IDS.loginBoxNameInput);
-        const website  = this.byId<HTMLInputElement>(IDS.loginBoxWebsiteInput);
-        const password = this.byId<HTMLInputElement>(IDS.loginBoxPasswordInput);
+        const email    = Wrap.byId(IDS.loginBoxEmailInput);
+        const name     = Wrap.byId(IDS.loginBoxNameInput);
+        const website  = Wrap.byId(IDS.loginBoxWebsiteInput);
+        const password = Wrap.byId(IDS.loginBoxPasswordInput);
 
         const data = {
             email:    email.value,
@@ -1643,19 +1436,19 @@ export class Comentario {
 
     showPasswordField() {
         const isSignup = this.popupBoxType === 'signup';
-        const loginBox = this.byId(IDS.loginBox);
-        const subtitle = this.byId(IDS.loginBoxEmailSubtitle);
+        const loginBox = Wrap.byId(IDS.loginBox);
+        const subtitle = Wrap.byId(IDS.loginBoxEmailSubtitle);
 
         this.remove(
-            this.byId(IDS.loginBoxEmailButton),
-            this.byId(IDS.loginBoxLoginLinkContainer),
-            this.byId(IDS.loginBoxForgotLinkContainer));
+            Wrap.byId(IDS.loginBoxEmailButton),
+            Wrap.byId(IDS.loginBoxLoginLinkContainer),
+            Wrap.byId(IDS.loginBoxForgotLinkContainer));
         if (this.oauthButtonsShown && Object.keys(this.configuredOauths).length) {
             this.remove(
-                this.byId(IDS.loginBoxHr1),
-                this.byId(IDS.loginBoxHr2),
-                this.byId(IDS.loginBoxOauthPretext),
-                this.byId(IDS.loginBoxOauthButtonsContainer));
+                Wrap.byId(IDS.loginBoxHr1),
+                Wrap.byId(IDS.loginBoxHr2),
+                Wrap.byId(IDS.loginBoxOauthPretext),
+                Wrap.byId(IDS.loginBoxOauthButtonsContainer));
         }
 
         const controls = isSignup ?
@@ -1673,13 +1466,13 @@ export class Comentario {
             'Enter your password to log in.';
 
         controls.forEach(c => {
-            const fieldContainer = this.createElement('div', {classes: 'email-container'});
-            const field          = this.createElement('div', {classes: 'email', parent: fieldContainer});
-            const fieldInput     = this.createElement('input', c);
+            const fieldContainer = Wrap.new('div'), {classes: 'email-container'});
+            const field          = Wrap.new('div'), {classes: 'email', parent: fieldContainer});
+            const fieldInput     = Wrap.new('input'), c);
             this.append(field, fieldInput);
             // Add a submit button next to the password input
             if (c.type === 'password') {
-                this.createElement('button', {
+                Wrap.new('button'), {
                     id:        IDS.loginBoxPasswordButton,
                     type:      'submit',
                     classes:   'email-button',
@@ -1690,7 +1483,7 @@ export class Comentario {
             this.append(loginBox, fieldContainer);
         });
 
-        this.byId(isSignup ? IDS.loginBoxNameInput : IDS.loginBoxPasswordInput).focus();
+        Wrap.byId(isSignup ? IDS.loginBoxNameInput : IDS.loginBoxPasswordInput).focus();
     }
 
     pageUpdate(): Promise<void> {
@@ -1714,7 +1507,7 @@ export class Comentario {
     }
 
     threadLockToggle(): Promise<void> {
-        const lock = this.byId<HTMLButtonElement>(IDS.modToolsLockButton);
+        const lock = Wrap.byId(IDS.modToolsLockButton);
         this.isLocked = !this.isLocked;
         lock.disabled = true;
         return this.pageUpdate()
@@ -1724,7 +1517,7 @@ export class Comentario {
 
     commentSticky(commentHex: string): Promise<void> {
         if (this.stickyCommentHex !== 'none') {
-            const sticky = this.byId(IDS.sticky + this.stickyCommentHex);
+            const sticky = Wrap.byId(IDS.sticky + this.stickyCommentHex);
             this.removeClasses(sticky, 'option-unsticky');
             this.addClasses(sticky, 'option-sticky');
         }
@@ -1733,7 +1526,7 @@ export class Comentario {
 
         return this.pageUpdate()
             .then(() => {
-                const sticky = this.byId(IDS.sticky + commentHex);
+                const sticky = Wrap.byId(IDS.sticky + commentHex);
                 if (this.stickyCommentHex === commentHex) {
                     this.removeClasses(sticky, 'option-sticky');
                     this.addClasses(sticky, 'option-unsticky');
@@ -1745,27 +1538,23 @@ export class Comentario {
     }
 
     mainAreaCreate() {
-        this.createElement('div', {id: IDS.mainArea, classes: 'main-area', style: 'display: none', parent: this.root});
+        Wrap.new('div').id(IDS.mainArea).classes('main-area').style('display: none').appendTo(this.root);
     }
 
     modToolsCreate() {
-        const btnLock = this.createElement(
-            'button',
-            {
-                id:        IDS.modToolsLockButton,
-                type:      'button',
-                innerHTML: this.isLocked ? 'Unlock Thread' : 'Lock Thread',
-            });
-        this.onClick(btnLock, this.threadLockToggle);
-        this.createElement(
-            'div',
-            {id: IDS.modTools, classes: 'mod-tools', style: 'display: none', parent: this.root, children: [btnLock]});
+        Wrap.new('div').id(IDS.modTools).classes('mod-tools').style('display: none').appendTo(this.root)
+            .append(
+                Wrap.new('button')
+                    .id(IDS.modToolsLockButton)
+                    .attr({type: 'button'})
+                    .inner(this.isLocked ? 'Unlock Thread' : 'Lock Thread')
+                    .click(() => this.threadLockToggle()));
     }
 
     allShow() {
-        const mainArea = this.byId(IDS.mainArea);
-        const modTools = this.byId(IDS.modTools);
-        const loggedContainer = this.byId(IDS.loggedContainer);
+        const mainArea = Wrap.byId(IDS.mainArea);
+        const modTools = Wrap.byId(IDS.modTools);
+        const loggedContainer = Wrap.byId(IDS.loggedContainer);
 
         this.setAttr(mainArea, {style: null});
 
@@ -1779,18 +1568,18 @@ export class Comentario {
     }
 
     loginBoxClose() {
-        const mainArea = this.byId(IDS.mainArea);
-        const loginBoxContainer = this.byId(IDS.loginBoxContainer);
+        const mainArea = Wrap.byId(IDS.mainArea);
+        const loginBoxContainer = Wrap.byId(IDS.loginBoxContainer);
 
         this.removeClasses(mainArea, 'blurred');
-        this.removeClasses(this.root, 'root-min-height');
+        this.root.noClasses('root-min-height');
 
         this.setAttr(loginBoxContainer, {style: 'display: none'});
     }
 
     loginBoxShow(commentHex: string) {
-        const mainArea = this.byId(IDS.mainArea);
-        const loginBoxContainer = this.byId(IDS.loginBoxContainer);
+        const mainArea = Wrap.byId(IDS.mainArea);
+        const loginBoxContainer = Wrap.byId(IDS.loginBoxContainer);
 
         this.popupRender(commentHex);
 
@@ -1799,7 +1588,7 @@ export class Comentario {
 
         loginBoxContainer.scrollIntoView({behavior: 'smooth'});
 
-        this.byId(IDS.loginBoxEmailInput).focus();
+        Wrap.byId(IDS.loginBoxEmailInput).focus();
     }
 
     dataTagsLoad() {
@@ -1826,7 +1615,7 @@ export class Comentario {
         if (window.location.hash) {
             if (window.location.hash.startsWith('#commento-')) {
                 const id = window.location.hash.split('-')[1];
-                const el = this.byId(IDS.card + id);
+                const el = Wrap.byId(IDS.card + id);
                 if (el === null) {
                     if (id.length === 64) {
                         // A hack to make sure it's a valid ID before showing the user a message.
@@ -1838,7 +1627,7 @@ export class Comentario {
                 this.addClasses(el, 'highlighted-card');
                 el.scrollIntoView(true);
             } else if (window.location.hash.startsWith('#commento')) {
-                this.root.scrollIntoView(true);
+                this.root.scrollTo();
             }
         }
     }
