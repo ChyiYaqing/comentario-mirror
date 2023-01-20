@@ -9,7 +9,7 @@
     global.importOpen = function () {
         $('.view').hide();
         $('#import-view').show();
-    }
+    };
 
     global.importDisqus = function () {
         const url = $('#disqus-url').val();
@@ -33,7 +33,7 @@
 
             global.globalOKShow(`Imported ${resp.numImported} comments!`);
         });
-    }
+    };
 
     global.importCommento = function () {
         const url = $('#commento-url').val();
@@ -57,6 +57,6 @@
 
             global.globalOKShow(`Imported ${resp.numImported} comments!`);
         });
-    }
+    };
 
 }(window.commento, document));

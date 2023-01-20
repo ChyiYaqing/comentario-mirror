@@ -37,9 +37,12 @@ export interface Email {
 export type CommentMap = { [k: string]: Comment };
 export type CommentsMap = { [k: string]: Comment[] };
 
-export interface OAuthResponse {
-    provider?: string;
-    id?:       string;
-}
+export type ComparatorFunc<T> = (a: T, b: T) => number;
 
 export type SortPolicy = 'score-desc' | 'creationdate-desc' | 'creationdate-asc';
+
+export interface SortPolicyProps<T> {
+    label:      string;
+    comparator: ComparatorFunc<T>;
+}
+

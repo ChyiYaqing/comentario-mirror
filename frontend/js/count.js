@@ -16,7 +16,7 @@
     }
 
     let commentsText = function (count) {
-        return `${count} ${count === 1 ? 'comment' : 'comments'}`
+        return `${count} ${count === 1 ? 'comment' : 'comments'}`;
     };
 
     function tags(tag) {

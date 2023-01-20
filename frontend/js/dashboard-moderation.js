@@ -37,7 +37,7 @@
 
                 if (!resp.success) {
                     global.globalErrorShow(resp.message);
-                    return
+                    return;
                 }
 
                 global.globalOKShow('Added a new moderator!');
@@ -48,7 +48,7 @@
         } else {
             global.globalErrorShow('Already a moderator.');
         }
-    }
+    };
 
     // Deletes a moderator.
     global.moderatorDeleteHandler = function (email) {
@@ -73,12 +73,12 @@
             global.post(`${global.origin}/api/domain/moderator/delete`, json, function (resp) {
                 if (!resp.success) {
                     global.globalErrorShow(resp.message);
-                    return
+                    return;
                 }
 
                 global.globalOKShow('Removed!');
             });
         }
-    }
+    };
 
 }(window.commento, document));

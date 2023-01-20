@@ -11,7 +11,7 @@ const concat = require('gulp-concat');
 const rename = require('gulp-rename');
 const eslint = require('gulp-eslint');
 const webpack = require('webpack-stream');
-const webpackConfig = require('./webpack.config.js')
+const webpackConfig = require('./webpack.config.js');
 
 const develPath = 'build/devel/';
 const prodPath = 'build/prod/';
@@ -132,7 +132,7 @@ gulp.task('html-prod', function (done) {
     'use strict';
     gulp.src(htmlGlob)
         .pipe(htmlMinifier({collapseWhitespace: true, removeComments: true}))
-        .pipe(gulp.dest(prodPath))
+        .pipe(gulp.dest(prodPath));
     done();
 });
 
@@ -168,12 +168,12 @@ gulp.task('js-devel', function (done) {
             .pipe(concat(outputFile))
             .pipe(rename(outputFile))
             .pipe(sourcemaps.write())
-            .pipe(gulp.dest(develPath))
+            .pipe(gulp.dest(develPath));
     }
 
     gulp.src('src/index.ts')
         .pipe(webpack(webpackConfig))
-        .pipe(gulp.dest(`${develPath}js`))
+        .pipe(gulp.dest(`${develPath}js`));
     done();
 });
 
@@ -184,12 +184,12 @@ gulp.task('js-prod', function (done) {
             .pipe(concat(outputFile))
             .pipe(rename(outputFile))
             .pipe(terser())
-            .pipe(gulp.dest(prodPath))
+            .pipe(gulp.dest(prodPath));
     }
 
     gulp.src('src/index.ts')
         .pipe(webpack(webpackConfig))
-        .pipe(gulp.dest(`${prodPath}js`))
+        .pipe(gulp.dest(`${prodPath}js`));
     done();
 });
 

@@ -17,7 +17,7 @@
                 document.location = `${global.origin}/dashboard`;
             }
         });
-    }
+    };
 
 
     // Clears all comments in a domain.
@@ -29,27 +29,27 @@
                 document.location = `${global.origin}/dashboard`;
             }
         });
-    }
+    };
 
 
     // Freezes a domain.
     global.domainFreezeHandler = function () {
         const data = global.dashboard.$data;
 
-        data.domains[data.cd].state = 'frozen'
-        global.domainUpdate(data.domains[data.cd])
+        data.domains[data.cd].state = 'frozen';
+        global.domainUpdate(data.domains[data.cd]);
         document.location.hash = '#modal-close';
-    }
+    };
 
 
     // Unfreezes a domain.
     global.domainUnfreezeHandler = function () {
         const data = global.dashboard.$data;
 
-        data.domains[data.cd].state = 'unfrozen'
-        global.domainUpdate(data.domains[data.cd])
+        data.domains[data.cd].state = 'unfrozen';
+        global.domainUpdate(data.domains[data.cd]);
         document.location.hash = '#modal-close';
-    }
+    };
 
 
 }(window.commento, document));

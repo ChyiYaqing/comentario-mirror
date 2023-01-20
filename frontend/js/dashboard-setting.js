@@ -15,7 +15,6 @@
         }
     }
 
-
     // Selects a setting.
     global.settingSelect = function (id) {
         const data = global.dashboard.$data;
@@ -34,7 +33,6 @@
         }
     };
 
-
     // Deselects all settings.
     global.settingDeselectAll = function () {
         const data = global.dashboard.$data;
@@ -43,6 +41,6 @@
         for (let i = 0; i < settings.length; i++) {
             settings[i].selected = false;
         }
-    }
+    };
 
 }(window.commento, document));

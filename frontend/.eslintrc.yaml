@@ -8,33 +8,37 @@ rules:
   no-bitwise: 2
   camelcase: 2
   brace-style:
-  - error
-  - 1tbs
+    - error
+    - 1tbs
   curly:
-  - error
-  - all
+    - error
+    - all
   eqeqeq:
-  - error
-  - smart
+    - error
+    - smart
   indent:
-  - error
-  - 4
+    - error
+    - 4
+    - SwitchCase: 1
   no-use-before-define:
-  - error
-  - functions: false
+    - error
+    - functions: false
   new-cap: error
   no-caller: error
   no-unused-vars: error
   prefer-template: error
   quote-props:
-  - error
-  - as-needed
+    - error
+    - as-needed
   quotes:
-  - error
-  - single
+    - error
+    - single
+  semi:
+    - error
+    - always
   strict:
-  - error
-  - function
+    - error
+    - function
 
 overrides:
   # JavaScript files

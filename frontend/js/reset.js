@@ -31,7 +31,7 @@
             global.textSet('#err', '');
             if (!resp.success) {
                 global.textSet('#err', resp.message);
-                return
+                return;
             }
 
             if (resp.entity === 'owner') {
@@ -40,6 +40,6 @@
                 $('#msg').html('Your password has been reset. You may close this window and try logging in again.');
             }
         });
-    }
+    };
 
 }(window.commento, document));

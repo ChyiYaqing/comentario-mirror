@@ -8,7 +8,7 @@
         if (global.cookieGet('commentoOwnerToken') !== undefined) {
             document.location = `${global.origin}/dashboard`;
         }
-    }
+    };
 
 
     // Prefills the email field from the URL parameter.

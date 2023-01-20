@@ -7,28 +7,28 @@
 
     global.numberify = function (x) {
         if (x === 0) {
-            return {zeros: '000', num: '', units: ''}
+            return {zeros: '000', num: '', units: ''};
         }
         if (x < 10) {
-            return {zeros: '00', num: x, units: ''}
+            return {zeros: '00', num: x, units: ''};
         }
         if (x < 100) {
-            return {zeros: '0', num: x, units: ''}
+            return {zeros: '0', num: x, units: ''};
         }
         if (x < 1000) {
-            return {zeros: '', num: x, units: ''}
+            return {zeros: '', num: x, units: ''};
         }
 
         let res;
         if (x < 1000000) {
-            res = global.numberify((x / 1000).toFixed(0))
-            res.units = 'K'
+            res = global.numberify((x / 1000).toFixed(0));
+            res.units = 'K';
         } else if (x < 1000000000) {
-            res = global.numberify((x / 1000000).toFixed(0))
-            res.units = 'M'
+            res = global.numberify((x / 1000000).toFixed(0));
+            res.units = 'M';
         } else if (x < 1000000000000) {
-            res = global.numberify((x / 1000000000).toFixed(0))
-            res.units = 'B'
+            res = global.numberify((x / 1000000000).toFixed(0));
+            res.units = 'B';
         }
 
         if (res.num * 10 % 10 === 0) {
@@ -36,7 +36,7 @@
         }
 
         return res;
-    }
+    };
 
     global.statisticsOpen = function () {
         const data = global.dashboard.$data;
@@ -102,6 +102,6 @@
                 return a + b;
             }, 0));
         });
-    }
+    };
 
 }(window.commento, document));

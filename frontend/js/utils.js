@@ -13,21 +13,21 @@
             }
         }
         return null;
-    }
+    };
 
     // Sets the disabled attribute in a button.
     global.buttonDisable = function (id) {
         const el = $(id);
 
         el.attr('disabled', true);
-    }
+    };
 
     // Unsets the disabled attribute in a button.
     global.buttonEnable = function (id) {
         const el = $(id);
 
         el.attr('disabled', false);
-    }
+    };
 
     // Sets the text on the given label ID.
     global.textSet = function (id, text) {
@@ -35,7 +35,7 @@
 
         el.show();
         el.text(text);
-    }
+    };
 
     // Given an array of input IDs, this function calls a callback function with
     // the first unfilled ID.
@@ -50,7 +50,7 @@
         }
 
         return allOk;
-    }
+    };
 
     // Gets the value of a cookie.
     global.cookieGet = function (name) {
@@ -70,12 +70,12 @@
             cookieString += '; secure';
         }
         document.cookie = cookieString;
-    }
+    };
 
     // Deletes a cookie.
     global.cookieDelete = function (name) {
         document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:01 GMT;`;
-    }
+    };
 
     // Converts a date in the past to a human-friendly duration relative to now.
     global.timeSince = function (date) {
@@ -111,6 +111,6 @@
         } else {
             return 'just now';
         }
-    }
+    };
 
 }(window.commento, document));

@@ -35,12 +35,12 @@
             global.textSet('#err', '');
             if (!resp.success) {
                 global.textSet('#err', resp.message);
-                return
+                return;
             }
 
             $('#msg').html('If that email is a registered account, you will receive an email with instructions on how to reset your password.');
             $('#reset-button').hide();
         });
-    }
+    };
 
 }(window.commento, document));

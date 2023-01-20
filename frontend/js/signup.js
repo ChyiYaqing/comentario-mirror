@@ -1,5 +1,5 @@
 (function (global, document) {
-    'use strict'
+    'use strict';
 
     // Signs up the user and redirects to either the login page or the email
     // confirmation, depending on whether or not SMTP is configured in the
@@ -30,7 +30,7 @@
 
         global.buttonDisable('#signup-button');
         global.post(`${global.origin}/api/owner/new`, json, function (resp) {
-            global.buttonEnable('#signup-button')
+            global.buttonEnable('#signup-button');
 
             if (!resp.success) {
                 global.textSet('#err', resp.message);

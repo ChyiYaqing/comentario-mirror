@@ -23,7 +23,6 @@
         $('.view').hide();
     };
 
-
     // Deselects all domains.
     global.domainDeselectAll = function () {
         const data = global.dashboard.$data;
@@ -32,8 +31,7 @@
         for (let i = 0; i < domains.length; i++) {
             domains[i].selected = false;
         }
-    }
-
+    };
 
     // Creates a new domain.
     global.domainNewHandler = function () {
@@ -62,8 +60,7 @@
                 global.settingSelect('installation');
             });
         });
-    }
-
+    };
 
     // Refreshes the list of domains.
     global.domainRefresh = function (callback) {
@@ -111,7 +108,6 @@
         });
     };
 
-
     // Updates a domain with the backend.
     global.domainUpdate = function (domain, callback) {
         domain.requireIdentification = !domain.allowAnonymous;
@@ -130,8 +126,7 @@
                 callback(resp.success);
             }
         });
-    }
-
+    };
 
     // Deletes a domain.
     global.domainDelete = function (domain, callback) {
@@ -150,8 +145,7 @@
                 callback(resp.success);
             }
         });
-    }
-
+    };
 
     // Clears the comments in a domain.
     global.domainClear = function (domain, callback) {
@@ -170,6 +164,5 @@
                 callback(resp.success);
             }
         });
-    }
-
+    };
 }(window.commento, document));

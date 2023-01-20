@@ -26,7 +26,7 @@
 
             $('.msg').text('Successfully updated!');
         });
-    }
+    };
 
     // Checks the unsubscribeSecretHex token to retrieve current settings.
     global.emailGet = function () {

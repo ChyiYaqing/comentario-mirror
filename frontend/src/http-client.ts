@@ -57,7 +57,7 @@ export class HttpClient {
                     } else {
                         handleError();
                     }
-                }
+                };
                 req.onerror = handleError;
 
                 // Run the request

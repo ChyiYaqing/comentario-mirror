@@ -39,7 +39,7 @@
 
             $('.msg').text('Successfully updated!');
         });
-    }
+    };
 
     global.profilePrefill = function () {
         $('.err').text('');
@@ -61,13 +61,13 @@
             $('#unsubscribe').attr('href', `${global.origin}/unsubscribe?unsubscribeSecretHex=${resp.email.unsubscribeSecretHex}`);
 
             if (resp.commenter.provider === 'commento') {
-                $('#link-row').attr('style', '')
+                $('#link-row').attr('style', '');
                 if (resp.commenter.link !== 'undefined') {
                     $('#link').val(resp.commenter.link);
                 }
 
-                $('#photo-row').attr('style', '')
-                $('#photo-subtitle').attr('style', '')
+                $('#photo-row').attr('style', '');
+                $('#photo-subtitle').attr('style', '');
                 if (resp.commenter.photo !== 'undefined') {
                     $('#photo').val(resp.commenter.photo);
                 }

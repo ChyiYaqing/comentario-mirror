@@ -16,8 +16,7 @@
                 callback(JSON.parse(data));
             },
         });
-    }
-
+    };
 
     // Performs a GET request and calls the callback function with the JSON
     // response.
@@ -29,6 +28,5 @@
                 callback(JSON.parse(data));
             },
         });
-    }
-
+    };
 }(window.commento, document));

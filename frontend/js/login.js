@@ -10,9 +10,9 @@
         const confirmed = global.paramGet('confirmed');
 
         if (confirmed === 'true') {
-            $('#msg').html('Successfully confirmed! Login to continue.')
+            $('#msg').html('Successfully confirmed! Login to continue.');
         } else if (confirmed === 'false') {
-            $('#err').html('That link has expired.')
+            $('#err').html('That link has expired.');
         }
     }
 
@@ -22,7 +22,7 @@
         const changed = global.paramGet('changed');
 
         if (changed === 'true') {
-            $('#msg').html('Password changed successfully! Login to continue.')
+            $('#msg').html('Password changed successfully! Login to continue.');
         }
     }
 
@@ -31,7 +31,7 @@
         const signedUp = global.paramGet('signedUp');
 
         if (signedUp === 'true') {
-            $('#msg').html('Registration successful! Login to continue.')
+            $('#msg').html('Registration successful! Login to continue.');
         }
     }
 
@@ -40,7 +40,7 @@
         const deleted = global.paramGet('deleted');
 
         if (deleted === 'true') {
-            $('#msg').html('Your account has been deleted.')
+            $('#msg').html('Your account has been deleted.');
         }
     }
 
