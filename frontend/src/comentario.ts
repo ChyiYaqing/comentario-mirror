@@ -469,15 +469,17 @@ export class Comentario {
         }
 
         return this.apiClient.post<ApiSelfResponse>('commenter/self', {commenterToken: this.commenterTokenGet()})
+            // On any error consider the user unauthenticated
+            .catch(() => null)
             .then(resp => {
-                if (!resp.success) {
+                if (!resp?.success) {
                     this.cookieSet('commentoCommenterToken', 'anonymous');
-                    return this.reject(resp.message);
+                    return;
                 }
 
                 this.selfLoad(resp.commenter, resp.email);
                 this.allShow();
-                return undefined;
+                return;
             });
     }
 
@@ -1140,13 +1142,11 @@ export class Comentario {
     }
 
     vote(commentHex: string, oldDirection: number, direction: number): Promise<void> {
-        let upvote   = this.byId<HTMLButtonElement>(IDS.upvote + commentHex);
-        let downvote = this.byId<HTMLButtonElement>(IDS.downvote + commentHex);
-        const score  = this.byId<HTMLDivElement>(IDS.score + commentHex);
-
-        const upDown = this.upDownOnClickSet(upvote, downvote, commentHex, direction);
-        upvote = upDown[0];
-        downvote = upDown[1];
+        const [upvote, downvote] = this.upDownOnClickSet(
+            this.byId<HTMLButtonElement>(IDS.upvote   + commentHex),
+            this.byId<HTMLButtonElement>(IDS.downvote + commentHex),
+            commentHex,
+            direction);
 
         this.removeClasses(upvote, 'upvoted');
         this.removeClasses(downvote, 'downvoted');
@@ -1156,6 +1156,7 @@ export class Comentario {
             this.addClasses(downvote, 'downvoted');
         }
 
+        const score  = this.byId<HTMLDivElement>(IDS.score + commentHex);
         score.innerText = this.scorify(parseInt(score.innerText.replace(/[^\d-.]/g, '')) + direction - oldDirection);
 
         return this.apiClient.post<ApiResponseBase>('comment/vote', {commenterToken: this.commenterTokenGet(), commentHex, direction})
@@ -1166,9 +1167,10 @@ export class Comentario {
                     this.removeClasses(downvote, 'downvoted');
                     score.innerText = this.scorify(parseInt(score.innerText.replace(/[^\d-.]/g, '')) - direction + oldDirection);
                     this.upDownOnClickSet(upvote, downvote, commentHex, oldDirection);
-                    return;
+                    return Promise.reject();
                 }
                 this.errorHide();
+                return undefined;
             });
     }
 
