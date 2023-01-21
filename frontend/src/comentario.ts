@@ -1,5 +1,13 @@
 import { HttpClient } from './http-client';
-import { Comment, Commenter, CommentMap, CommentsMap, Email, SortPolicy, SortPolicyProps } from './models';
+import {
+    Comment,
+    Commenter,
+    CommentMap,
+    CommentsGroupedByHex,
+    Email,
+    SortPolicy,
+    SortPolicyProps,
+} from './models';
 import {
     ApiCommentEditResponse,
     ApiCommenterLoginResponse,
@@ -66,24 +74,14 @@ const IDS = {
     footer:                        'footer',
 };
 
-type CallbackFunction = () => void;
-
-interface ElementConfig {
-    /** ID to assign to the created element (excluding the prefix). */
-    id?:        string;
-    classes?:   string | string[];
-    innerText?: string;
-    innerHTML?: string;
-    parent?:    HTMLElement;
-    children?:  HTMLElement[];
-
-    [ k: string ]: any;
-}
-
 export class Comentario {
 
+    /** Origin URL, which gets replaced by the backend on serving the file. */
     private readonly origin = '[[[.Origin]]]';
+    /** CDN URL, which gets replaced by the backend on serving the file. */
     private readonly cdn = '[[[.CdnPrefix]]]';
+    /** App version, which gets replaced by the backend on serving the file. */
+    private readonly version = '[[[.Version]]]';
 
     /** HTTP client we'll use for API requests. */
     private readonly apiClient = new HttpClient(`${this.origin}/api`);
@@ -99,7 +97,10 @@ export class Comentario {
     private autoInit = true;
     private isAuthenticated = false;
     private comments: Comment[] = [];
-    private readonly commentsByHex: CommentMap = {};
+
+    /** Loaded comment objects indexed by commentHex. */
+    private commentsByHex: CommentMap = {};
+
     private readonly commenters: { [k: string]: Commenter } = {};
     private requireIdentification = true;
     private isModerator = false;
@@ -115,7 +116,6 @@ export class Comentario {
     private oauthButtonsShown = false;
     private sortPolicy: SortPolicy = 'score-desc';
     private selfHex: string = undefined;
-    private mobileView: boolean | null = null;
     private readonly loadedCss: { [k: string]: boolean } = {};
     private initialised = false;
 
@@ -141,11 +141,6 @@ export class Comentario {
             return this.reject(`No root element with id='${this.rootId}' found. Check your configuration and HTML.`);
         }
 
-        // TODO refactor this
-        //if (this.mobileView === null) {
-        //    this.mobileView = this.root.getBoundingClientRect()['width'] < 450;
-        //}
-
         this.root.classes('root', !this.noFonts && 'root-font');
 
         // Begin by loading the stylesheet
@@ -167,21 +162,20 @@ export class Comentario {
         // Create base elements
         this.loginBoxCreate();
         this.errorElementCreate();
-        this.mainAreaCreate();
 
         // Load information about ourselves
         return this.selfGet()
             // Fetch comments
-            .then(() => this.commentsGet())
+            .then(() => this.loadComments())
             // Create the layout
             .then(() => {
                 this.modToolsCreate();
+                this.mainAreaCreate();
                 this.rootCreate();
                 this.commentsRender();
                 this.root.append(this.footerLoad());
-                this.loadHash();
+                this.scrollToCommentHash();
                 this.allShow();
-                this.nameWidthFix();
             });
     }
 
@@ -341,7 +335,7 @@ export class Comentario {
                 this.loadedCss[url] = true;
                 new Wrap(this.doc.getElementsByTagName('head')[0])
                     .append(
-                        Wrap.new('link').attr({href: url, rel: 'stylesheet', type: 'text/css'}).load(resolve));
+                        Wrap.new('link').attr({href: url, rel: 'stylesheet', type: 'text/css'}).on('load', () => resolve()));
             });
     }
 
@@ -356,10 +350,10 @@ export class Comentario {
                         Wrap.new('a')
                             .classes('logo')
                             .attr({href: 'https://comentario.app/', target: '_blank'})
-                            .append(Wrap.new('span').classes('logo-text').inner('Comentario 🗨'))));
+                            .html(`Powered by <strong>Comentario</strong> ${this.version}`)));
     }
 
-    commentsGet(): Promise<void> {
+    loadComments(): Promise<void> {
         return this.apiClient.post<ApiCommentListResponse>(
             'comment/list',
             {
@@ -384,6 +378,13 @@ export class Comentario {
                 this.comments = resp.comments;
                 this.configuredOauths = resp.configuredOauths;
                 this.sortPolicy = resp.defaultSortPolicy;
+
+                // Update comment models and make a hex-comment map
+                this.commentsByHex = {};
+                this.comments.forEach(c => {
+                    c.creationMs = new Date(c.creationDate).getTime();
+                    this.commentsByHex[c.commentHex] = c;
+                });
             });
     }
 
@@ -396,14 +397,7 @@ export class Comentario {
     }
 
     errorElementCreate() {
-        Wrap.new('div').id(IDS.error).classes('error-box').style('display: none;').append(this.root);
-    }
-
-    autoExpander(el: HTMLElement): CallbackFunction {
-        return () => {
-            el.style.height = '';
-            el.style.height = `${Math.min(Math.max(el.scrollHeight, 75), 400)}px`;
-        };
+        Wrap.new('div').id(IDS.error).classes('error-box').style('display: none;').appendTo(this.root);
     }
 
     markdownHelpShow(commentHex: string) {
@@ -493,16 +487,11 @@ export class Comentario {
 
     sortPolicyApply(policy: SortPolicy) {
         Wrap.byId(IDS.sortPolicy + this.sortPolicy).noClasses('sort-policy-button-selected');
-
-        const commentsArea = Wrap.byId(IDS.commentsArea);
-        commentsArea.innerHTML = '';
+        Wrap.byId(IDS.sortPolicy + policy).classes('sort-policy-button-selected');
         this.sortPolicy = policy;
-        const cards = this.commentsRecurse(this.parentMap(this.comments), 'root');
-        if (cards) {
-            commentsArea.append(cards);
-        }
 
-        this.addClasses(Wrap.byId(IDS.sortPolicy + policy), 'sort-policy-button-selected');
+        // Re-render the sorted comment
+        this.commentsRender();
     }
 
     sortPolicyBox(): Wrap<HTMLDivElement> {
@@ -557,7 +546,7 @@ export class Comentario {
         if (this.comments.length) {
             mainArea.append(this.sortPolicyBox());
         }
-        mainArea.append(preCommentsArea, commentsArea).appendTo(this.root);
+        mainArea.append(preCommentsArea, commentsArea);
     }
 
     messageCreate(text: string): Wrap<HTMLDivElement> {
@@ -567,16 +556,15 @@ export class Comentario {
     commentNew(commentHex: string, commenterToken: string, appendCard: boolean): Promise<void> {
         const container   = Wrap.byId(IDS.superContainer + commentHex);
         const textarea    = Wrap.byId(IDS.textarea + commentHex);
-        const replyButton = Wrap.byId(IDS.reply + commentHex);
 
-        const markdown = textarea.value;
-
+        // Validate the textarea value
+        const markdown = textarea.val;
         if (markdown === '') {
-            this.addClasses(textarea, 'red-border');
+            textarea.classes('red-border');
             return Promise.reject();
         }
 
-        this.removeClasses(textarea, 'red-border');
+        textarea.noClasses('red-border');
 
         const data = {
             commenterToken,
@@ -606,42 +594,42 @@ export class Comentario {
                 }
 
                 if (message !== '') {
-                    this.prepend(Wrap.byId(IDS.superContainer + commentHex), this.messageCreate(message));
+                    this.messageCreate(message).prependTo(Wrap.byId(IDS.superContainer + commentHex));
                 }
 
                 const comment: Comment = {
-                    commentHex: resp.commentHex,
+                    commentHex:   resp.commentHex,
                     commenterHex: this.selfHex === undefined || commenterToken === 'anonymous' ? 'anonymous' : this.selfHex,
                     markdown,
-                    html: resp.html,
-                    parentHex: 'root',
-                    score: 0,
-                    state: 'approved',
-                    direction: 0,
+                    html:         resp.html,
+                    parentHex:    'root',
+                    score:        0,
+                    state:        'approved',
+                    direction:    0,
                     creationDate: new Date().toISOString(),
+                    deleted:      false,
                 };
 
                 const newCard = this.commentsRecurse({root: [comment]}, 'root');
 
+                // Store the updated comment in the local map
                 this.commentsByHex[resp.commentHex] = comment;
                 if (appendCard) {
                     if (commentHex !== 'root') {
                         container.replaceWith(newCard);
 
                         this.shownReply[commentHex] = false;
-
-                        this.addClasses(replyButton, 'option-reply');
-                        this.removeClasses(replyButton, 'option-cancel');
-
-                        replyButton.title = 'Reply to this comment';
-
-                        this.onClick(replyButton, () => this.replyShow(commentHex));
+                        Wrap.byId(IDS.reply + commentHex)
+                            .noClasses('option-cancel')
+                            .classes('option-reply')
+                            .attr({title: 'Reply to this comment'})
+                            .click(() => this.replyShow(commentHex));
                     } else {
-                        textarea.value = '';
-                        this.insertAfter(Wrap.byId(IDS.preCommentsArea), newCard);
+                        textarea.value('');
+                        newCard.insertAfter(Wrap.byId(IDS.preCommentsArea));
                     }
                 } else if (commentHex === 'root') {
-                    textarea.value = '';
+                    textarea.value('');
                 }
             });
     }
@@ -704,168 +692,181 @@ export class Comentario {
         return score === 1 ? 'One point' : `${score} points`;
     }
 
-    commentsRecurse(parentMap: CommentsMap, parentHex: string): Wrap<HTMLDivElement> {
-        const cur = parentMap[parentHex];
-        if (!cur || !cur.length) {
-            return null;
+    commentsRecurse(parentMap: CommentsGroupedByHex, parentHex: string): Wrap<any> {
+        // Fetch comments that have the given parentHex
+        const comments = parentMap[parentHex];
+
+        // Return an empty wrap if there's none
+        if (!comments?.length) {
+            return new Wrap();
         }
 
-        cur.sort((a, b) => {
-            return !a.deleted && a.commentHex === this.stickyCommentHex ?
+        // Apply the chosen sorting, always keeping the sticky comment on top
+        comments.sort((a, b) =>
+            !a.deleted && a.commentHex === this.stickyCommentHex ?
                 -Infinity :
                 !b.deleted && b.commentHex === this.stickyCommentHex ?
                     Infinity :
-                    this.sortingProps[this.sortPolicy].comparator(a, b);
-        });
+                    this.sortingProps[this.sortPolicy].comparator(a, b));
 
         const curTime = (new Date()).getTime();
         const cards = Wrap.new('div');
-        cur.forEach(comment => {
+        comments.forEach(comment => {
             const commenter = this.commenters[comment.commenterHex];
+            const commHasLink = commenter.link && commenter.link !== 'undefined' && commenter.link !== 'https://undefined';
             const hex = comment.commentHex;
-            const header = Wrap.new('div').classes('header');
-            const name = Wrap.new(commenter.link !== 'undefined' && commenter.link !== 'https://undefined' && commenter.link !== '' ? 'a' : 'div')
-                .id(IDS.name + hex)
-                .inner(comment.deleted ? '[deleted]' : commenter.name)
-                .classes('name');
             const color = this.colorGet(`${comment.commenterHex}-${commenter.name}`);
-            const card     = Wrap.new('div').id(IDS.card     + hex).style(`border-left: 2px solid ${color}`).classes('card');
-            const subtitle = Wrap.new('div').id(IDS.subtitle + hex).classes('subtitle');
-            const timeago = Wrap.new('div')
-                .id(IDS.timeago + hex)
-                .classes('timeago')
-                .html(this.timeDifference(curTime, comment.creationMs))
-                .attr({title: comment.creationDate.toString()});
-            const score    = Wrap.new('div')   .id(IDS.score    + hex).classes('score').inner(this.scorify(comment.score));
-            const body     = Wrap.new('div')   .id(IDS.body     + hex).classes('body');
-            const text     = Wrap.new('div')   .id(IDS.text     + hex).html(comment.html);
-            const options  = Wrap.new('div')   .id(IDS.options  + hex).classes('options');
-            const edit     = Wrap.new('button').id(IDS.edit     + hex).classes('option-button', 'option-edit')    .attr({type: 'button', title: 'Edit'}).click(() => this.startEditing(hex));
-            const reply    = Wrap.new('button').id(IDS.reply    + hex).classes('option-button', 'option-reply')   .attr({type: 'button', title: 'Reply'});
-            const collapse = Wrap.new('button').id(IDS.collapse + hex).classes('option-button', 'option-collapse').attr({type: 'button', title: 'Collapse children'}).click(() => this.commentCollapse(hex));
-            let   upvote   = Wrap.new('button').id(IDS.upvote   + hex).classes('option-button', 'option-upvote')  .attr({type: 'button', title: 'Upvote'});
-            let   downvote = Wrap.new('button').id(IDS.downvote + hex).classes('option-button', 'option-downvote').attr({type: 'button', title: 'Downvote'});
-            const approve  = Wrap.new('button').id(IDS.approve  + hex).classes('option-button', 'option-approve') .attr({type: 'button', title: 'Approve'}).click(() => this.commentApprove(hex));
-            const remove   = Wrap.new('button').id(IDS.remove   + hex).classes('option-button', 'option-remove')  .attr({type: 'button', title: 'Remove'}).click(() => this.commentDelete(hex));
-            const sticky   = Wrap.new('button')
-                .id(IDS.sticky + hex)
-                .classes('option-button', this.stickyCommentHex === hex ? 'option-unsticky' : 'option-sticky')
-                .attr({
-                    title: this.stickyCommentHex === hex ? this.isModerator ? 'Unsticky' : 'This comment has been stickied' : 'Sticky',
-                    type: 'button',
-                })
-                .click(() => this.commentSticky(hex));
-            const contents = Wrap.new('div').id(IDS.contents + hex);
+            const children = this.commentsRecurse(parentMap, hex).id(IDS.children + hex).classes('body');
+            const card = Wrap.new('div')
+                .id(IDS.card + hex)
+                .style(`border-left: 2px solid ${color}`)
+                .classes('card', this.isModerator && comment.state !== 'approved' && 'dark-card')
+                .append(
+                    // Card header
+                    Wrap.new('div')
+                        .classes('header')
+                        .append(
+                            // Options toolbar
+                            this.getCommentOptions(comment, hex, parentHex),
+                            // Avatar
+                            commenter.photo === 'undefined' ?
+                                Wrap.new('div')
+                                    .style(`background-color: ${color}`)
+                                    .classes('avatar')
+                                    .html(comment.commenterHex === 'anonymous' ? '?' : commenter.name[0].toUpperCase()) :
+                                Wrap.new('img')
+                                    .classes('avatar-img')
+                                    .attr({src: `${this.cdn}/api/commenter/photo?commenterHex=${commenter.commenterHex}`, alt: ''}),
+                            // Name
+                            Wrap.new(commHasLink ? 'a' : 'div')
+                                .id(IDS.name + hex)
+                                .inner(comment.deleted ? '[deleted]' : commenter.name)
+                                .classes(
+                                    'name',
+                                    commenter.isModerator && 'moderator',
+                                    comment.state === 'flagged' && 'flagged')
+                                .attr(commHasLink && {href: commenter.link}),
+                            // Subtitle
+                            Wrap.new('div')
+                                .id(IDS.subtitle + hex)
+                                .classes('subtitle')
+                                .append(
+                                    // Score
+                                    Wrap.new('div').id(IDS.score + hex).classes('score').inner(this.scorify(comment.score)),
+                                    // Time ago
+                                    Wrap.new('div')
+                                        .id(IDS.timeago + hex)
+                                        .classes('timeago')
+                                        .html(this.timeDifference(curTime, comment.creationMs))
+                                        .attr({title: comment.creationDate.toString()}))),
+                    // Card contents
+                    Wrap.new('div')
+                        .id(IDS.contents + hex)
+                        .append(
+                            Wrap.new('div').id(IDS.body + hex).classes('body')
+                                .append(Wrap.new('div').id(IDS.text + hex).html(comment.html)),
+                            children));
 
-            // TODO refactor
-            // if (this.mobileView) {
-            //     this.addClasses(options, 'options-mobile');
-            // }
-
-            const children = this.commentsRecurse(parentMap, hex).id(IDS.children + hex);
-
-            let avatar;
-            if (commenter.photo === 'undefined') {
-                avatar = Wrap.new('div')
-                    .style(`background-color: ${color}`)
-                    .classes('avatar')
-                    .html(comment.commenterHex === 'anonymous' ? '?' : commenter.name[0].toUpperCase());
-            } else {
-                avatar = Wrap.new('img')
-                    .classes('avatar-img')
-                    .attr({src: `${this.cdn}/api/commenter/photo?commenterHex=${commenter.commenterHex}`, alt: ''});
+            if (!comment.deleted || !this.hideDeleted && !children.ok) {
+                cards.append(card);
             }
-            if (this.isModerator && comment.state !== 'approved') {
-                card.classes('dark-card');
-            }
-            name.classes(
-                commenter.isModerator && 'moderator',
-                comment.state === 'flagged' && 'flagged');
-
-            if (this.isAuthenticated) {
-                if (comment.direction > 0) {
-                    upvote.classes('upvoted');
-                } else if (comment.direction < 0) {
-                    downvote.classes('downvoted');
-                }
-            }
-
-            if (this.isAuthenticated) {
-                const upDown = this.upDownOnClickSet(upvote, downvote, hex, comment.direction);
-                upvote = upDown[0];
-                downvote = upDown[1];
-            } else {
-                this.onClick(upvote,   () => this.loginBoxShow(null));
-                this.onClick(downvote, () => this.loginBoxShow(null));
-            }
-
-            this.onClick(reply, () => this.replyShow(hex));
-
-            if (commenter.link !== 'undefined' && commenter.link !== 'https://undefined' && commenter.link !== '') {
-                this.setAttr(name, {href: commenter.link});
-            }
-
-            this.append(options, collapse);
-
-            if (!comment.deleted) {
-                this.append(options, downvote, upvote);
-            }
-
-            if (comment.commenterHex === this.selfHex) {
-                this.append(options, edit);
-            } else if (!comment.deleted) {
-                this.append(options, reply);
-            }
-
-            if (!comment.deleted && (this.isModerator && parentHex === 'root')) {
-                this.append(options, sticky);
-            }
-
-            if (!comment.deleted && (this.isModerator || comment.commenterHex === this.selfHex)) {
-                this.append(options, remove);
-            }
-
-            if (this.isModerator && comment.state !== 'approved') {
-                this.append(options, approve);
-            }
-
-            if (!comment.deleted && (!this.isModerator && this.stickyCommentHex === hex)) {
-                this.append(options, sticky);
-            }
-
-            this.setAttr(options, {style: `width: ${(options.childNodes.length + 1) * 32}px;`});
-            for (let i = 0; i < options.childNodes.length; i++) {
-                this.setAttr(options.children[i] as HTMLElement, {style: `right: ${i * 32}px;`});
-            }
-
-            this.append(subtitle, score, timeago);
-
-            if (!this.mobileView) {
-                this.append(header, options);
-            }
-            this.append(header, avatar, name, subtitle);
-            this.append(body, text);
-            this.append(contents, body);
-            if (this.mobileView) {
-                this.append(contents, options);
-                Wrap.new('div'), {classes: 'options-clearfix', parent: contents});
-            }
-
-            if (children) {
-                this.addClasses(children, 'body');
-                this.append(contents, children);
-            }
-
-            this.append(card, header, contents);
-
-            if (comment.deleted && (this.hideDeleted || children === null)) {
-                return;
-            }
-
-            this.append(cards, card);
         });
 
-        return cards.childNodes.length ? cards : null;
+        // If no cards found, return an empty wrap
+        return cards.hasChildren ? cards : new Wrap();
+    }
+
+    /**
+     * Return a wrapped options toolbar for a comment.
+     * @private
+     */
+    private getCommentOptions(comment: Comment, hex: string, parentHex: string): Wrap<any> {
+        const options = Wrap.new('div').id(IDS.options + hex).classes('options');
+
+        // Sticky comment indicator (for non-moderator only)
+        const isSticky = this.stickyCommentHex === hex;
+        if (!comment.deleted && !this.isModerator && isSticky) {
+            Wrap.new('button')
+                .id(IDS.sticky + hex)
+                .classes('option-button', 'option-sticky')
+                .attr({title: 'This comment has been stickied', type: 'button', disabled: 'true'})
+                .appendTo(options);
+        }
+
+        // Approve button
+        if (this.isModerator && comment.state !== 'approved') {
+            Wrap.new('button')
+                .id(IDS.approve + hex)
+                .classes('option-button', 'option-approve')
+                .attr({type: 'button', title: 'Approve'})
+                .click(() => this.commentApprove(hex))
+                .appendTo(options);
+        }
+
+        // Remove button
+        if (!comment.deleted && (this.isModerator || comment.commenterHex === this.selfHex)) {
+            Wrap.new('button')
+                .id(IDS.remove + hex)
+                .classes('option-button', 'option-remove')
+                .attr({type: 'button', title: 'Remove'})
+                .click(() => this.commentDelete(hex))
+                .appendTo(options);
+        }
+
+        // Sticky toggle button (for moderator and a top-level comments only)
+        if (!comment.deleted && this.isModerator && parentHex === 'root') {
+            Wrap.new('button')
+                .id(IDS.sticky + hex)
+                .classes('option-button', isSticky ? 'option-unsticky' : 'option-sticky')
+                .attr({title: isSticky ? 'Unsticky' : 'Sticky', type: 'button'})
+                .click(() => this.commentSticky(hex))
+                .appendTo(options);
+        }
+
+        // Own comment: Edit button
+        if (comment.commenterHex === this.selfHex) {
+            Wrap.new('button')
+                .id(IDS.edit + hex)
+                .classes('option-button', 'option-edit')
+                .attr({type: 'button', title: 'Edit'})
+                .click(() => this.startEditing(hex))
+                .appendTo(options);
+
+        // Someone other's comment: Reply button
+        } else if (!comment.deleted) {
+            Wrap.new('button')
+                .id(IDS.reply + hex)
+                .classes('option-button', 'option-reply')
+                .attr({type: 'button', title: 'Reply'})
+                .click(() => this.replyShow(hex))
+                .appendTo(options);
+        }
+
+        // Upvote / Downvote buttons
+        if (!comment.deleted) {
+            this.updateUpDownAction(
+                Wrap.new('button')
+                    .id(IDS.upvote + hex)
+                    .classes('option-button', 'option-upvote', this.isAuthenticated && comment.direction > 0 && 'upvoted')
+                    .attr({type: 'button', title: 'Upvote'})
+                    .appendTo(options),
+                Wrap.new('button')
+                    .id(IDS.downvote + hex)
+                    .classes('option-button', 'option-downvote', this.isAuthenticated && comment.direction < 0 && 'downvoted')
+                    .attr({type: 'button', title: 'Downvote'})
+                    .appendTo(options),
+                hex,
+                comment.direction);
+        }
+
+        // Collapse button
+        Wrap.new('button')
+            .id(IDS.collapse + hex)
+            .classes('option-button', 'option-collapse')
+            .attr({type: 'button', title: 'Collapse children'})
+            .click(() => this.commentCollapse(hex))
+            .appendTo(options);
+        return options;
     }
 
     commentApprove(commentHex: string): Promise<void> {
@@ -879,14 +880,9 @@ export class Comentario {
                     return;
                 }
                 this.errorHide();
-
-                const card = Wrap.byId(IDS.card + commentHex);
-                const name = Wrap.byId(IDS.name + commentHex);
-                const tick = Wrap.byId(IDS.approve + commentHex);
-
-                this.removeClasses(card, 'dark-card');
-                this.removeClasses(name, 'flagged');
-                this.remove(tick);
+                Wrap.byId(IDS.card + commentHex).noClasses('dark-card');
+                Wrap.byId(IDS.name + commentHex).noClasses('flagged');
+                Wrap.byId(IDS.approve + commentHex).remove();
             });
     }
 
@@ -903,66 +899,56 @@ export class Comentario {
                 }
 
                 this.errorHide();
-                const text = Wrap.byId(IDS.text + commentHex);
-                text.innerText = '[deleted]';
+                Wrap.byId(IDS.text + commentHex).inner('[deleted]');
             });
     }
 
-    nameWidthFix() {
-        const els = this.doc.getElementsByClassName('commento-name');
-
-        for (let i = 0; i < els.length; i++) {
-            this.setAttr(els[i] as HTMLElement, {style: `max-width: ${els[i].getBoundingClientRect()['width'] + 20}px;`});
-        }
-    }
-
-    upDownOnClickSet(upvote: HTMLButtonElement, downvote: HTMLButtonElement, commentHex: string, direction: number): [HTMLButtonElement, HTMLButtonElement] {
-        upvote = this.removeAllEventListeners(upvote);
-        downvote = this.removeAllEventListeners(downvote);
-
+    updateUpDownAction(upvote: Wrap<any>, downvote: Wrap<any>, commentHex: string, direction: number) {
+        let oldDir = 0, du = 1, dd = -1;
         if (direction > 0) {
-            this.onClick(upvote,   () => this.vote(commentHex, 1, 0));
-            this.onClick(downvote, () => this.vote(commentHex, 1, -1));
+            oldDir = 1;
+            du = 0;
+            dd = -1;
         } else if (direction < 0) {
-            this.onClick(upvote,   () => this.vote(commentHex, -1, 1));
-            this.onClick(downvote, () => this.vote(commentHex, -1, 0));
-        } else {
-            this.onClick(upvote,   () => this.vote(commentHex, 0, 1));
-            this.onClick(downvote, () => this.vote(commentHex, 0, -1));
+            oldDir = -1;
+            du = 1;
+            dd = 0;
         }
-
-        return [upvote, downvote];
+        upvote  .unlisten().click(() => this.isAuthenticated ? this.vote(commentHex, oldDir, du) : this.loginBoxShow(null));
+        downvote.unlisten().click(() => this.isAuthenticated ? this.vote(commentHex, oldDir, dd) : this.loginBoxShow(null));
     }
 
     vote(commentHex: string, oldDirection: number, direction: number): Promise<void> {
-        const [upvote, downvote] = this.upDownOnClickSet(
-            Wrap.byId(IDS.upvote   + commentHex),
-            Wrap.byId(IDS.downvote + commentHex),
-            commentHex,
-            direction);
+        const upvote   = Wrap.byId(IDS.upvote   + commentHex).noClasses('upvoted')  .classes(direction > 0 && 'upvoted');
+        const downvote = Wrap.byId(IDS.downvote + commentHex).noClasses('downvoted').classes(direction < 0 && 'downvoted');
+        this.updateUpDownAction(upvote, downvote, commentHex, direction);
 
-        this.removeClasses(upvote, 'upvoted');
-        this.removeClasses(downvote, 'downvoted');
-        if (direction > 0) {
-            this.addClasses(upvote, 'upvoted');
-        } else if (direction < 0) {
-            this.addClasses(downvote, 'downvoted');
+        // Find the comment by its hex
+        const comment = this.commentsByHex[commentHex];
+        if (!comment) {
+            return Promise.reject();
         }
 
-        const score  = Wrap.byId(IDS.score + commentHex);
-        score.innerText = this.scorify(parseInt(score.innerText.replace(/[^\d-.]/g, '')) + direction - oldDirection);
+        // Update the score reading
+        const newScore = comment.score - oldDirection + direction;
+        const ws = Wrap.byId(IDS.score + commentHex).inner(this.scorify(newScore));
 
+        // Run the vote with the API
         return this.apiClient.post<ApiResponseBase>('comment/vote', {commenterToken: this.commenterTokenGet(), commentHex, direction})
             .then(resp => {
+                // Undo the vote on failure
                 if (!resp.success) {
                     this.errorShow(resp.message);
-                    this.removeClasses(upvote, 'upvoted');
-                    this.removeClasses(downvote, 'downvoted');
-                    score.innerText = this.scorify(parseInt(score.innerText.replace(/[^\d-.]/g, '')) - direction + oldDirection);
-                    this.upDownOnClickSet(upvote, downvote, commentHex, oldDirection);
+                    upvote.noClasses('upvoted');
+                    downvote.noClasses('downvoted');
+                    ws.inner(this.scorify(comment.score));
+                    this.updateUpDownAction(upvote, downvote, commentHex, oldDirection);
                     return Promise.reject();
                 }
+
+                // Succeeded
                 this.errorHide();
+                comment.score = newScore;
                 return undefined;
             });
     }
@@ -973,13 +959,13 @@ export class Comentario {
      */
     saveCommentEdits(commentHex: string): Promise<void> {
         const textarea = Wrap.byId(IDS.textarea + commentHex);
-        const markdown = textarea.value.trim();
+        const markdown = textarea.val.trim();
         if (markdown === '') {
-            this.addClasses(textarea, 'red-border');
+            textarea.classes('red-border');
             return Promise.reject();
         }
 
-        this.removeClasses(textarea, 'red-border');
+        textarea.noClasses('red-border');
 
         return this.apiClient.post<ApiCommentEditResponse>('comment/edit', {commenterToken: this.commenterTokenGet(), commentHex, markdown})
             .then(resp => {
@@ -1007,7 +993,7 @@ export class Comentario {
                 }
 
                 if (message !== '') {
-                    this.prepend(Wrap.byId(IDS.superContainer + commentHex), this.messageCreate(message));
+                    this.messageCreate(message).prependTo(Wrap.byId(IDS.superContainer + commentHex));
                 }
             });
     }
@@ -1021,19 +1007,17 @@ export class Comentario {
             return;
         }
 
-        const text = Wrap.byId(IDS.text + commentHex);
         this.shownEdit[commentHex] = true;
-        text.replaceWith(this.textareaCreate(commentHex, true));
-
-        const textarea = Wrap.byId(IDS.textarea + commentHex);
-        textarea.value = this.commentsByHex[commentHex].markdown;
+        Wrap.byId(IDS.text + commentHex).replaceWith(this.textareaCreate(commentHex, true));
+        Wrap.byId(IDS.textarea + commentHex).value(this.commentsByHex[commentHex].markdown);
 
         // Turn the Edit button into a Cancel edit button
-        const editButton = Wrap.byId(IDS.edit + commentHex);
-        this.removeClasses(editButton, 'option-edit');
-        this.addClasses(editButton, 'option-cancel');
-        editButton.title = 'Cancel edit';
-        this.onClick(this.removeAllEventListeners(editButton), () => this.stopEditing(commentHex));
+        Wrap.byId(IDS.edit + commentHex)
+            .noClasses('option-edit')
+            .classes('option-cancel')
+            .attr({title: 'Cancel edit'})
+            .unlisten()
+            .click(() => this.stopEditing(commentHex));
     }
 
     /**
@@ -1041,19 +1025,18 @@ export class Comentario {
      * @param commentHex Comment's hex ID.
      */
     stopEditing(commentHex: string) {
-        const cont = Wrap.byId(IDS.superContainer + commentHex);
-        cont.innerHTML = this.commentsByHex[commentHex].html;
-        cont.id = Comentario.idPrefix + IDS.text + commentHex;
         delete this.shownEdit[commentHex];
+        Wrap.byId(IDS.superContainer + commentHex)
+            .html(this.commentsByHex[commentHex].html)
+            .id(IDS.text + commentHex);
 
         // Turn the Cancel edit button back into the Edit button
-        const editButton = Wrap.byId(IDS.edit + commentHex);
-        this.addClasses(editButton, 'option-edit');
-        this.removeClasses(editButton, 'option-cancel');
-        editButton.title = 'Edit comment';
-
-        // Bind comment editing to a click
-        this.onClick(this.removeAllEventListeners(editButton), () => this.startEditing(commentHex));
+        Wrap.byId(IDS.edit + commentHex)
+            .noClasses('option-cancel')
+            .classes('option-edit')
+            .attr({title: 'Edit comment'})
+            .unlisten()
+            .click(() => this.startEditing(commentHex));
     }
 
     /**
@@ -1066,19 +1049,14 @@ export class Comentario {
             return;
         }
 
-        const text = Wrap.byId(IDS.text + commentHex);
-        this.insertAfter(text, this.textareaCreate(commentHex, false));
         this.shownReply[commentHex] = true;
-
-        let replyButton = Wrap.byId(IDS.reply + commentHex);
-
-        this.removeClasses(replyButton, 'option-reply');
-        this.addClasses(replyButton, 'option-cancel');
-
-        replyButton.title = 'Cancel reply';
-
-        replyButton = this.removeAllEventListeners(replyButton);
-        this.onClick(replyButton, () => this.replyCollapse(commentHex));
+        this.textareaCreate(commentHex, false).insertAfter(Wrap.byId(IDS.text + commentHex));
+        Wrap.byId(IDS.reply + commentHex)
+            .noClasses('option-reply')
+            .classes('option-cancel')
+            .attr({title: 'Cancel reply'})
+            .unlisten()
+            .click(() => this.replyCollapse(commentHex));
     }
 
     /**
@@ -1086,82 +1064,54 @@ export class Comentario {
      * @param commentHex Comment's hex ID.
      */
     replyCollapse(commentHex: string) {
-        let replyButton = Wrap.byId(IDS.reply + commentHex);
-        const el = Wrap.byId(IDS.superContainer + commentHex);
-
-        el.remove();
         delete this.shownReply[commentHex];
-
-        this.addClasses(replyButton, 'option-reply');
-        this.removeClasses(replyButton, 'option-cancel');
-
-        replyButton.title = 'Reply to this comment';
-
-        replyButton = this.removeAllEventListeners(replyButton);
-        this.onClick(replyButton, () => this.replyShow(commentHex));
+        Wrap.byId(IDS.superContainer + commentHex).remove();
+        Wrap.byId(IDS.reply + commentHex)
+            .noClasses('option-cancel')
+            .classes('option-reply')
+            .attr({title: 'Reply to this comment'})
+            .unlisten()
+            .click(() => this.replyShow(commentHex));
     }
 
-    commentCollapse(id: string) {
-        const children = Wrap.byId(IDS.children + id);
-        if (children) {
-            this.addClasses(children, 'hidden');
-        }
-
-        let button = Wrap.byId(IDS.collapse + id);
-        this.removeClasses(button, 'option-collapse');
-        this.addClasses(button, 'option-uncollapse');
-
-        button.title = 'Expand children';
-
-        button = this.removeAllEventListeners(button);
-        this.onClick(button, () => this.commentUncollapse(id));
+    commentCollapse(commentHex: string) {
+        Wrap.byId(IDS.children + commentHex).classes('hidden');
+        Wrap.byId(IDS.collapse + commentHex)
+            .noClasses('option-collapse')
+            .classes('option-uncollapse')
+            .attr({title: 'Expand children'})
+            .unlisten()
+            .click(() => this.commentUncollapse(commentHex));
     }
 
-    commentUncollapse(id: string) {
-        const children = Wrap.byId(IDS.children + id);
-        let button = Wrap.byId(IDS.collapse + id);
-
-        if (children) {
-            this.removeClasses(children, 'hidden');
-        }
-
-        this.removeClasses(button, 'option-uncollapse');
-        this.addClasses(button, 'option-collapse');
-
-        button.title = 'Collapse children';
-
-        button = this.removeAllEventListeners(button);
-        this.onClick(button, () => this.commentCollapse(id));
-    }
-
-    parentMap(comments: Comment[]): CommentsMap {
-        const m: CommentsMap = {};
-        comments.forEach(comment => {
-            const parentHex = comment.parentHex;
-            if (!(parentHex in m)) {
-                m[parentHex] = [];
-            }
-
-            comment.creationMs = new Date(comment.creationDate).getTime();
-
-            m[parentHex].push(comment);
-            this.commentsByHex[comment.commentHex] = {
-                html: comment.html,
-                markdown: comment.markdown,
-            };
-        });
-
-        return m;
+    commentUncollapse(commentHex: string) {
+        Wrap.byId(IDS.children + commentHex).noClasses('hidden');
+        Wrap.byId(IDS.collapse + commentHex)
+            .noClasses('option-uncollapse')
+            .classes('option-collapse')
+            .attr({title: 'Collapse children'})
+            .unlisten()
+            .click(() => this.commentCollapse(commentHex));
     }
 
     commentsRender() {
-        const commentsArea = Wrap.byId(IDS.commentsArea);
-        commentsArea.innerHTML = '';
+        // Group comments by parent hex ID: make map {parentHex: Comment[]}
+        const parentMap = this.comments.reduce(
+            (m, c) => {
+                const ph = c.parentHex;
+                if (ph in m) {
+                    m[ph].push(c);
+                } else {
+                    m[ph] = [c];
+                }
+                return m;
+            },
+            {} as CommentsGroupedByHex);
 
-        const cards = this.commentsRecurse(this.parentMap(this.comments), 'root');
-        if (cards) {
-            this.append(commentsArea, cards);
-        }
+        // Re-render the comment recursively and add them to the comments area
+        Wrap.byId(IDS.commentsArea)
+            .html('')
+            .append(this.commentsRecurse(parentMap, 'root'));
     }
 
     submitAuthenticated(id: string): Promise<void> {
@@ -1185,15 +1135,13 @@ export class Comentario {
 
         const anonCheckbox = Wrap.byId(IDS.anonymousCheckbox + id);
         const textarea = Wrap.byId(IDS.textarea + id);
-        const markdown = textarea.value.trim();
-
-        if (markdown === '') {
-            this.addClasses(textarea, 'red-border');
+        if (!textarea.val?.trim()) {
+            textarea.classes('red-border');
             return Promise.reject();
         }
 
-        this.removeClasses(textarea, 'red-border');
-        return anonCheckbox.checked ? this.submitAnonymous(id) : this.submitAuthenticated(id);
+        textarea.noClasses('red-border');
+        return anonCheckbox.isChecked ? this.submitAnonymous(id) : this.submitAuthenticated(id);
     }
 
     // OAuth logic
@@ -1229,16 +1177,16 @@ export class Comentario {
             .then(() => this.selfGet())
             // Update the login controls
             .then(() => {
-                this.setAttr(Wrap.byId(IDS.loggedContainer), {style: null});
+                Wrap.byId(IDS.loggedContainer).style(null);
 
                 // Hide the login button
-                this.remove(Wrap.byId(IDS.login));
+                Wrap.byId(IDS.login).remove();
 
                 // Submit the pending comment, if there was one
                 return commentHex && this.commentNew(commentHex, this.commenterTokenGet(), false);
             })
             .then(() => this.loginBoxClose())
-            .then(() => this.commentsGet())
+            .then(() => this.loadComments())
             .then(() => this.commentsRender());
     }
 
@@ -1247,104 +1195,137 @@ export class Comentario {
     }
 
     popupRender(commentHex: string) {
-        const loginBoxContainer = Wrap.byId(IDS.loginBoxContainer);
-        this.addClasses(loginBoxContainer, 'login-box-container');
-        this.setAttr(loginBoxContainer, {style: 'display: none; opacity: 0;'});
-
-        const loginBox = Wrap.new('form'), {id: IDS.loginBox, classes: 'login-box'});
-        // This is ugly, must redesign the whole bloody login/signup form
-        loginBox.addEventListener('submit', (e) => {
-            e.preventDefault();
-            if (!Wrap.byId(IDS.loginBoxPasswordButton)) {
-                this.showPasswordField();
-            } else if (this.popupBoxType === 'login') {
-                this.login(commentHex);
-            } else {
-                this.signup(commentHex);
-            }
-        });
-
-        const ssoSubtitle           = Wrap.new('div'),    {id: IDS.loginBoxSsoPretext, classes: 'login-box-subtitle', innerText: `Proceed with ${parent.location.host} authentication`});
-        const ssoButtonContainer    = Wrap.new('div'),    {id: IDS.loginBoxSsoButtonContainer, classes: 'oauth-buttons-container'});
-        const ssoButton             = Wrap.new('div'),    {classes: 'oauth-buttons'});
-        const hr1                   = Wrap.new('hr'),     {id: IDS.loginBoxHr1});
-        const oauthSubtitle         = Wrap.new('div'),    {id: IDS.loginBoxOauthPretext, classes: 'login-box-subtitle', innerText: 'Proceed with social login'});
-        const oauthButtonsContainer = Wrap.new('div'),    {id: IDS.loginBoxOauthButtonsContainer, classes: 'oauth-buttons-container'});
-        const oauthButtons          = Wrap.new('div'),    {classes: 'oauth-buttons'});
-        const hr2                   = Wrap.new('hr'),     {id: IDS.loginBoxHr2});
-        const emailSubtitle         = Wrap.new('div'),    {id: IDS.loginBoxEmailSubtitle, classes: 'login-box-subtitle', innerText: 'Login with your email address'});
-        const emailButton           = Wrap.new('button'), {id: IDS.loginBoxEmailButton, type: 'submit', classes: 'email-button', innerText: 'Continue'});
-        const emailContainer        = Wrap.new('div'), {
-            classes: 'email-container',
-            children: [
-                Wrap.new('div'), {
-                    classes:  'email',
-                    .append(
-                        Wrap.new('input'), {
-                            id:           IDS.loginBoxEmailInput,
-                            classes:      'input',
-                            name:         'email',
-                            placeholder:  'Email address',
-                            type:         'text',
-                            autocomplete: 'email',
-                        }),
-                        emailButton,
-                    ],
-                }),
-            ],
-        });
-        const forgotLinkContainer = Wrap.new('div'), {id: IDS.loginBoxForgotLinkContainer, classes: 'forgot-link-container'});
-        const forgotLink          = Wrap.new('a'),   {classes: 'forgot-link', innerText: 'Forgot your password?', parent: forgotLinkContainer});
-        const loginLinkContainer  = Wrap.new('div'), {id: IDS.loginBoxLoginLinkContainer, classes: 'login-link-container'});
-        const loginLink           = Wrap.new('a'),   {classes: 'login-link', innerText: 'Don\'t have an account? Sign up.', parent: loginLinkContainer});
-        const close               = Wrap.new('div'), {classes: 'login-box-close', parent: loginBox});
-
         this.root.classes('root-min-height');
 
-        this.onClick(forgotLink,  () => this.forgotPassword());
-        this.onClick(loginLink,   () => this.popupSwitch());
-        this.onClick(close,       () => this.loginBoxClose());
+        // Create a login box
+        const loginBox = Wrap.new('form')
+            .id(IDS.loginBox)
+            .classes('login-box')
+            .on(
+                'submit',
+                e => {
+                    e.preventDefault();
+                    if (!Wrap.byId(IDS.loginBoxPasswordButton).ok) {
+                        this.showPasswordField();
+                    } else if (this.popupBoxType === 'login') {
+                        this.login(commentHex);
+                    } else {
+                        this.signup(commentHex);
+                    }
+                })
+            // Close button
+            .append(Wrap.new('div').classes('login-box-close').click(() => this.loginBoxClose()));
 
+        const localAuth = this.configuredOauths['commento'];
+
+        // Add OAuth buttons, if applicable
         let hasOAuth = false;
+        const oauthButtons = Wrap.new('div').classes('oauth-buttons');
         const oauthProviders = ['google', 'github', 'gitlab'];
-        oauthProviders.filter(p => this.configuredOauths[p]).forEach(provider => {
-            const button = Wrap.new(
-                'b)utton',
-                {classes: ['button', `${provider}-button`], type: 'button', innerText: provider, parent: oauthButtons});
-            this.onClick(button, () => this.commentoAuth(provider, commentHex));
-            hasOAuth = true;
-        });
+        oauthProviders.filter(p => this.configuredOauths[p])
+            .forEach(provider => {
+                Wrap.new('button')
+                    .classes('button', `${provider}-button`)
+                    .attr({type: 'button'})
+                    .inner(provider)
+                    .click(() => this.commentoAuth(provider, commentHex))
+                    .appendTo(oauthButtons);
+                hasOAuth = true;
+            });
 
+        // SSO auth
         if (this.configuredOauths['sso']) {
-            const button = Wrap.new(
-                'b)utton',
-                {classes: ['button', 'sso-button'], type: 'button', innerText: 'Single Sign-On', parent: ssoButton});
-            this.onClick(button, () => this.commentoAuth('sso', commentHex));
-            this.append(ssoButtonContainer, ssoButton);
-            this.append(loginBox, ssoSubtitle);
-            this.append(loginBox, ssoButtonContainer);
-
-            if (hasOAuth || this.configuredOauths['commento']) {
-                this.append(loginBox, hr1);
-            }
+            loginBox.append(
+                // SSO button
+                Wrap.new('div')
+                    .id(IDS.loginBoxSsoButtonContainer)
+                    .classes('oauth-buttons-container')
+                    .append(
+                        Wrap.new('div').classes('oauth-buttons')
+                            .append(
+                                Wrap.new('button')
+                                    .classes('button', 'sso-button')
+                                    .attr({type: 'button'})
+                                    .inner('Single Sign-On')
+                                    .click(() => this.commentoAuth('sso', commentHex)))),
+                // Subtitle
+                Wrap.new('div')
+                    .id(IDS.loginBoxSsoPretext)
+                    .classes('login-box-subtitle')
+                    .inner(`Proceed with ${parent.location.host} authentication`),
+                // Separator
+                (hasOAuth || localAuth) && loginBox.append(Wrap.new('hr').id(IDS.loginBoxHr1)));
         }
 
+        // External auth
         this.oauthButtonsShown = hasOAuth;
         if (hasOAuth) {
-            this.append(oauthButtonsContainer, oauthButtons);
-            this.append(loginBox, oauthSubtitle, oauthButtonsContainer);
-            if (this.configuredOauths['commento']) {
-                this.append(loginBox, hr2);
-            }
+            loginBox.append(
+                // Subtitle
+                Wrap.new('div').id(IDS.loginBoxOauthPretext).classes('login-box-subtitle').inner('Proceed with social login'),
+                // OAuth buttons
+                Wrap.new('div')
+                    .id(IDS.loginBoxOauthButtonsContainer)
+                    .classes('oauth-buttons-container')
+                    .append(oauthButtons),
+                // Separator
+                localAuth && loginBox.append(Wrap.new('hr').id(IDS.loginBoxHr2)));
         }
 
-        if (this.configuredOauths['commento']) {
-            this.append(loginBox, emailSubtitle, emailContainer, forgotLinkContainer, loginLinkContainer);
+        // Local auth
+        if (localAuth) {
+            loginBox.append(
+                // Subtitle
+                Wrap.new('div')
+                    .id(IDS.loginBoxEmailSubtitle)
+                    .classes('login-box-subtitle')
+                    .inner('Login with your email address'),
+                // Email input container
+                Wrap.new('div')
+                    .classes('email-container')
+                    .append(
+                        Wrap.new('div')
+                            .classes('email')
+                            .append(
+                                // Email input
+                                Wrap.new('input')
+                                    .id(IDS.loginBoxEmailInput)
+                                    .classes('input')
+                                    .attr({name: 'email', placeholder: 'Email address', type: 'text', autocomplete: 'email'}),
+                                // Continue button
+                                Wrap.new('button')
+                                    .id(IDS.loginBoxEmailButton)
+                                    .classes('email-button')
+                                    .inner('Continue')
+                                    .attr({type: 'submit'}))),
+                // Forgot password link container
+                Wrap.new('div')
+                    .id(IDS.loginBoxForgotLinkContainer)
+                    .classes('forgot-link-container')
+                    // Forgot password link
+                    .append(
+                        Wrap.new('a')
+                            .classes('forgot-link')
+                            .inner('Forgot your password?')
+                            .click(() => this.forgotPassword())),
+                // Switch to signup link container
+                Wrap.new('div')
+                    .id(IDS.loginBoxLoginLinkContainer)
+                    .classes('login-link-container')
+                    // Switch to signup link
+                    .append(
+                        Wrap.new('a')
+                            .classes('login-link')
+                            .inner('Don\'t have an account? Sign up.')
+                            .click(() => this.popupSwitch())));
         }
 
         this.popupBoxType = 'login';
-        loginBoxContainer.innerHTML = '';
-        this.append(loginBoxContainer, loginBox);
+        Wrap.byId(IDS.loginBoxContainer)
+            .classes('login-box-container')
+            .style('display: none; opacity: 0;')
+            .html('')
+            .append(loginBox);
     }
 
     forgotPassword() {
@@ -1354,33 +1335,30 @@ export class Comentario {
     }
 
     popupSwitch() {
-        const emailSubtitle = Wrap.byId(IDS.loginBoxEmailSubtitle);
-
         if (this.oauthButtonsShown) {
-            this.remove(
-                Wrap.byId(IDS.loginBoxOauthButtonsContainer),
-                Wrap.byId(IDS.loginBoxOauthPretext),
-                Wrap.byId(IDS.loginBoxHr1),
-                Wrap.byId(IDS.loginBoxHr2));
+            Wrap.byId(IDS.loginBoxOauthButtonsContainer).remove();
+            Wrap.byId(IDS.loginBoxOauthPretext).remove();
+            Wrap.byId(IDS.loginBoxHr1).remove();
+            Wrap.byId(IDS.loginBoxHr2).remove();
         }
 
         if (this.configuredOauths['sso']) {
-            this.remove(
-                Wrap.byId(IDS.loginBoxSsoButtonContainer),
-                Wrap.byId(IDS.loginBoxSsoPretext),
-                Wrap.byId(IDS.loginBoxHr1),
-                Wrap.byId(IDS.loginBoxHr2));
+            Wrap.byId(IDS.loginBoxSsoButtonContainer).remove();
+            Wrap.byId(IDS.loginBoxSsoPretext).remove();
+            Wrap.byId(IDS.loginBoxHr1).remove();
+            Wrap.byId(IDS.loginBoxHr2).remove();
         }
 
-        this.remove(Wrap.byId(IDS.loginBoxLoginLinkContainer), Wrap.byId(IDS.loginBoxForgotLinkContainer));
+        Wrap.byId(IDS.loginBoxLoginLinkContainer).remove();
+        Wrap.byId(IDS.loginBoxForgotLinkContainer).remove();
 
-        emailSubtitle.innerText = 'Create an account';
+        Wrap.byId(IDS.loginBoxEmailSubtitle).inner('Create an account');
         this.popupBoxType = 'signup';
         this.showPasswordField();
         Wrap.byId(IDS.loginBoxEmailInput).focus();
     }
 
-    loginUP(email: string, password: string, id: string): Promise<void> {
+    loginUP(email: string, password: string, commentHex: string): Promise<void> {
         return this.apiClient.post<ApiCommenterLoginResponse>('commenter/login', {email, password})
             .then(resp => {
                 if (!resp.success) {
@@ -1392,32 +1370,25 @@ export class Comentario {
                 this.errorHide();
                 this.cookieSet('commentoCommenterToken', resp.commenterToken);
                 this.selfLoad(resp.commenter, resp.email);
-                this.remove(Wrap.byId(IDS.login));
-                return (id ? this.commentNew(id, resp.commenterToken, false) : undefined);
+                Wrap.byId(IDS.login).remove();
+                return commentHex ? this.commentNew(commentHex, resp.commenterToken, false) : undefined;
             })
             .then(() => this.loginBoxClose())
-            .then(() => this.commentsGet())
+            .then(() => this.loadComments())
             .then(() => this.commentsRender())
             .then(() => this.allShow());
     }
 
-    login(id: string): Promise<void> {
-        const email    = Wrap.byId(IDS.loginBoxEmailInput);
-        const password = Wrap.byId(IDS.loginBoxPasswordInput);
-        return this.loginUP(email.value, password.value, id);
+    login(commentHex: string): Promise<void> {
+        return this.loginUP(Wrap.byId(IDS.loginBoxEmailInput).val, Wrap.byId(IDS.loginBoxPasswordInput).val, commentHex);
     }
 
-    signup(id: string): Promise<void> {
-        const email    = Wrap.byId(IDS.loginBoxEmailInput);
-        const name     = Wrap.byId(IDS.loginBoxNameInput);
-        const website  = Wrap.byId(IDS.loginBoxWebsiteInput);
-        const password = Wrap.byId(IDS.loginBoxPasswordInput);
-
+    signup(commentHex: string): Promise<void> {
         const data = {
-            email:    email.value,
-            name:     name.value,
-            website:  website.value,
-            password: password.value,
+            email:    Wrap.byId(IDS.loginBoxEmailInput)   .val,
+            name:     Wrap.byId(IDS.loginBoxNameInput)    .val,
+            website:  Wrap.byId(IDS.loginBoxWebsiteInput) .val,
+            password: Wrap.byId(IDS.loginBoxPasswordInput).val,
         };
 
         return this.apiClient.post<ApiResponseBase>('commenter/new', data)
@@ -1431,58 +1402,56 @@ export class Comentario {
                 this.errorHide();
                 return undefined;
             })
-            .then(() => this.loginUP(data.email, data.password, id));
+            .then(() => this.loginUP(data.email, data.password, commentHex));
     }
 
     showPasswordField() {
-        const isSignup = this.popupBoxType === 'signup';
-        const loginBox = Wrap.byId(IDS.loginBox);
-        const subtitle = Wrap.byId(IDS.loginBoxEmailSubtitle);
+        Wrap.byId(IDS.loginBoxEmailButton).remove();
+        Wrap.byId(IDS.loginBoxLoginLinkContainer).remove();
+        Wrap.byId(IDS.loginBoxForgotLinkContainer).remove();
 
-        this.remove(
-            Wrap.byId(IDS.loginBoxEmailButton),
-            Wrap.byId(IDS.loginBoxLoginLinkContainer),
-            Wrap.byId(IDS.loginBoxForgotLinkContainer));
         if (this.oauthButtonsShown && Object.keys(this.configuredOauths).length) {
-            this.remove(
-                Wrap.byId(IDS.loginBoxHr1),
-                Wrap.byId(IDS.loginBoxHr2),
-                Wrap.byId(IDS.loginBoxOauthPretext),
-                Wrap.byId(IDS.loginBoxOauthButtonsContainer));
+            Wrap.byId(IDS.loginBoxHr1).remove();
+            Wrap.byId(IDS.loginBoxHr2).remove();
+            Wrap.byId(IDS.loginBoxOauthPretext).remove();
+            Wrap.byId(IDS.loginBoxOauthButtonsContainer).remove();
         }
+
+        const isSignup = this.popupBoxType === 'signup';
+        Wrap.byId(IDS.loginBoxEmailSubtitle)
+            .inner(isSignup ?
+                'Finish the rest of your profile to complete.' :
+                'Enter your password to log in.');
 
         const controls = isSignup ?
             [
-                {id: IDS.loginBoxNameInput,     classes: 'input', name: 'name',     type: 'text',     placeholder: 'Real Name'},
-                {id: IDS.loginBoxWebsiteInput,  classes: 'input', name: 'website',  type: 'text',     placeholder: 'Website (Optional)'},
-                {id: IDS.loginBoxPasswordInput, classes: 'input', name: 'password', type: 'password', placeholder: 'Password', autocomplete: 'new-password'},
+                {id: IDS.loginBoxNameInput,     classes: 'input', attr: {name: 'name',     type: 'text',     placeholder: 'Real Name'}},
+                {id: IDS.loginBoxWebsiteInput,  classes: 'input', attr: {name: 'website',  type: 'text',     placeholder: 'Website (Optional)'}},
+                {id: IDS.loginBoxPasswordInput, classes: 'input', attr: {name: 'password', type: 'password', placeholder: 'Password', autocomplete: 'new-password'}},
             ] :
             [
-                {id: IDS.loginBoxPasswordInput, classes: 'input', name: 'password', type: 'password', placeholder: 'Password', autocomplete: 'current-password'},
+                {id: IDS.loginBoxPasswordInput, classes: 'input', attr: {name: 'password', type: 'password', placeholder: 'Password', autocomplete: 'current-password'}},
             ];
 
-        subtitle.innerText = isSignup ?
-            'Finish the rest of your profile to complete.' :
-            'Enter your password to log in.';
+        const loginBox = Wrap.byId(IDS.loginBox);
+        controls.forEach(c =>
+            loginBox.append(
+                Wrap.new('div')
+                    .classes('email-container')
+                    .append(
+                        Wrap.new('div')
+                            .classes('email')
+                            .append(
+                                Wrap.new('input').id(c.id).classes(c.classes).attr(c.attr),
+                                // Add a submit button next to the password input
+                                c.attr.type === 'password' &&
+                                Wrap.new('button')
+                                    .id(IDS.loginBoxPasswordButton)
+                                    .classes('email-button')
+                                    .inner(this.popupBoxType)
+                                    .attr({type: 'submit'})))));
 
-        controls.forEach(c => {
-            const fieldContainer = Wrap.new('div'), {classes: 'email-container'});
-            const field          = Wrap.new('div'), {classes: 'email', parent: fieldContainer});
-            const fieldInput     = Wrap.new('input'), c);
-            this.append(field, fieldInput);
-            // Add a submit button next to the password input
-            if (c.type === 'password') {
-                Wrap.new('button'), {
-                    id:        IDS.loginBoxPasswordButton,
-                    type:      'submit',
-                    classes:   'email-button',
-                    innerText: this.popupBoxType,
-                    parent:    field,
-                });
-            }
-            this.append(loginBox, fieldContainer);
-        });
-
+        // Focus the first input
         Wrap.byId(isSignup ? IDS.loginBoxNameInput : IDS.loginBoxPasswordInput).focus();
     }
 
@@ -1507,34 +1476,25 @@ export class Comentario {
     }
 
     threadLockToggle(): Promise<void> {
-        const lock = Wrap.byId(IDS.modToolsLockButton);
         this.isLocked = !this.isLocked;
-        lock.disabled = true;
+        const lock = Wrap.byId(IDS.modToolsLockButton).attr({disabled: 'true'});
         return this.pageUpdate()
-            .then(() => lock.disabled = false)
+            .then(() => lock.attr({disabled: 'false'}))
             .then(() => this.reload());
     }
 
     commentSticky(commentHex: string): Promise<void> {
         if (this.stickyCommentHex !== 'none') {
-            const sticky = Wrap.byId(IDS.sticky + this.stickyCommentHex);
-            this.removeClasses(sticky, 'option-unsticky');
-            this.addClasses(sticky, 'option-sticky');
+            Wrap.byId(IDS.sticky + this.stickyCommentHex).noClasses('option-unsticky').classes('option-sticky');
         }
 
         this.stickyCommentHex = this.stickyCommentHex === commentHex ? 'none' : commentHex;
 
         return this.pageUpdate()
-            .then(() => {
-                const sticky = Wrap.byId(IDS.sticky + commentHex);
-                if (this.stickyCommentHex === commentHex) {
-                    this.removeClasses(sticky, 'option-sticky');
-                    this.addClasses(sticky, 'option-unsticky');
-                } else {
-                    this.removeClasses(sticky, 'option-unsticky');
-                    this.addClasses(sticky, 'option-sticky');
-                }
-            });
+            .then(() =>
+                void Wrap.byId(IDS.sticky + commentHex)
+                    .noClasses(this.stickyCommentHex === commentHex ? 'option-sticky' : 'option-unsticky')
+                    .classes(this.stickyCommentHex === commentHex ? 'option-unsticky' : 'option-sticky'));
     }
 
     mainAreaCreate() {
@@ -1552,83 +1512,63 @@ export class Comentario {
     }
 
     allShow() {
-        const mainArea = Wrap.byId(IDS.mainArea);
-        const modTools = Wrap.byId(IDS.modTools);
-        const loggedContainer = Wrap.byId(IDS.loggedContainer);
-
-        this.setAttr(mainArea, {style: null});
-
+        Wrap.byId(IDS.mainArea).style(null);
+        Wrap.byId(IDS.loggedContainer).style(null);
         if (this.isModerator) {
-            this.setAttr(modTools, {style: null});
-        }
-
-        if (loggedContainer) {
-            this.setAttr(loggedContainer, {style: null});
+            Wrap.byId(IDS.modTools).style(null);
         }
     }
 
     loginBoxClose() {
-        const mainArea = Wrap.byId(IDS.mainArea);
-        const loginBoxContainer = Wrap.byId(IDS.loginBoxContainer);
-
-        this.removeClasses(mainArea, 'blurred');
         this.root.noClasses('root-min-height');
-
-        this.setAttr(loginBoxContainer, {style: 'display: none'});
+        Wrap.byId(IDS.mainArea).noClasses('blurred');
+        Wrap.byId(IDS.loginBoxContainer).style('display: none');
     }
 
     loginBoxShow(commentHex: string) {
-        const mainArea = Wrap.byId(IDS.mainArea);
-        const loginBoxContainer = Wrap.byId(IDS.loginBoxContainer);
-
         this.popupRender(commentHex);
-
-        this.addClasses(mainArea, 'blurred');
-        this.setAttr(loginBoxContainer, {style: null});
-
-        loginBoxContainer.scrollIntoView({behavior: 'smooth'});
-
+        Wrap.byId(IDS.mainArea).classes('blurred');
+        Wrap.byId(IDS.loginBoxContainer).style(null).scrollTo();
         Wrap.byId(IDS.loginBoxEmailInput).focus();
     }
 
     dataTagsLoad() {
         for (const script of this.doc.getElementsByTagName('script')) {
             if (script.src.match(/\/js\/commento\.js$/)) {
-                let s = this.getAttr(script, 'data-page-id');
+                const ws = new Wrap(script);
+                let s = ws.getAttr('data-page-id');
                 if (s) {
                     this.pageId = s;
                 }
-                this.cssOverride = this.getAttr(script, 'data-css-override');
-                this.autoInit = this.getAttr(script, 'data-auto-init') !== 'false';
-                s = this.getAttr(script, 'data-id-root');
+                this.cssOverride = ws.getAttr('data-css-override');
+                this.autoInit = ws.getAttr('data-auto-init') !== 'false';
+                s = ws.getAttr('data-id-root');
                 if (s) {
                     this.rootId = s;
                 }
-                this.noFonts = this.getAttr(script, 'data-no-fonts') === 'true';
-                this.hideDeleted = this.getAttr(script, 'data-hide-deleted') === 'true';
+                this.noFonts = ws.getAttr('data-no-fonts') === 'true';
+                this.hideDeleted = ws.getAttr('data-hide-deleted') === 'true';
                 break;
             }
         }
     }
 
-    loadHash() {
-        if (window.location.hash) {
-            if (window.location.hash.startsWith('#commento-')) {
-                const id = window.location.hash.split('-')[1];
-                const el = Wrap.byId(IDS.card + id);
-                if (el === null) {
-                    if (id.length === 64) {
-                        // A hack to make sure it's a valid ID before showing the user a message.
-                        this.errorShow('The comment you\'re looking for no longer exists or was deleted.');
-                    }
-                    return;
+    scrollToCommentHash() {
+        const h = window.location.hash;
+        if (h?.startsWith('#commento-')) {
+            const id = window.location.hash.split('-')[1];
+            const el = Wrap.byId(IDS.card + id);
+            if (!el.ok) {
+                // A hack to make sure it's a valid ID before showing the user a message.
+                if (id.length === 64) {
+                    this.errorShow('The comment you\'re looking for doesn\'t exist; possibly it was deleted.');
                 }
-
-                this.addClasses(el, 'highlighted-card');
-                el.scrollIntoView(true);
-            } else if (window.location.hash.startsWith('#commento')) {
-                this.root.scrollTo();
+                return;
             }
+
+            el.classes('highlighted-card').scrollTo();
+        } else if (h?.startsWith('#commento')) {
+            this.root.scrollTo();
         }
     }
 }

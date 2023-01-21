@@ -1,14 +1,14 @@
 export interface Comment {
-    readonly commentHex?:   string;
-    readonly commenterHex?: string;
-    readonly parentHex?:    string;
-    readonly score?:        number;
-    readonly state?:        string;
-    readonly creationDate?: string;
-    readonly direction?:    number;
-    readonly deleted?:      boolean;
+    readonly commentHex:   string;
+    readonly commenterHex: string;
+    readonly parentHex:    string;
+    readonly state:        string;
+    readonly creationDate: string;
+    readonly direction:    number;
+    readonly deleted:      boolean;
 
     // Mutable
+    score:     number;
     markdown?: string;
     html?:     string;
 
@@ -35,7 +35,7 @@ export interface Email {
 }
 
 export type CommentMap = { [k: string]: Comment };
-export type CommentsMap = { [k: string]: Comment[] };
+export type CommentsGroupedByHex = { [k: string]: Comment[] };
 
 export type ComparatorFunc<T> = (a: T, b: T) => number;
 

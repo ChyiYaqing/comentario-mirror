@@ -6,7 +6,7 @@ export class Wrap<T extends HTMLElement> {
     static readonly idPrefix = 'comentario-';
 
     constructor(
-        private el: T,
+        private el?: T,
     ) {}
 
     /**
@@ -35,12 +35,40 @@ export class Wrap<T extends HTMLElement> {
     }
 
     /**
+     * Whether the underlying element has children.
+     */
+    get hasChildren(): boolean {
+        return !!this.el?.childNodes?.length;
+    }
+
+    /**
+     * Inner text of the underlying element.
+     */
+    get innerText(): string {
+        return this.el?.innerText;
+    }
+
+    /**
+     * Value of the underlying element.
+     */
+    get val(): string {
+        return (this.el as any)?.value;
+    }
+
+    /**
+     * Whether the underlying (input) element is checked.
+     */
+    get isChecked(): boolean {
+        return (this.el as unknown as HTMLInputElement)?.checked;
+    }
+
+    /**
      * Set attributes of the underlying element from the provided object.
      * @param values Object that provides attribute names (keys) and their values. null and undefined values cause
      * attribute removal from the node.
      */
     attr(values: { [k: string]: string }): Wrap<T> {
-        if (this.el) {
+        if (this.el && values) {
             Object.keys(values).forEach(k => {
                 const v = values[k];
                 if (v === undefined || v === null) {
@@ -58,7 +86,7 @@ export class Wrap<T extends HTMLElement> {
      * @param s New value to set.     */
     id(s: string): Wrap<T> {
         if (this.el) {
-            this.el.id = s;
+            this.el.id = Wrap.idPrefix + s;
         }
         return this;
     }
@@ -70,6 +98,17 @@ export class Wrap<T extends HTMLElement> {
     inner(s: string): Wrap<T> {
         if (this.el) {
             this.el.innerText = s;
+        }
+        return this;
+    }
+
+    /**
+     * Set the value of the underlying element;
+     * @param s New value to set.
+     */
+    value(s: string): Wrap<T> {
+        if (this.el) {
+            (this.el as any).value = s;
         }
         return this;
     }
@@ -95,7 +134,8 @@ export class Wrap<T extends HTMLElement> {
 
     /**
      * Insert the underlying element as the first child to the specified parent.
-     * @param parent Wrapper of the new parent for the element.     */
+     * @param parent Wrapper of the new parent for the element.
+     */
     prependTo(parent: Wrap<any>): Wrap<T> {
         if (this.el && parent.el) {
             parent.el.prepend(this.el);
@@ -116,11 +156,21 @@ export class Wrap<T extends HTMLElement> {
 
     /**
      * Append the specified elements as children to the underlying element.
-     * @param children Wrapped child elements to add.
+     * @param children Wrapped child elements to add. Falsy and empty wrappers are skipped.
      */
     append(...children: Wrap<any>[]): Wrap<T> {
         if (this.el) {
-            children.forEach(w => w.ok && this.el.appendChild(w.el));
+            children.forEach(w => w?.ok && this.el.appendChild(w.el));
+        }
+        return this;
+    }
+
+    /**
+     * Replace the underlying element in the DOM with the given one.
+     */
+    replaceWith(newEl: Wrap<any>): Wrap<T> {
+        if (newEl.el) {
+            this.el?.replaceWith(newEl.el);
         }
         return this;
     }
@@ -129,7 +179,7 @@ export class Wrap<T extends HTMLElement> {
      * Remove the underlying element from the DOM.
      */
     remove(): Wrap<T> {
-        this.el?.parentNode.removeChild(this.el);
+        this.el?.parentNode?.removeChild(this.el);
         return this;
     }
 
@@ -176,11 +226,12 @@ export class Wrap<T extends HTMLElement> {
     }
 
     /**
-     * Bind a handler to the onLoad event of the underlying element.
+     * Bind a handler to the given event of the underlying element.
+     * @param type Event type to bind the handler to.
      * @param handler Handler to bind.
      */
-    load(handler: () => void): Wrap<T> {
-        this.el?.addEventListener('load', handler);
+    on<E extends keyof HTMLElementEventMap>(type: E, handler: (ev: HTMLElementEventMap[E]) => void): Wrap<T> {
+        this.el?.addEventListener(type, handler);
         return this;
     }
 
@@ -209,10 +260,18 @@ export class Wrap<T extends HTMLElement> {
     }
 
     /**
+     * Focus the underlying element.
+     */
+    focus(): Wrap<T> {
+        this.el?.focus();
+        return this;
+    }
+
+    /**
      * Scroll to the underlying element.
      */
     scrollTo(): Wrap<T> {
-        this.el?.scrollIntoView({block: 'start', inline: 'nearest', behavior: 'smooth'});
+        setTimeout(() => this.el?.scrollIntoView({block: 'start', inline: 'nearest', behavior: 'smooth'}), 100);
         return this;
     }
 
@@ -233,7 +292,6 @@ export class Wrap<T extends HTMLElement> {
      * @param attrName Attribute name.
      */
     getAttr(attrName: string): string {
-        const attr = this.el?.attributes.getNamedItem(attrName);
-        return attr === undefined ? undefined : attr?.value;
+        return this.el?.attributes.getNamedItem(attrName)?.value;
     }
 }
