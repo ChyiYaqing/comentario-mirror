@@ -1269,7 +1269,7 @@ export class Comentario {
                     .classes('oauth-buttons-container')
                     .append(oauthButtons),
                 // Separator
-                localAuth && loginBox.append(Wrap.new('hr').id(IDS.loginBoxHr2)));
+                localAuth && Wrap.new('hr').id(IDS.loginBoxHr2));
         }
 
         // Local auth
