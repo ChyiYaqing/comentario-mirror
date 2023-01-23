@@ -223,7 +223,8 @@ export class Comentario {
         this.dataTagsLoad();
 
         // If automatic initialisation is activated (default), run Comentario
-        return this.autoInit ? this.main() : Promise.resolve();
+        return (this.autoInit ? this.main() : Promise.resolve())
+            .then(() => console.info(`Initialised Comentario ${this.version}`));
     }
 
     cookieGet(name: string): string {
@@ -350,7 +351,7 @@ export class Comentario {
                         Wrap.new('a')
                             .classes('logo')
                             .attr({href: 'https://comentario.app/', target: '_blank'})
-                            .html(`Powered by <strong>Comentario</strong> ${this.version}`)));
+                            .html('Powered by <strong>Comentario</strong>')));
     }
 
     loadComments(): Promise<void> {
