@@ -1,45 +1,45 @@
 @import "colors-main.scss";
 
 .commento-login {
-  width: 100%;
+    width: 100%;
 
-  .commento-login-text {
-    text-align: right;
-    margin-right: 16px;
-    height: 38px;
-    color: $gray-6;
-    font-weight: bold;
-    cursor: pointer;
-    display: block;
-  }
+    .commento-login-text {
+        text-align: right;
+        margin-right: 16px;
+        height: 38px;
+        color: $gray-6;
+        font-weight: bold;
+        cursor: pointer;
+        display: block;
+    }
 }
 
 .commento-logged-container {
-  width: 100%;
-  text-align: left;
-  margin-bottom: 16px;
-  position: relative;
-  height: 38px;
-
-  .commento-profile-button {
-    float: right;
-    cursor: pointer;
-    color: $gray-6;
-    margin: 6px 12px;
-    font-size: 13px;
-  }
-
-  .commento-logged-in-as {
+    width: 100%;
+    text-align: left;
+    margin-bottom: 16px;
     position: relative;
+    height: 38px;
 
-    .commento-name {
-      color: $gray-8;
-      border: none;
-      font-weight: bold;
-      position: absolute;
-      top: 6px;
-      left: 48px;
-      cursor: pointer;
+    .commento-profile-button {
+        float: right;
+        cursor: pointer;
+        color: $gray-6;
+        margin: 6px 12px;
+        font-size: 13px;
     }
-  }
+
+    .commento-logged-in-as {
+        position: relative;
+
+        .commento-name {
+            color: $gray-8;
+            border: none;
+            font-weight: bold;
+            position: absolute;
+            top: 6px;
+            left: 48px;
+            cursor: pointer;
+        }
+    }
 }

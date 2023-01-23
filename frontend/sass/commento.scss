@@ -1,89 +1,115 @@
 @import "source-sans.scss";
 
-.commento-root-min-height {
-  min-height: 430px;
-}
+$slow-animation-duration: 500ms;
 
 .commento-root {
-  padding: 0;
-  width: 100%;
-  font-family: inherit;
-
-  * {
+    position: relative;
+    padding: 0;
+    width: 100%;
     font-family: inherit;
-    font-size: 15px;
-    line-height: 1.5;
-    color: #50596c;
-    text-rendering: optimizeLegibility;
-  }
 
-  @import "colors-main.scss";
-  @import "commento-common.scss";
-  @import "commento-logged.scss";     // Logged in as <name>
-  @import "commento-mod-tools.scss";  // Moderator tools and buttons
-  @import "commento-input.scss";      // Textarea, anonymous checkbox, submit button
-  @import "commento-card.scss";       // Each comment card
-  @import "commento-login.scss";      // Popup box when logging in
-  @import "commento-footer.scss";     // Powered by Commento
-
-  .commento-hidden {
-    display: none;
-  }
-
-  .commento-blurred {
-    opacity: 0.4;
-  }
-
-  .commento-main-area {
-    transition: filter 0.2s;
-  }
-
-  .commento-error-box {
-    width: 100%;
-    border-radius: 4px;
-    height: 32px;
-    text-align: center;
-    color: $red-7;
-    font-weight: 700;
-  }
-
-  .commento-moderation-notice {
-    width: 100%;
-    border-radius: 4px;
-    height: 32px;
-    text-align: center;
-    color: $orange-7;
-    font-weight: 700;
-    margin-top: 16px;
-  }
-
-  .commento-sort-policy-buttons-container {
-    padding: 12px 0;
-    font-weight: 400;
-
-    .commento-sort-policy-buttons {
-      float: right;
-
-      .commento-sort-policy-button {
-        color: $gray-6;
-        font-size: 13px;
-        padding: 0 7px;
-      }
-
-      .commento-sort-policy-button:hover {
-        cursor: pointer;
-      }
-
-      .commento-sort-policy-button-selected {
-        color: $blue-8;
-        font-weight: bold;
-      }
+    * {
+        font-family: inherit;
+        font-size: 15px;
+        line-height: 1.5;
+        color: #50596c;
+        text-rendering: optimizeLegibility;
     }
-  }
+
+    @import "colors-main.scss";
+    @import "commento-common.scss";
+    @import "commento-logged.scss"; // Logged in as <name>
+    @import "commento-mod-tools.scss"; // Moderator tools and buttons
+    @import "commento-input.scss"; // Textarea, anonymous checkbox, submit button
+    @import "commento-card.scss"; // Each comment card
+    @import "commento-login.scss"; // Popup box when logging in
+    @import "commento-footer.scss"; // "Powered by"
+
+    .commento-hidden {
+        display: none;
+    }
+
+    .commento-blurred {
+        opacity: 0.4;
+        filter: blur(4px);
+    }
+
+    .commento-main-area {
+        transition: filter 0.2s;
+    }
+
+    .commento-error-box {
+        width: 100%;
+        border-radius: 4px;
+        height: 32px;
+        text-align: center;
+        color: $red-7;
+        font-weight: 700;
+    }
+
+    .commento-moderation-notice {
+        width: 100%;
+        border-radius: 4px;
+        height: 32px;
+        text-align: center;
+        color: $orange-7;
+        font-weight: 700;
+        margin-top: 16px;
+    }
+
+    .commento-sort-policy-buttons-container {
+        padding: 12px 0;
+        font-weight: 400;
+
+        .commento-sort-policy-buttons {
+            float: right;
+
+            .commento-sort-policy-button {
+                color: $gray-6;
+                font-size: 13px;
+                padding: 0 7px;
+            }
+
+            .commento-sort-policy-button:hover {
+                cursor: pointer;
+            }
+
+            .commento-sort-policy-button-selected {
+                color: $blue-8;
+                font-weight: bold;
+            }
+        }
+    }
 }
 
 .commento-root-font {
-  * {
-    font-family: 'Source Sans Pro', sans-serif;
-  }
+    * {
+        font-family: 'Source Sans Pro', sans-serif;
+    }
+}
+
+.commento-fade-in {
+    animation: commento-fade-in-animation $slow-animation-duration ease-in-out forwards 1;
+}
+
+@keyframes commento-fade-in-animation {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+.commento-fade-out {
+    animation: commento-fade-out-animation $slow-animation-duration ease-in-out forwards 1;
+}
+
+@keyframes commento-fade-out-animation {
+    from {
+        opacity: 1;
+    }
+    to {
+        opacity: 0;
+    }
 }

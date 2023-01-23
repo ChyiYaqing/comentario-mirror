@@ -4,121 +4,122 @@
 textarea,
 input[type=text],
 input[type=email] {
-  background: #ffffff;
-  border: 1px solid rgba(50, 50, 93, .1);
-  border-radius: 3px;
-  color: #525f7f;
+    background: #ffffff;
+    border: 1px solid rgba(50, 50, 93, .1);
+    border-radius: 3px;
+    color: #525f7f;
 }
 
 input[type=text]::placeholder,
 input[type=email]::placeholder {
-  color: #cacaca;
+    color: #cacaca;
 }
 
 textarea::placeholder {
-  color: $gray-6;
-  font-size: 20px;
-  display: flex;
-  line-height: 110px;
-  justify-content: center;
-  align-items: center;
-  text-align: center;
+    color: $gray-6;
+    font-size: 20px;
+    display: flex;
+    line-height: 110px;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
 }
 
 textarea {
-  display: inline-block;
-  white-space: pre-wrap;
-  padding: 8px;
-  outline: none;
-  overflow: auto;
-  min-height: 130px;
-  width: 100%;
+    display: inline-block;
+    white-space: pre-wrap;
+    padding: 8px;
+    outline: none;
+    overflow: auto;
+    min-height: 130px;
+    width: 100%;
 }
 
 .commento-red-border {
-  border: 1px solid $red-7;
+    border: 1px solid $red-7;
 }
 
 .commento-textarea-container {
-  position: relative;
-  display: flex;
-  justify-content: center;
-  align-items: center;
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 
-  .commento-submit-button {
-    transform: none;
-  }
+    .commento-submit-button {
+        transform: none;
+    }
 }
 
 .commento-blurred-textarea {
-  list-style: none;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  will-change: transform;
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    will-change: transform;
 }
 
 .commento-submit-button {
-  float: right;
-  background: $blue-8;
-  text-transform: uppercase;
-  font-size: 12px;
-  margin-top: 10px;
+    float: right;
+    background: $blue-8;
+    text-transform: uppercase;
+    font-size: 12px;
+    margin-top: 10px;
 }
 
 .commento-button-margin {
-  padding-top: 4px;
+    padding-top: 4px;
 }
 
 .commento-anonymous-checkbox-container {
-  float: right;
-  margin: 20px 16px;
+    float: right;
+    margin: 20px 16px;
 
-  input[type="checkbox"] + label {
-    padding-left: 24px;
-    font-size: 12px;
-    text-transform: uppercase;
-    font-weight: bold;
-    color: $gray-7;
-  }
+    input[type="checkbox"] + label {
+        padding-left: 24px;
+        font-size: 12px;
+        text-transform: uppercase;
+        font-weight: bold;
+        color: $gray-7;
+    }
 
-  input[type="checkbox"] + label:before {
-    margin-top: 1px;
-  }
+    input[type="checkbox"] + label:before {
+        margin-top: 1px;
+    }
 
-  input[type="checkbox"] + label:after {
-    margin-top: -1px;
-  }
+    input[type="checkbox"] + label:after {
+        margin-top: -1px;
+    }
 }
 
 .commento-markdown-button {
-  color: $gray-6;
-  margin: 0 16px;
-  font-size: 12px;
-  text-transform: uppercase;
-  border: none;
-  line-height: 58px;
-  font-weight: 400;
-  cursor: pointer;
-
-  b {
+    color: $gray-6;
+    margin: 0 16px;
     font-size: 12px;
-  }
+    text-transform: uppercase;
+    border: none;
+    line-height: 58px;
+    font-weight: 400;
+    cursor: pointer;
+
+    b {
+        font-size: 12px;
+    }
 }
 
 .commento-markdown-help {
-  border: 1px solid $gray-3;
-  padding: 8px;
+    border: 1px solid $gray-3;
+    padding: 8px;
 
-  tr {
-    td {
-      padding: 0 6px;
-      pre {
-        display: inline;
-        font-family: monospace;
-        font-size: 13px;
-      }
+    tr {
+        td {
+            padding: 0 6px;
+
+            pre {
+                display: inline;
+                font-family: monospace;
+                font-size: 13px;
+            }
+        }
     }
-  }
 }

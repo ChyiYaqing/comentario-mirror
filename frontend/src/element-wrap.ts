@@ -64,13 +64,15 @@ export class Wrap<T extends HTMLElement> {
 
     /**
      * Set attributes of the underlying element from the provided object.
-     * @param values Object that provides attribute names (keys) and their values. null and undefined values cause
-     * attribute removal from the node.
+     * @param values Object that provides attribute names (keys, they can use camelCase, which will be converted to
+     * kebab-case) and their values. null and undefined values cause attribute removal from the node.
      */
     attr(values: { [k: string]: string }): Wrap<T> {
         if (this.el && values) {
             Object.keys(values).forEach(k => {
                 const v = values[k];
+                // Convert the cameCase attribute name into kebab-case
+                k = k.replace(/[A-Z]/g, l => `-${l.toLowerCase()}`);
                 if (v === undefined || v === null) {
                     this.el.removeAttribute(k);
                 } else {
@@ -271,7 +273,9 @@ export class Wrap<T extends HTMLElement> {
      * Scroll to the underlying element.
      */
     scrollTo(): Wrap<T> {
-        setTimeout(() => this.el?.scrollIntoView({block: 'start', inline: 'nearest', behavior: 'smooth'}), 100);
+        setTimeout(
+            () => !this.vertVisible() && this.el?.scrollIntoView({block: 'nearest', inline: 'nearest', behavior: 'smooth'}),
+            100);
         return this;
     }
 
@@ -294,4 +298,14 @@ export class Wrap<T extends HTMLElement> {
     getAttr(attrName: string): string {
         return this.el?.attributes.getNamedItem(attrName)?.value;
     }
+
+    /**
+     * Return whether the underlying element is fully visible on the screen along its vertical axis.
+     * @private
+     */
+    private vertVisible(): boolean {
+        const r = this.el?.getBoundingClientRect();
+        return r && r.top >= 0 && r.bottom <= window.innerWidth;
+    }
+
 }

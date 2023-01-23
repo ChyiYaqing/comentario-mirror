@@ -1,93 +1,87 @@
 @import "colors-main.scss";
 
 .commento-login-box-container {
-  display: flex;
-  justify-content: center;
-  position: relative;
-  width: 100%;
-  height: 0;
-  overflow: visible;
-
-  .commento-login-box {
-    width: 90%;
-    max-width: 500px;
-    min-height: 100px;
-    background: $gray-1;
-    z-index: 100;
     position: absolute;
-    top: 8px;
-    padding: 16px;
-    opacity: 1;
-    transition: opacity 0.2s;
-    box-shadow: 0 0 20px rgba(153, 153, 153, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: start;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 100;
 
-    @import "commento-oauth.scss";
+    .commento-login-box {
+        position: relative;
+        width: 90%;
+        max-width: 500px;
+        min-height: 100px;
+        background: $gray-1;
+        padding: 16px;
+        opacity: 1;
+        transition: opacity 0.2s;
+        border-radius: 12px;
+        box-shadow: 0 0 20px rgba(153, 153, 153, 0.5);
 
-    hr {
-      border: none;
-      background: $gray-2;
-      height: 1px;
-      margin: 24px 0;
+        @import "commento-oauth.scss";
+
+        hr {
+            border: none;
+            background: $gray-2;
+            height: 1px;
+            margin: 24px 0;
+        }
+
+        .commento-login-box-subtitle {
+            color: $gray-6;
+            text-align: center;
+            margin: 12px 0;
+            font-size: 15px;
+        }
+
+        @import "email-main.scss";
+
+        .commento-forgot-link-container,
+        .commento-login-link-container {
+            margin: 16px;
+            width: calc(100% - 32px);
+            text-align: center;
+        }
+
+        .commento-forgot-link,
+        .commento-login-link {
+            font-size: 14px;
+            font-weight: bold;
+            border-bottom: none;
+        }
+
+        .commento-forgot-link {
+            font-size: 13px;
+            color: $gray-6;
+            font-weight: normal;
+        }
+
+        .commento-btn-login-box-close {
+            position: absolute;
+            top: 0;
+            right: 0;
+            z-index: 2;
+            padding: 1.25rem 1rem;
+            box-sizing: content-box;
+            width: 1em;
+            height: 1em;
+            color: #000;
+            background: transparent url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23000'%3e%3cpath d='M.293.293a1 1 0 011.414 0L8 6.586 14.293.293a1 1 0 111.414 1.414L9.414 8l6.293 6.293a1 1 0 01-1.414 1.414L8 9.414l-6.293 6.293a1 1 0 01-1.414-1.414L6.586 8 .293 1.707a1 1 0 010-1.414z'/%3e%3c/svg%3e") center/1em auto no-repeat;
+            border: 0;
+            border-radius: 0.25rem;
+            opacity: .5;
+            cursor: pointer;
+
+            &:hover {
+                color: #000;
+                text-decoration: none;
+                opacity: .75;
+            }
+        }
     }
-
-    .commento-login-box-subtitle {
-      color: $gray-6;
-      text-align: center;
-      margin: 12px 0;
-      font-size: 15px;
-    }
-
-    @import "email-main.scss";
-
-    .commento-forgot-link-container,
-    .commento-login-link-container {
-      margin: 16px;
-      width: calc(100% - 32px);
-      text-align: center;
-    }
-
-    .commento-forgot-link,
-    .commento-login-link {
-      font-size: 14px;
-      font-weight: bold;
-      border-bottom: none;
-    }
-
-    .commento-forgot-link {
-      font-size: 13px;
-      color: $gray-6;
-      font-weight: normal;
-    }
-
-    .commento-login-box-close {
-      position: absolute;
-      right: 16px;
-      top: 16px;
-      width: 16px;
-      height: 16px;
-      opacity: 0.3;
-    }
-
-    .commento-login-box-close:hover {
-      opacity: 1;
-      cursor: pointer;
-    }
-
-    .commento-login-box-close:before, .commento-login-box-close:after {
-      position: absolute;
-      left: 7px;
-      content: ' ';
-      height: 17px;
-      width: 2px;
-      background-color: $gray-7;
-    }
-
-    .commento-login-box-close:before {
-      transform: rotate(45deg);
-    }
-
-    .commento-login-box-close:after {
-      transform: rotate(-45deg);
-    }
-  }
 }

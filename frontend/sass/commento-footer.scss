@@ -1,19 +1,39 @@
 @import "colors-main.scss";
 
 .commento-footer {
-  margin: 36px 0 12px 0;
-  padding-right: 12px;
-  clear: both;
+    display: flex;
+    justify-content: end;
+    margin: 36px 0 12px 0;
+    padding-right: 12px;
+    font-size: 13px;
+    line-height: 24px;
+    color: $gray-7;
+    font-weight: 400;
 
-  .commento-logo-container {
-    float: right;
-
-    .commento-logo {
-      padding: 5px;
-      font-size: 13px;
-      line-height: 24px;
-      color: $gray-7;
-      font-weight: 400;
+    a, a:hover, a:focus {
+        background: transparent;
+        text-decoration: none;
+        color: $gray-7;
     }
-  }
+
+    .commento-logo-container {
+        display: flex;
+        align-items: center;
+
+        .commento-logo {
+            &:before {
+                content: '';
+                display: inline-block;
+                width: 16px;
+                height: 16px;
+                margin-left: 3px;
+                margin-right: 2px;
+                background-image: url("data:image/svg+xml,%3Csvg width='16' height='16' viewBox='0 0 135 135' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath style='fill:%23fff;stroke:%234950d8;stroke-width:6' d='M67.733 7.646a63.5 47.625 0 0 0-63.5 47.625 63.5 47.625 0 0 0 63.5 47.625 63.5 47.625 0 0 0 2.886-.077 28.66 28.66 0 0 0 28.4 25.001 28.66 28.66 0 0 0 1.301-.044 23.758 23.758 0 0 1-10.036-19.37 23.758 23.758 0 0 1 1.904-9.216 63.5 47.625 0 0 0 39.045-43.919 63.5 47.625 0 0 0-63.5-47.625z'/%3E%3Cpath d='M74.891 25.738q0 6.68-1.272 12.884-1.114 6.044-2.386 12.566 5.726-3.182 11.293-6.204 5.567-3.022 12.089-5.249l.954-.318 4.454 13.361-1.273.477q-6.362 2.386-12.725 3.182-6.362.636-13.043 1.113 5.25 4.454 9.862 8.748 4.613 4.136 8.59 9.703l.795 1.113-11.612 8.113-.636-.955q-3.817-5.726-6.68-11.293-2.705-5.726-5.568-11.77-2.863 6.044-5.726 11.77-2.704 5.567-6.521 11.293l-.637.955-11.611-8.113.795-1.113q3.977-5.567 8.59-9.703 4.612-4.294 9.861-8.748-6.68-.477-13.043-1.113-6.362-.796-12.724-3.182l-1.273-.477 4.454-13.36.954.317q6.522 2.227 12.089 5.25 5.567 3.021 11.293 6.203-1.272-6.522-2.545-12.566-1.113-6.203-1.113-12.884v-1.272H74.89z' style='fill:%23ec8100'/%3E%3C/svg%3E%0A");
+            }
+        }
+
+        .commento-logo-brand {
+            font-weight: 700;
+        }
+    }
 }
