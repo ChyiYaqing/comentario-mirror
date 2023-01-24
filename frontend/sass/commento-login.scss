@@ -2,14 +2,14 @@
 
 .commento-login-box-container {
     position: absolute;
-    display: flex;
-    justify-content: center;
-    align-items: start;
     left: 0;
     top: 0;
     right: 0;
     bottom: 0;
     z-index: 100;
+    display: flex;
+    justify-content: center;
+    align-items: start;
 
     .commento-login-box {
         position: relative;

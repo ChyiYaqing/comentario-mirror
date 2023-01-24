@@ -1,6 +1,6 @@
 @import "source-sans.scss";
 
-$slow-animation-duration: 500ms;
+$fade-animation-duration: 250ms;
 
 .commento-root {
     position: relative;
@@ -29,13 +29,15 @@ $slow-animation-duration: 500ms;
         display: none;
     }
 
-    .commento-blurred {
-        opacity: 0.4;
-        filter: blur(4px);
-    }
-
-    .commento-main-area {
-        transition: filter 0.2s;
+    .commento-backdrop {
+        position: absolute;
+        left: 0;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 10;
+        background-color: #ffffff;
+        opacity: 0.6;
     }
 
     .commento-error-box {
@@ -83,33 +85,23 @@ $slow-animation-duration: 500ms;
 }
 
 .commento-root-font {
-    * {
-        font-family: 'Source Sans Pro', sans-serif;
-    }
+    * {font-family: 'Source Sans Pro', sans-serif;}
 }
 
 .commento-fade-in {
-    animation: commento-fade-in-animation $slow-animation-duration ease-in-out forwards 1;
+    animation: commento-fade-in-animation $fade-animation-duration ease-in-out forwards 1;
 }
 
 @keyframes commento-fade-in-animation {
-    from {
-        opacity: 0;
-    }
-    to {
-        opacity: 1;
-    }
+    from {opacity: 0;}
+    to   {opacity: 1;}
 }
 
 .commento-fade-out {
-    animation: commento-fade-out-animation $slow-animation-duration ease-in-out forwards 1;
+    animation: commento-fade-out-animation $fade-animation-duration ease-in-out forwards 1;
 }
 
 @keyframes commento-fade-out-animation {
-    from {
-        opacity: 1;
-    }
-    to {
-        opacity: 0;
-    }
+    from {opacity: 1;}
+    to   {opacity: 0;}
 }

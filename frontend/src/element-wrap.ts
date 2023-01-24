@@ -222,7 +222,7 @@ export class Wrap<T extends HTMLElement> {
      * Bind a handler to the onClick event of the underlying element.
      * @param handler Handler to bind.
      */
-    click(handler: () => void): Wrap<T> {
+    click(handler: (e: MouseEvent) => void): Wrap<T> {
         this.el?.addEventListener('click', handler);
         return this;
     }

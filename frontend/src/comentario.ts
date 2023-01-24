@@ -7,6 +7,7 @@ import {
     Email,
     SortPolicy,
     SortPolicyProps,
+    StringBooleanMap,
 } from './models';
 import {
     ApiCommentEditResponse,
@@ -18,60 +19,45 @@ import {
     ApiSelfResponse,
 } from './api';
 import { Wrap } from './element-wrap';
+import { LoginDialog, LoginStatus } from './login-dialog';
+import { SignupDialog, SignupStatus } from './signup-dialog';
 
 const IDS = {
-    mainArea:                      'main-area',
-    login:                         'login',
-    loginBoxContainer:             'login-box-container',
-    loginBox:                      'login-box',
-    loginBoxEmailSubtitle:         'login-box-email-subtitle',
-    loginBoxEmailInput:            'login-box-email-input',
-    loginBoxPasswordButton:        'login-box-password-button',
-    loginBoxPasswordInput:         'login-box-password-input',
-    loginBoxNameInput:             'login-box-name-input',
-    loginBoxWebsiteInput:          'login-box-website-input',
-    loginBoxEmailButton:           'login-box-email-button',
-    loginBoxForgotLinkContainer:   'login-box-forgot-link-container',
-    loginBoxLoginLinkContainer:    'login-box-login-link-container',
-    loginBoxSsoPretext:            'login-box-sso-pretext',
-    loginBoxSsoButtonContainer:    'login-box-sso-button-container',
-    loginBoxHr1:                   'login-box-hr1',
-    loginBoxOauthPretext:          'login-box-oauth-pretext',
-    loginBoxOauthButtonsContainer: 'login-box-oauth-buttons-container',
-    loginBoxHr2:                   'login-box-hr2',
-    modTools:                      'mod-tools',
-    modToolsLockButton:            'mod-tools-lock-button',
-    error:                         'error',
-    loggedContainer:               'logged-container',
-    preCommentsArea:               'pre-comments-area',
-    commentsArea:                  'comments-area',
-    superContainer:                'textarea-super-container-',
-    textareaContainer:             'textarea-container-',
-    textarea:                      'textarea-',
-    anonymousCheckbox:             'anonymous-checkbox-',
-    sortPolicy:                    'sort-policy-',
-    card:                          'comment-card-',
-    body:                          'comment-body-',
-    text:                          'comment-text-',
-    subtitle:                      'comment-subtitle-',
-    timeago:                       'comment-timeago-',
-    score:                         'comment-score-',
-    options:                       'comment-options-',
-    edit:                          'comment-edit-',
-    reply:                         'comment-reply-',
-    collapse:                      'comment-collapse-',
-    upvote:                        'comment-upvote-',
-    downvote:                      'comment-downvote-',
-    approve:                       'comment-approve-',
-    remove:                        'comment-remove-',
-    sticky:                        'comment-sticky-',
-    children:                      'comment-children-',
-    contents:                      'comment-contents-',
-    name:                          'comment-name-',
-    submitButton:                  'submit-button-',
-    markdownButton:                'markdown-button-',
-    markdownHelp:                  'markdown-help-',
-    footer:                        'footer',
+    mainArea:           'main-area',
+    login:              'login',
+    modTools:           'mod-tools',
+    modToolsLockButton: 'mod-tools-lock-button',
+    error:              'error',
+    loggedContainer:    'logged-container',
+    preCommentsArea:    'pre-comments-area',
+    commentsArea:       'comments-area',
+    superContainer:     'textarea-super-container-',
+    textareaContainer:  'textarea-container-',
+    textarea:           'textarea-',
+    anonymousCheckbox:  'anonymous-checkbox-',
+    sortPolicy:         'sort-policy-',
+    card:               'comment-card-',
+    body:               'comment-body-',
+    text:               'comment-text-',
+    subtitle:           'comment-subtitle-',
+    timeago:            'comment-timeago-',
+    score:              'comment-score-',
+    options:            'comment-options-',
+    edit:               'comment-edit-',
+    reply:              'comment-reply-',
+    collapse:           'comment-collapse-',
+    upvote:             'comment-upvote-',
+    downvote:           'comment-downvote-',
+    approve:            'comment-approve-',
+    remove:             'comment-remove-',
+    sticky:             'comment-sticky-',
+    children:           'comment-children-',
+    contents:           'comment-contents-',
+    name:               'comment-name-',
+    submitButton:       'submit-button-',
+    markdownButton:     'markdown-button-',
+    markdownHelp:       'markdown-help-',
+    footer:             'footer',
 };
 
 export class Comentario {
@@ -108,15 +94,13 @@ export class Comentario {
     private chosenAnonymous = false;
     private isLocked = false;
     private stickyCommentHex = 'none';
-    private shownReply: { [k: string]: boolean };
-    private readonly shownEdit: { [k: string]: boolean } = {};
-    private configuredOauths: { [k: string]: boolean } = {};
+    private shownReply: StringBooleanMap;
+    private readonly shownEdit: StringBooleanMap = {};
+    private configuredOauths: StringBooleanMap = {};
     private anonymousOnly = false;
-    private popupBoxType = 'login';
-    private oauthButtonsShown = false;
     private sortPolicy: SortPolicy = 'score-desc';
     private selfHex: string = undefined;
-    private readonly loadedCss: { [k: string]: boolean } = {};
+    private readonly loadedCss: StringBooleanMap = {};
     private initialised = false;
 
     private readonly sortingProps: { [k in SortPolicy]: SortPolicyProps<Comment> } = {
@@ -515,11 +499,11 @@ export class Comentario {
     rootCreate(): void {
         const mainArea = Wrap.byId(IDS.mainArea);
         const login           = Wrap.new('div').id(IDS.login).classes('login');
-        const loginText       = Wrap.new('div').classes('login-text').inner('Login').click(() => this.loginBoxShow(null));
+        const loginText       = Wrap.new('div').classes('login-text').inner('Login').click(() => this.showLoginDialog(null));
         const preCommentsArea = Wrap.new('div').id(IDS.preCommentsArea);
         const commentsArea    = Wrap.new('div').id(IDS.commentsArea).classes('comments');
 
-        // If there's an OAuth provider configured, add a Login button
+        // If there's any auth provider configured, add a Login button
         if (Object.keys(this.configuredOauths).some(k => this.configuredOauths[k])) {
             login.append(loginText);
         } else if (!this.requireIdentification) {
@@ -916,8 +900,8 @@ export class Comentario {
             du = 1;
             dd = 0;
         }
-        upvote  .unlisten().click(() => this.isAuthenticated ? this.vote(commentHex, oldDir, du) : this.loginBoxShow(null));
-        downvote.unlisten().click(() => this.isAuthenticated ? this.vote(commentHex, oldDir, dd) : this.loginBoxShow(null));
+        upvote  .unlisten().click(() => this.isAuthenticated ? this.vote(commentHex, oldDir, du) : this.showLoginDialog(null));
+        downvote.unlisten().click(() => this.isAuthenticated ? this.vote(commentHex, oldDir, dd) : this.showLoginDialog(null));
     }
 
     vote(commentHex: string, oldDirection: number, direction: number): Promise<void> {
@@ -1116,37 +1100,36 @@ export class Comentario {
             .append(this.commentsRecurse(parentMap, 'root'));
     }
 
-    submitAuthenticated(id: string): Promise<void> {
+    submitAuthenticated(commentHex: string): Promise<void> {
         if (this.isAuthenticated) {
-            return this.commentNew(id, this.commenterTokenGet(), true);
+            return this.commentNew(commentHex, this.commenterTokenGet(), true);
         }
 
-        this.loginBoxShow(id);
-        return Promise.resolve();
+        return this.showLoginDialog(commentHex);
     }
 
-    submitAnonymous(id: string): Promise<void> {
+    submitAnonymous(commentHex: string): Promise<void> {
         this.chosenAnonymous = true;
-        return this.commentNew(id, 'anonymous', true);
+        return this.commentNew(commentHex, 'anonymous', true);
     }
 
-    submitAccountDecide(id: string): Promise<void> {
+    submitAccountDecide(commentHex: string): Promise<void> {
         if (this.requireIdentification) {
-            return this.submitAuthenticated(id);
+            return this.submitAuthenticated(commentHex);
         }
 
-        const anonCheckbox = Wrap.byId(IDS.anonymousCheckbox + id);
-        const textarea = Wrap.byId(IDS.textarea + id);
+        const anonCheckbox = Wrap.byId(IDS.anonymousCheckbox + commentHex);
+        const textarea = Wrap.byId(IDS.textarea + commentHex);
         if (!textarea.val?.trim()) {
             textarea.classes('red-border');
             return Promise.reject();
         }
 
         textarea.noClasses('red-border');
-        return anonCheckbox.isChecked ? this.submitAnonymous(id) : this.submitAuthenticated(id);
+        return anonCheckbox.isChecked ? this.submitAnonymous(commentHex) : this.submitAuthenticated(commentHex);
     }
 
-    openOAuthPopup(provider: string, commentHex: string): Promise<void> {
+    openOAuthPopup(idp: string, commentHex: string): Promise<void> {
         // Open a popup window
         const popup = window.open('', '_blank');
 
@@ -1160,7 +1143,7 @@ export class Comentario {
 
                 this.errorHide();
                 this.cookieSet('commentoCommenterToken', resp.commenterToken);
-                popup.location = `${this.origin}/api/oauth/${provider}/redirect?commenterToken=${resp.commenterToken}`;
+                popup.location = `${this.origin}/api/oauth/${idp}/redirect?commenterToken=${resp.commenterToken}`;
 
                 // Wait until the popup is closed
                 return new Promise<void>(resolve => {
@@ -1178,54 +1161,29 @@ export class Comentario {
             .then(() => this.selfGet())
             // Update the login controls
             .then(() => {
-                Wrap.byId(IDS.loggedContainer).style(null);
+                if (this.isAuthenticated) {
+                    Wrap.byId(IDS.loggedContainer).style(null);
 
-                // Hide the login button
-                Wrap.byId(IDS.login).remove();
+                    // Hide the login button
+                    Wrap.byId(IDS.login).remove();
 
-                // Submit the pending comment, if there was one
-                return commentHex && this.commentNew(commentHex, this.commenterTokenGet(), false);
+                    // Submit the pending comment, if there was one
+                    return commentHex && this.commentNew(commentHex, this.commenterTokenGet(), false);
+                }
+                return undefined;
             })
-            .then(() => this.loginBoxClose())
-            .then(() => this.loadComments())
-            .then(() => this.commentsRender());
+            .then(() => this.isAuthenticated && this.loadComments())
+            .then(() => this.isAuthenticated && this.commentsRender());
     }
 
     forgotPassword() {
-        const popup = window.open('', '_blank');
-        popup.location = `${this.origin}/forgot?commenter=true`;
-        this.loginBoxClose();
+        window.open(`${this.origin}/forgot?commenter=true`, '_blank');
     }
 
-    popupSwitch() {
-        if (this.oauthButtonsShown) {
-            Wrap.byId(IDS.loginBoxOauthButtonsContainer).remove();
-            Wrap.byId(IDS.loginBoxOauthPretext).remove();
-            Wrap.byId(IDS.loginBoxHr1).remove();
-            Wrap.byId(IDS.loginBoxHr2).remove();
-        }
-
-        if (this.configuredOauths['sso']) {
-            Wrap.byId(IDS.loginBoxSsoButtonContainer).remove();
-            Wrap.byId(IDS.loginBoxSsoPretext).remove();
-            Wrap.byId(IDS.loginBoxHr1).remove();
-            Wrap.byId(IDS.loginBoxHr2).remove();
-        }
-
-        Wrap.byId(IDS.loginBoxLoginLinkContainer).remove();
-        Wrap.byId(IDS.loginBoxForgotLinkContainer).remove();
-
-        Wrap.byId(IDS.loginBoxEmailSubtitle).inner('Create an account');
-        this.popupBoxType = 'signup';
-        this.showPasswordField();
-        Wrap.byId(IDS.loginBoxEmailInput).focus();
-    }
-
-    loginUP(email: string, password: string, commentHex: string): Promise<void> {
+    authenticateLocally(email: string, password: string, commentHex: string): Promise<void> {
         return this.apiClient.post<ApiCommenterLoginResponse>('commenter/login', {email, password})
             .then(resp => {
                 if (!resp.success) {
-                    this.loginBoxClose();
                     this.errorShow(resp.message);
                     return Promise.reject();
                 }
@@ -1236,28 +1194,15 @@ export class Comentario {
                 Wrap.byId(IDS.login).remove();
                 return commentHex ? this.commentNew(commentHex, resp.commenterToken, false) : undefined;
             })
-            .then(() => this.loginBoxClose())
             .then(() => this.loadComments())
             .then(() => this.commentsRender())
             .then(() => this.allShow());
     }
 
-    login(commentHex: string): Promise<void> {
-        return this.loginUP(Wrap.byId(IDS.loginBoxEmailInput).val, Wrap.byId(IDS.loginBoxPasswordInput).val, commentHex);
-    }
-
-    signup(commentHex: string): Promise<void> {
-        const data = {
-            email:    Wrap.byId(IDS.loginBoxEmailInput)   .val,
-            name:     Wrap.byId(IDS.loginBoxNameInput)    .val,
-            website:  Wrap.byId(IDS.loginBoxWebsiteInput) .val,
-            password: Wrap.byId(IDS.loginBoxPasswordInput).val,
-        };
-
-        return this.apiClient.post<ApiResponseBase>('commenter/new', data)
+    signup(name: string, website: string, email: string, password: string, commentHex: string): Promise<void> {
+        return this.apiClient.post<ApiResponseBase>('commenter/new', {name, website, email, password})
             .then(resp => {
                 if (!resp.success) {
-                    this.loginBoxClose();
                     this.errorShow(resp.message);
                     return Promise.reject();
                 }
@@ -1265,57 +1210,7 @@ export class Comentario {
                 this.errorHide();
                 return undefined;
             })
-            .then(() => this.loginUP(data.email, data.password, commentHex));
-    }
-
-    showPasswordField() {
-        Wrap.byId(IDS.loginBoxEmailButton).remove();
-        Wrap.byId(IDS.loginBoxLoginLinkContainer).remove();
-        Wrap.byId(IDS.loginBoxForgotLinkContainer).remove();
-
-        if (this.oauthButtonsShown && Object.keys(this.configuredOauths).length) {
-            Wrap.byId(IDS.loginBoxHr1).remove();
-            Wrap.byId(IDS.loginBoxHr2).remove();
-            Wrap.byId(IDS.loginBoxOauthPretext).remove();
-            Wrap.byId(IDS.loginBoxOauthButtonsContainer).remove();
-        }
-
-        const isSignup = this.popupBoxType === 'signup';
-        Wrap.byId(IDS.loginBoxEmailSubtitle)
-            .inner(isSignup ?
-                'Finish the rest of your profile to complete.' :
-                'Enter your password to log in.');
-
-        const controls = isSignup ?
-            [
-                {id: IDS.loginBoxNameInput,     classes: 'input', attr: {name: 'name',     type: 'text',     placeholder: 'Real Name'}},
-                {id: IDS.loginBoxWebsiteInput,  classes: 'input', attr: {name: 'website',  type: 'text',     placeholder: 'Website (Optional)'}},
-                {id: IDS.loginBoxPasswordInput, classes: 'input', attr: {name: 'password', type: 'password', placeholder: 'Password', autocomplete: 'new-password'}},
-            ] :
-            [
-                {id: IDS.loginBoxPasswordInput, classes: 'input', attr: {name: 'password', type: 'password', placeholder: 'Password', autocomplete: 'current-password'}},
-            ];
-
-        const loginBox = Wrap.byId(IDS.loginBox);
-        controls.forEach(c =>
-            loginBox.append(
-                Wrap.new('div')
-                    .classes('email-container')
-                    .append(
-                        Wrap.new('div')
-                            .classes('email')
-                            .append(
-                                Wrap.new('input').id(c.id).classes(c.classes).attr(c.attr),
-                                // Add a submit button next to the password input
-                                c.attr.type === 'password' &&
-                                Wrap.new('button')
-                                    .id(IDS.loginBoxPasswordButton)
-                                    .classes('email-button')
-                                    .inner(this.popupBoxType)
-                                    .attr({type: 'submit'})))));
-
-        // Focus the first input
-        Wrap.byId(isSignup ? IDS.loginBoxNameInput : IDS.loginBoxPasswordInput).focus();
+            .then(() => this.authenticateLocally(email, password, commentHex));
     }
 
     pageUpdate(): Promise<void> {
@@ -1382,149 +1277,33 @@ export class Comentario {
         }
     }
 
-    loginBoxClose() {
-        // Animate dialog hiding
-        Wrap.byId(IDS.loginBox).noClasses('fade-in').classes('fade-out');
-        setTimeout(() => {
-            Wrap.byId(IDS.loginBoxContainer).remove();
-            Wrap.byId(IDS.mainArea).noClasses('blurred');
-        }, 500);
+    async showLoginDialog(commentHex: string) {
+        const result = await LoginDialog.run(this.root, this.configuredOauths);
+        switch (result.status) {
+            case LoginStatus.OK:
+                // External/local auth
+                await (result.idp ?
+                    this.openOAuthPopup(result.idp, commentHex) :
+                    await this.authenticateLocally(result.email, result.password, commentHex));
+                break;
+
+            case LoginStatus.GO_TO_FORGOT_PASSWORD:
+                // Navigate to forgot password
+                this.forgotPassword();
+                break;
+
+            case LoginStatus.GO_TO_SIGNUP:
+                // Switch to signup
+                await this.showSignupDialog(commentHex);
+                break;
+        }
     }
 
-    loginBoxShow(commentHex: string) {
-        // Create a login box
-        const loginBox = Wrap.new('form')
-            .id(IDS.loginBox)
-            .classes('login-box', 'fade-in')
-            .on(
-                'submit',
-                e => {
-                    e.preventDefault();
-                    if (!Wrap.byId(IDS.loginBoxPasswordButton).ok) {
-                        this.showPasswordField();
-                    } else if (this.popupBoxType === 'login') {
-                        this.login(commentHex);
-                    } else {
-                        this.signup(commentHex);
-                    }
-                })
-            // Close button
-            .append(
-                Wrap.new('button')
-                    .classes('btn-login-box-close')
-                    .attr({type: 'button', ariaLabel: 'Close'})
-                    .click(() => this.loginBoxClose()));
-
-        const localAuth = this.configuredOauths['commento'];
-
-        // Add OAuth buttons, if applicable
-        let hasOAuth = false;
-        const oauthButtons = Wrap.new('div').classes('oauth-buttons');
-        const oauthProviders = ['google', 'github', 'gitlab'];
-        oauthProviders.filter(p => this.configuredOauths[p])
-            .forEach(provider => {
-                Wrap.new('button')
-                    .classes('button', `${provider}-button`)
-                    .attr({type: 'button'})
-                    .inner(provider)
-                    .click(() => this.openOAuthPopup(provider, commentHex))
-                    .appendTo(oauthButtons);
-                hasOAuth = true;
-            });
-
-        // SSO auth
-        if (this.configuredOauths['sso']) {
-            loginBox.append(
-                // SSO button
-                Wrap.new('div')
-                    .id(IDS.loginBoxSsoButtonContainer)
-                    .classes('oauth-buttons-container')
-                    .append(
-                        Wrap.new('div').classes('oauth-buttons')
-                            .append(
-                                Wrap.new('button')
-                                    .classes('button', 'sso-button')
-                                    .attr({type: 'button'})
-                                    .inner('Single Sign-On')
-                                    .click(() => this.openOAuthPopup('sso', commentHex)))),
-                // Subtitle
-                Wrap.new('div')
-                    .id(IDS.loginBoxSsoPretext)
-                    .classes('login-box-subtitle')
-                    .inner(`Proceed with ${parent.location.host} authentication`),
-                // Separator
-                (hasOAuth || localAuth) && loginBox.append(Wrap.new('hr').id(IDS.loginBoxHr1)));
+    async showSignupDialog(commentHex: string) {
+        const result = await SignupDialog.run(this.root);
+        if (result.status === SignupStatus.OK) {
+            await this.signup(result.name, result.website, result.email, result.password, commentHex);
         }
-
-        // External auth
-        this.oauthButtonsShown = hasOAuth;
-        if (hasOAuth) {
-            loginBox.append(
-                // Subtitle
-                Wrap.new('div').id(IDS.loginBoxOauthPretext).classes('login-box-subtitle').inner('Proceed with social login'),
-                // OAuth buttons
-                Wrap.new('div')
-                    .id(IDS.loginBoxOauthButtonsContainer)
-                    .classes('oauth-buttons-container')
-                    .append(oauthButtons),
-                // Separator
-                localAuth && Wrap.new('hr').id(IDS.loginBoxHr2));
-        }
-
-        // Local auth
-        if (localAuth) {
-            loginBox.append(
-                // Subtitle
-                Wrap.new('div')
-                    .id(IDS.loginBoxEmailSubtitle)
-                    .classes('login-box-subtitle')
-                    .inner('Login with your email address'),
-                // Email input container
-                Wrap.new('div')
-                    .classes('email-container')
-                    .append(
-                        Wrap.new('div')
-                            .classes('email')
-                            .append(
-                                // Email input
-                                Wrap.new('input')
-                                    .id(IDS.loginBoxEmailInput)
-                                    .classes('input')
-                                    .attr({name: 'email', placeholder: 'Email address', type: 'text', autocomplete: 'email'}),
-                                // Continue button
-                                Wrap.new('button')
-                                    .id(IDS.loginBoxEmailButton)
-                                    .classes('email-button')
-                                    .inner('Continue')
-                                    .attr({type: 'submit'}))),
-                // Forgot password link container
-                Wrap.new('div')
-                    .id(IDS.loginBoxForgotLinkContainer)
-                    .classes('forgot-link-container')
-                    // Forgot password link
-                    .append(
-                        Wrap.new('a')
-                            .classes('forgot-link')
-                            .inner('Forgot your password?')
-                            .click(() => this.forgotPassword())),
-                // Switch to signup link container
-                Wrap.new('div')
-                    .id(IDS.loginBoxLoginLinkContainer)
-                    .classes('login-link-container')
-                    // Switch to signup link
-                    .append(
-                        Wrap.new('a')
-                            .classes('login-link')
-                            .inner('Don\'t have an account? Sign up.')
-                            .click(() => this.popupSwitch())));
-        }
-
-        this.popupBoxType = 'login';
-
-        const container = Wrap.new('div').id(IDS.loginBoxContainer).classes('login-box-container').appendTo(this.root);
-        loginBox.appendTo(container).scrollTo();
-        Wrap.byId(IDS.mainArea).classes('blurred');
-        Wrap.byId(IDS.loginBoxEmailInput).focus();
     }
 
     dataTagsLoad() {

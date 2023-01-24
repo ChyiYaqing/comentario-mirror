@@ -1,3 +1,5 @@
+export type StringBooleanMap = { [k: string]: boolean };
+
 export interface Comment {
     readonly commentHex:   string;
     readonly commenterHex: string;
@@ -45,4 +47,3 @@ export interface SortPolicyProps<T> {
     label:      string;
     comparator: ComparatorFunc<T>;
 }
-
