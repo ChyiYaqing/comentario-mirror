@@ -1,6 +1,4 @@
-@import "source-sans.scss";
-
-$fade-animation-duration: 250ms;
+@import "source-sans";
 
 .commento-root {
     position: relative;
@@ -16,14 +14,15 @@ $fade-animation-duration: 250ms;
         text-rendering: optimizeLegibility;
     }
 
-    @import "colors-main.scss";
-    @import "commento-common.scss";
-    @import "commento-logged.scss"; // Logged in as <name>
-    @import "commento-mod-tools.scss"; // Moderator tools and buttons
-    @import "commento-input.scss"; // Textarea, anonymous checkbox, submit button
-    @import "commento-card.scss"; // Each comment card
-    @import "commento-login.scss"; // Popup box when logging in
-    @import "commento-footer.scss"; // "Powered by"
+    @import "colors-main";
+    @import "commento-common";
+    @import "commento-animations";
+    @import "commento-logged"; // Logged in as <name>
+    @import "commento-mod-tools"; // Moderator tools and buttons
+    @import "commento-input"; // Textarea, anonymous checkbox, submit button
+    @import "commento-card"; // Each comment card
+    @import "commento-dialog"; // Popup dialog
+    @import "commento-footer"; // "Powered by"
 
     .commento-hidden {
         display: none;
@@ -67,41 +66,21 @@ $fade-animation-duration: 250ms;
             float: right;
 
             .commento-sort-policy-button {
-                color: $gray-6;
+                color: $gray-6 !important;
                 font-size: 13px;
                 padding: 0 7px;
-            }
-
-            .commento-sort-policy-button:hover {
                 cursor: pointer;
             }
 
             .commento-sort-policy-button-selected {
-                color: $blue-8;
+                color: $blue-8 !important;
                 font-weight: bold;
             }
         }
     }
-}
 
-.commento-root-font {
-    * {font-family: 'Source Sans Pro', sans-serif;}
-}
 
-.commento-fade-in {
-    animation: commento-fade-in-animation $fade-animation-duration ease-in-out forwards 1;
-}
-
-@keyframes commento-fade-in-animation {
-    from {opacity: 0;}
-    to   {opacity: 1;}
-}
-
-.commento-fade-out {
-    animation: commento-fade-out-animation $fade-animation-duration ease-in-out forwards 1;
-}
-
-@keyframes commento-fade-out-animation {
-    from {opacity: 1;}
-    to   {opacity: 0;}
+    &.commento-root-font {
+        * {font-family: 'Source Sans Pro', sans-serif;}
+    }
 }

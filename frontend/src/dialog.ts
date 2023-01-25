@@ -16,6 +16,7 @@ export class Dialog {
 
     constructor(
         private readonly parent: Wrap<any>,
+        private readonly title: string,
     ) {}
 
     /**
@@ -43,10 +44,10 @@ export class Dialog {
                 .on('animationend',    () => this.animationDone?.())
                 .on('animationcancel', () => this.animationDone?.())
                 .append(
-                    // Close button
-                    UIToolkit.closeButton(() => this.dismiss()),
-                    // Dialog contents
-                    this.renderContent());
+                    // Dialog header
+                    this.renderHeader(),
+                    // Dialog body + contents
+                    Wrap.new('div').classes('dialog-body').append(this.renderContent()));
 
             // Create a backdrop
             this.backdrop = Wrap.new('div').classes('backdrop').appendTo(this.parent);
@@ -110,6 +111,15 @@ export class Dialog {
      * @protected
      */
     protected onShow(): void {
-        // Does nothing
+        // Does nothing by default
+    }
+
+    private renderHeader(): Wrap<HTMLDivElement> {
+        return Wrap.new('div')
+            .classes('dialog-header')
+            // Title
+            .inner(this.title)
+            // Close button
+            .append(UIToolkit.closeButton(() => this.dismiss()));
     }
 }

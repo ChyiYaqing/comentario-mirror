@@ -21,6 +21,8 @@ import {
 import { Wrap } from './element-wrap';
 import { LoginDialog } from './login-dialog';
 import { SignupDialog } from './signup-dialog';
+import { UIToolkit } from './ui-toolkit';
+import { MarkdownHelp } from './markdown-help';
 
 const IDS = {
     mainArea:           'main-area',
@@ -32,32 +34,22 @@ const IDS = {
     preCommentsArea:    'pre-comments-area',
     commentsArea:       'comments-area',
     superContainer:     'textarea-super-container-',
-    textareaContainer:  'textarea-container-',
     textarea:           'textarea-',
     anonymousCheckbox:  'anonymous-checkbox-',
     sortPolicy:         'sort-policy-',
     card:               'comment-card-',
     body:               'comment-body-',
     text:               'comment-text-',
-    subtitle:           'comment-subtitle-',
-    timeago:            'comment-timeago-',
     score:              'comment-score-',
-    options:            'comment-options-',
     edit:               'comment-edit-',
     reply:              'comment-reply-',
     collapse:           'comment-collapse-',
     upvote:             'comment-upvote-',
     downvote:           'comment-downvote-',
     approve:            'comment-approve-',
-    remove:             'comment-remove-',
     sticky:             'comment-sticky-',
     children:           'comment-children-',
-    contents:           'comment-contents-',
     name:               'comment-name-',
-    submitButton:       'submit-button-',
-    markdownButton:     'markdown-button-',
-    markdownHelp:       'markdown-help-',
-    footer:             'footer',
 };
 
 export class Comentario {
@@ -325,7 +317,6 @@ export class Comentario {
 
     footerLoad(): Wrap<HTMLDivElement> {
         return Wrap.new('div')
-            .id(IDS.footer)
             .classes('footer')
             .append(
                 Wrap.new('div')
@@ -386,89 +377,54 @@ export class Comentario {
         Wrap.new('div').id(IDS.error).classes('error-box').style('display: none;').appendTo(this.root);
     }
 
-    markdownHelpShow(commentHex: string) {
-        Wrap.new('table')
-            .id(IDS.markdownHelp + commentHex)
-            .classes('markdown-help')
-            .appendTo(Wrap.byId(IDS.superContainer + commentHex))
-            .append(
-                Wrap.new('tr')
-                    .append(
-                        Wrap.new('td').html('<i>italics</i>'),
-                        Wrap.new('td').html('surround text with <pre>*asterisks*</pre>')),
-                Wrap.new('tr')
-                    .append(
-                        Wrap.new('td').html('<b>bold</b>'),
-                        Wrap.new('td').html('surround text with <pre>**two asterisks**</pre>')),
-                Wrap.new('tr')
-                    .append(
-                        Wrap.new('td').html('<pre>code</pre>'),
-                        Wrap.new('td').html('surround text with <pre>`backticks`</pre>')),
-                Wrap.new('tr')
-                    .append(
-                        Wrap.new('td').html('<del>strikethrough</del>'),
-                        Wrap.new('td').html('surround text with <pre>~~two tilde characters~~</pre>')),
-                Wrap.new('tr')
-                    .append(
-                        Wrap.new('td').html('<a href="https://example.com">hyperlink</a>'),
-                        Wrap.new('td').html('<pre>[hyperlink](https://example.com)</pre> or just a bare URL')),
-                Wrap.new('tr')
-                    .append(
-                        Wrap.new('td').html('<blockquote>quote</blockquote>'),
-                        Wrap.new('td').html('prefix with <pre>&gt;</pre>')));
-
-        // Add a collapse button
-        Wrap.byId(IDS.markdownButton + commentHex).unlisten().click(() => this.markdownHelpHide(commentHex));
-    }
-
-    markdownHelpHide(commentHex: string) {
-        Wrap.byId(IDS.markdownButton + commentHex).unlisten().click(() => this.markdownHelpShow(commentHex));
-        Wrap.byId(IDS.markdownHelp + commentHex).remove();
-    }
-
     /**
      * Create a new editor for editing comment text.
      * @param commentHex Comment's hex ID.
      * @param isEdit Whether it's adding a new comment (false) or editing an existing one (true)
      */
-    textareaCreate(commentHex: string, isEdit: boolean): Wrap<HTMLDivElement> {
-        const textOuter = Wrap.new('div').id(IDS.superContainer + commentHex).classes('button-margin')
+    textareaCreate(commentHex: string, isEdit: boolean): Wrap<HTMLFormElement> {
+        // "Comment anonymously" checkbox
+        let anonContainer: Wrap<any>;
+        if (!this.requireIdentification && !isEdit) {
+            const anonCheckbox = Wrap.new('input').id(IDS.anonymousCheckbox + commentHex).attr({type: 'checkbox'});
+            if (this.anonymousOnly) {
+                anonCheckbox.checked(true).attr({disabled: 'true'});
+            }
+            anonContainer = Wrap.new('div')
+                .classes('round-check', 'anonymous-checkbox-container')
+                .append(
+                    anonCheckbox,
+                    Wrap.new('label').attr({for: Wrap.idPrefix + IDS.anonymousCheckbox + commentHex}).inner('Comment anonymously'));
+        }
+
+        // Instantiate and set up a new form
+        return UIToolkit.form(() => isEdit ? this.saveCommentEdits(commentHex) : this.submitAccountDecide(commentHex))
+            .id(IDS.superContainer + commentHex)
+            .classes('textarea-form')
             .append(
-                // Text area in a container
-                Wrap.new('div').id(IDS.textareaContainer + commentHex).classes('textarea-container')
+                // Textarea in a container
+                Wrap.new('div')
+                    .classes('textarea-container')
                     .append(
                         Wrap.new('textarea').id(IDS.textarea + commentHex).attr({placeholder: 'Add a comment'}).autoExpand()),
-                // Save button
-                Wrap.new('button')
-                    .id(IDS.submitButton + commentHex)
-                    .attr({type: 'submit'})
-                    .classes('button', 'submit-button')
-                    .inner(isEdit ? 'Save Changes' : 'Add Comment')
-                    .click(() => isEdit ? this.saveCommentEdits(commentHex) : this.submitAccountDecide(commentHex)));
-
-        // "Comment anonymously" checkbox
-        const anonCheckbox = Wrap.new('input').id(IDS.anonymousCheckbox + commentHex).attr({type: 'checkbox'});
-        if (this.anonymousOnly) {
-            anonCheckbox.checked(true).attr({disabled: 'true'});
-        }
-        const anonCheckboxCont = Wrap.new('div')
-            .classes('round-check', 'anonymous-checkbox-container')
-            .append(
-                anonCheckbox,
-                Wrap.new('label').attr({for: Wrap.idPrefix + IDS.anonymousCheckbox + commentHex}).inner('Comment anonymously'));
-
-        if (!this.requireIdentification && !isEdit) {
-            textOuter.append(anonCheckboxCont);
-        }
-
-        // Markdown help button
-        Wrap.new('a')
-            .id(IDS.markdownButton + commentHex)
-            .classes('markdown-button')
-            .html('<b>M⬇</b>&nbsp;Markdown')
-            .click(() => this.markdownHelpShow(commentHex))
-            .appendTo(textOuter);
-        return textOuter;
+                // Textarea footer
+                Wrap.new('div')
+                    .classes('textarea-form-footer')
+                    .append(
+                        Wrap.new('div')
+                            .append(
+                                // Anonymous checkbox, if any
+                                anonContainer,
+                                // Markdown help button
+                                Wrap.new('a')
+                                    .classes('markdown-button')
+                                    .html('<b>M⬇</b>&nbsp;Markdown')
+                                    .click(() => MarkdownHelp.run(this.root))),
+                        // Save button
+                        Wrap.new('button')
+                            .attr({type: 'submit'})
+                            .classes('button', 'submit-button')
+                            .inner(isEdit ? 'Save Changes' : 'Add Comment')));
     }
 
     sortPolicyApply(policy: SortPolicy) {
@@ -734,20 +690,17 @@ export class Comentario {
                                 .attr(commHasLink && {href: commenter.link, rel: 'nofollow noopener noreferrer'}),
                             // Subtitle
                             Wrap.new('div')
-                                .id(IDS.subtitle + hex)
                                 .classes('subtitle')
                                 .append(
                                     // Score
                                     Wrap.new('div').id(IDS.score + hex).classes('score').inner(this.scorify(comment.score)),
                                     // Time ago
                                     Wrap.new('div')
-                                        .id(IDS.timeago + hex)
                                         .classes('timeago')
-                                        .html(this.timeDifference(curTime, comment.creationMs))
+                                        .inner(this.timeDifference(curTime, comment.creationMs))
                                         .attr({title: comment.creationDate.toString()}))),
                     // Card contents
                     Wrap.new('div')
-                        .id(IDS.contents + hex)
                         .append(
                             Wrap.new('div').id(IDS.body + hex).classes('body')
                                 .append(Wrap.new('div').id(IDS.text + hex).html(comment.html)),
@@ -767,7 +720,7 @@ export class Comentario {
      * @private
      */
     private getCommentOptions(comment: Comment, hex: string, parentHex: string): Wrap<any> {
-        const options = Wrap.new('div').id(IDS.options + hex).classes('options');
+        const options = Wrap.new('div').classes('options');
 
         // Sticky comment indicator (for non-moderator only)
         const isSticky = this.stickyCommentHex === hex;
@@ -792,7 +745,6 @@ export class Comentario {
         // Remove button
         if (!comment.deleted && (this.isModerator || comment.commenterHex === this.selfHex)) {
             Wrap.new('button')
-                .id(IDS.remove + hex)
                 .classes('option-button', 'option-remove')
                 .attr({type: 'button', title: 'Remove'})
                 .click(() => this.commentDelete(hex))

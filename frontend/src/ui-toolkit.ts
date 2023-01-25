@@ -32,7 +32,9 @@ export class UIToolkit {
     /**
      * Create and return a new input element.
      */
-    static input(name: string, type = 'text', placeholder: string = null, autocomplete: string = null): Wrap<HTMLInputElement> {
-        return Wrap.new('input').classes('input').attr({name, type, placeholder, autocomplete});
+    static input(name: string, type = 'text', placeholder: string = null, autocomplete: string = null, required?: boolean): Wrap<HTMLInputElement> {
+        return Wrap.new('input')
+            .classes('input')
+            .attr({name, type, placeholder, autocomplete, required: required && 'required'});
     }
 }

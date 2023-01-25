@@ -13,7 +13,7 @@ export class LoginDialog extends Dialog {
         parent: Wrap<any>,
         private readonly authMethods: StringBooleanMap,
     ) {
-        super(parent);
+        super(parent, 'Log in');
     }
 
     /**
@@ -83,7 +83,7 @@ export class LoginDialog extends Dialog {
                                     .click(() => this.dismissWith('sso')))),
                 // Subtitle
                 Wrap.new('div')
-                    .classes('login-box-subtitle')
+                    .classes('dialog-centered')
                     .inner(`Proceed with ${parent.location.host} authentication`),
                 // Separator
                 (hasOAuth || localAuth) && form.append(Wrap.new('hr')));
@@ -93,7 +93,7 @@ export class LoginDialog extends Dialog {
         if (hasOAuth) {
             form.append(
                 // Subtitle
-                Wrap.new('div').classes('login-box-subtitle').inner('Proceed with social login'),
+                Wrap.new('div').classes('dialog-centered').inner('Proceed with social login'),
                 // OAuth buttons
                 Wrap.new('div')
                     .classes('oauth-buttons-container')
@@ -105,47 +105,39 @@ export class LoginDialog extends Dialog {
         // Local auth
         if (localAuth) {
             // Create inputs
-            this._email    = UIToolkit.input('email', 'text', 'Email address', 'email');
-            this._pwd = UIToolkit.input('password', 'password', 'Password', 'current-password');
+            this._email    = UIToolkit.input('email', 'text', 'Email address', 'email', true);
+            this._pwd = UIToolkit.input('password', 'password', 'Password', 'current-password', true);
 
             // Add the inputs to the dialog
             form.append(
                 // Subtitle
                 Wrap.new('div')
-                    .classes('login-box-subtitle')
+                    .classes('dialog-centered')
                     .inner('Login with your email address'),
                 // Email input container
                 Wrap.new('div')
                     .classes('input-container')
-                    .append(Wrap.new('div').classes('input-wrapper').append(this._email)),
+                    .append(Wrap.new('div').classes('input-group').append(this._email)),
                 // Password input container
                 Wrap.new('div')
                     .classes('input-container')
                     .append(
                         Wrap.new('div')
-                            .classes('input-wrapper')
+                            .classes('input-group')
                             .append(
                                 this._pwd,
                                 // Submit button next to the password input
-                                Wrap.new('button').classes('input-button').inner('Log in').attr({type: 'submit'}))),
-                // Forgot password link container
+                                Wrap.new('button').classes('button', 'submit-button').inner('Log in').attr({type: 'submit'}))),
+                // Forgot password link
                 Wrap.new('div')
-                    .classes('forgot-link-container')
-                    // Forgot password link
-                    .append(
-                        Wrap.new('a')
-                            .classes('forgot-link')
-                            .inner('Forgot your password?')
-                            .click(() => this.dismissWith('forgot'))),
+                    .classes('dialog-centered')
+                    .append(Wrap.new('a').inner('Forgot your password?').click(() => this.dismissWith('forgot'))),
                 // Switch to signup link container
                 Wrap.new('div')
-                    .classes('login-link-container')
-                    // Switch to signup link
+                    .classes('dialog-centered')
                     .append(
-                        Wrap.new('a')
-                            .classes('login-link')
-                            .inner('Don\'t have an account? Sign up.')
-                            .click(() => this.dismissWith('signup'))));
+                        Wrap.new('span').inner('Don\'t have an account?').classes('me-1'),
+                        Wrap.new('a').inner('Sign up.').click(() => this.dismissWith('signup'))));
         }
         return form;
     }

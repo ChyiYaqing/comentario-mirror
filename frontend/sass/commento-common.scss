@@ -1,4 +1,8 @@
-@import "colors-main.scss";
+@import "colors-main";
+
+*, ::after, ::before {
+    box-sizing: border-box;
+}
 
 code {
     font-family: monospace;
@@ -7,9 +11,10 @@ code {
 }
 
 a {
-    color: $blue-6;
-    outline: none;
-    text-decoration: none;
+    color: $blue-6 !important;
+    outline: none !important;
+    text-decoration: none !important;
+    cursor: pointer !important;
 }
 
 blockquote {
@@ -27,12 +32,28 @@ blockquote {
     cursor: pointer;
     font-weight: bold;
     line-height: 24px;
-    font-size: 14px;
-    padding: 6px 8px;
-    box-shadow: 0 4px 6px rgba(50, 50, 93, .11), 0 1px 3px rgba(0, 0, 0, .08);
+    padding: 6px 20px;
     border: 1px solid transparent;
     border-radius: 3px;
     color: #fff;
     margin-left: 5px;
     margin-right: 5px;
+    box-shadow: 0 4px 6px rgba(50, 50, 93, .11), 0 1px 3px rgba(0, 0, 0, .08);
+}
+
+.commento-submit-button {
+    background-color: $blue-8;
+    transition: background-color 0.2s;
+
+    &:hover, &:focus, &:active {
+        background-color: $blue-6;
+    }
+}
+
+.commento-ms-1 {
+    margin-left: 0.25rem;
+}
+
+.commento-me-1 {
+    margin-right: 0.25rem;
 }

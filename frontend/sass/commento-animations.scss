@@ -1,0 +1,49 @@
+$animation-duration: 250ms;
+
+.commento-fade-in {
+    animation: commento-fade-in-animation $animation-duration ease-in-out forwards 1;
+}
+
+.commento-fade-out {
+    animation: commento-fade-out-animation $animation-duration ease-in-out forwards 1;
+}
+
+@keyframes commento-fade-in-animation {
+    from {opacity: 0;}
+    to   {opacity: 1;}
+}
+
+@keyframes commento-fade-out-animation {
+    from {opacity: 1;}
+    to   {opacity: 0;}
+}
+
+.commento-expand {
+    animation: commento-expand-animation $animation-duration ease-in-out forwards 1;
+}
+
+.commento-collapse {
+    animation: commento-collapse-animation $animation-duration ease-in-out forwards 1;
+}
+
+@keyframes commento-expand-animation {
+    from {
+        opacity: 0;
+        transform: translateY(-100%);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes commento-collapse-animation {
+    from {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateY(-100%);
+    }
+}

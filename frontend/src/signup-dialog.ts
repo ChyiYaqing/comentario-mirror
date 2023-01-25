@@ -10,7 +10,7 @@ export class SignupDialog extends Dialog {
     private _pwd: Wrap<HTMLInputElement>;
 
     constructor(parent: Wrap<any>) {
-        super(parent);
+        super(parent, 'Create an account');
     }
 
     /**
@@ -55,39 +55,35 @@ export class SignupDialog extends Dialog {
         const form = UIToolkit.form(() => this.dismiss(true));
 
         // Create inputs
-        this._name    = UIToolkit.input('name', 'text', 'Real name', 'name');
+        this._name    = UIToolkit.input('name', 'text', 'Real name', 'name', true);
         this._website = UIToolkit.input('website', 'text', 'Website (optional)', 'url');
-        this._email   = UIToolkit.input('email', 'text', 'Email address', 'email');
-        this._pwd     = UIToolkit.input('password', 'password', 'Password', 'current-password');
+        this._email   = UIToolkit.input('email', 'text', 'Email address', 'email', true);
+        this._pwd     = UIToolkit.input('password', 'password', 'Password', 'current-password', true);
 
         // Add the inputs to the dialog
         form.append(
-            // Subtitle
-            Wrap.new('div')
-                .classes('login-box-subtitle')
-                .inner('Create an account'),
             // Name input container
             Wrap.new('div')
                 .classes('input-container')
-                .append(Wrap.new('div').classes('input-wrapper').append(this._name)),
+                .append(Wrap.new('div').classes('input-group').append(this._name)),
             // Website input container
             Wrap.new('div')
                 .classes('input-container')
-                .append(Wrap.new('div').classes('input-wrapper').append(this._website)),
+                .append(Wrap.new('div').classes('input-group').append(this._website)),
             // Email input container
             Wrap.new('div')
                 .classes('input-container')
-                .append(Wrap.new('div').classes('input-wrapper').append(this._email)),
+                .append(Wrap.new('div').classes('input-group').append(this._email)),
             // Password input container
             Wrap.new('div')
                 .classes('input-container')
                 .append(
                     Wrap.new('div')
-                        .classes('input-wrapper')
+                        .classes('input-group')
                         .append(
                             this._pwd,
                             // Submit button next to the password input
-                            Wrap.new('button').classes('input-button').inner('Sign up').attr({type: 'submit'}))));
+                            Wrap.new('button').classes('button', 'submit-button').inner('Sign up').attr({type: 'submit'}))));
         return form;
     }
 
