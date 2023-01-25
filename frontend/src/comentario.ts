@@ -731,7 +731,7 @@ export class Comentario {
                                     'name',
                                     commenter.isModerator && 'moderator',
                                     comment.state === 'flagged' && 'flagged')
-                                .attr(commHasLink && {href: commenter.link}),
+                                .attr(commHasLink && {href: commenter.link, rel: 'nofollow noopener noreferrer'}),
                             // Subtitle
                             Wrap.new('div')
                                 .id(IDS.subtitle + hex)
