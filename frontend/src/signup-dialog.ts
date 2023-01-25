@@ -1,140 +1,97 @@
 import { Wrap } from './element-wrap';
+import { UIToolkit } from './ui-toolkit';
+import { Dialog } from './dialog';
 
-export enum SignupStatus {
-    /** User dismissed the dialog. */
-    CANCEL,
-    /** User confirmed (submitted) the dialog. */
-    OK,
-}
+export class SignupDialog extends Dialog {
 
-/**
- * The outcome of the signup dialog.
- */
-export interface SignupResult {
-    readonly status:   SignupStatus;
-    readonly name:     string;
-    readonly website:  string;
-    readonly email:    string;
-    readonly password: string;
-}
+    private _name: Wrap<HTMLInputElement>;
+    private _website: Wrap<HTMLInputElement>;
+    private _email: Wrap<HTMLInputElement>;
+    private _pwd: Wrap<HTMLInputElement>;
 
-export class SignupDialog {
-
-    private backdrop: Wrap<HTMLDivElement>;
-    private container: Wrap<HTMLDivElement>;
-    private dialogBox: Wrap<HTMLFormElement>;
-    private nameInput: Wrap<HTMLInputElement>;
-    private websiteInput: Wrap<HTMLInputElement>;
-    private emailInput: Wrap<HTMLInputElement>;
-    private passwordInput: Wrap<HTMLInputElement>;
-
-    constructor(
-        private readonly parent: Wrap<any>,
-        private readonly resolve: (r: SignupResult | PromiseLike<SignupResult>) => void,
-    ) {}
-
-    /**
-     * Instantiate and show the dialog. Return a promise that resolves as soon as the dialog is closed, with the outcome
-     * of the operation.
-     * @param parent Parent element for the dialog.
-     */
-    static run(parent: Wrap<any>): Promise<SignupResult> {
-        return new Promise(resolve => new SignupDialog(parent, resolve).render());
+    constructor(parent: Wrap<any>) {
+        super(parent);
     }
 
-    private render() {
-        // Create a login box
-        this.dialogBox = Wrap.new('form')
-            .classes('login-box', 'fade-in')
-            // Form submit event
-            .on('submit', e => {
-                e.preventDefault();
-                this.dismiss(SignupStatus.OK);
-            })
-            // Don't propagate the click to prevent cancelling the dialog, which happens when the click reaches the
-            // parent container
-            .click(e => e.stopPropagation())
-            // Close button
-            .append(
-                Wrap.new('button')
-                    .classes('btn-login-box-close')
-                    .attr({type: 'button', ariaLabel: 'Close'})
-                    .click(() => this.dismiss(SignupStatus.CANCEL)));
+    /**
+     * Instantiate and show the dialog. Return a promise that resolves as soon as the dialog is closed.
+     * @param parent Parent element for the dialog.
+     */
+    static run(parent: Wrap<any>): Promise<SignupDialog> {
+        const dlg = new SignupDialog(parent);
+        return dlg.run(dlg);
+    }
+
+    /**
+     * Entered name.
+     */
+    get name(): string {
+        return this._name.val;
+    }
+
+    /**
+     * Entered website.
+     */
+    get website(): string {
+        return this._website.val;
+    }
+
+    /**
+     * Entered email.
+     */
+    get email(): string {
+        return this._email.val;
+    }
+
+    /**
+     * Entered password.
+     */
+    get password(): string {
+        return this._pwd.val;
+    }
+
+    override renderContent(): Wrap<any> {
+        // Create a login form
+        const form = UIToolkit.form(() => this.dismiss(true));
 
         // Create inputs
-        this.nameInput = Wrap.new('input')
-            .classes('input')
-            .attr({name: 'name', placeholder: 'Real name', type: 'text', autocomplete: 'name'});
-        this.websiteInput = Wrap.new('input')
-            .classes('input')
-            .attr({name: 'website', placeholder: 'Website (optional)', type: 'text', autocomplete: 'url'});
-        this.emailInput = Wrap.new('input')
-            .classes('input')
-            .attr({name: 'email', placeholder: 'Email address', type: 'text', autocomplete: 'email'});
-        this.passwordInput = Wrap.new('input')
-            .classes('input')
-            .attr({name: 'password', type: 'password', placeholder: 'Password', autocomplete: 'current-password'});
+        this._name    = UIToolkit.input('name', 'text', 'Real name', 'name');
+        this._website = UIToolkit.input('website', 'text', 'Website (optional)', 'url');
+        this._email   = UIToolkit.input('email', 'text', 'Email address', 'email');
+        this._pwd     = UIToolkit.input('password', 'password', 'Password', 'current-password');
 
         // Add the inputs to the dialog
-        this.dialogBox.append(
+        form.append(
             // Subtitle
             Wrap.new('div')
                 .classes('login-box-subtitle')
                 .inner('Create an account'),
             // Name input container
             Wrap.new('div')
-                .classes('email-container')
-                .append(Wrap.new('div').classes('email').append(this.nameInput)),
+                .classes('input-container')
+                .append(Wrap.new('div').classes('input-wrapper').append(this._name)),
             // Website input container
             Wrap.new('div')
-                .classes('email-container')
-                .append(Wrap.new('div').classes('email').append(this.websiteInput)),
+                .classes('input-container')
+                .append(Wrap.new('div').classes('input-wrapper').append(this._website)),
             // Email input container
             Wrap.new('div')
-                .classes('email-container')
-                .append(Wrap.new('div').classes('email').append(this.emailInput)),
+                .classes('input-container')
+                .append(Wrap.new('div').classes('input-wrapper').append(this._email)),
             // Password input container
             Wrap.new('div')
-                .classes('email-container')
+                .classes('input-container')
                 .append(
                     Wrap.new('div')
-                        .classes('email')
+                        .classes('input-wrapper')
                         .append(
-                            this.passwordInput,
+                            this._pwd,
                             // Submit button next to the password input
-                            Wrap.new('button').classes('email-button').inner('Sign up').attr({type: 'submit'}))));
-
-        // Create a backdrop
-        this.backdrop = Wrap.new('div').classes('backdrop').appendTo(this.parent);
-
-        // Add the dialog to the container and scroll to it, if necessary
-        this.container = Wrap.new('div')
-            .classes('login-box-container')
-            // Cancel the dialog when clicked outside
-            .click(() => this.dismiss(SignupStatus.CANCEL))
-            .appendTo(this.parent);
-        this.dialogBox.appendTo(this.container).scrollTo();
-
-        // Focus the email input
-        this.nameInput.focus();
+                            Wrap.new('button').classes('input-button').inner('Sign up').attr({type: 'submit'}))));
+        return form;
     }
 
-    private dismiss(status: SignupStatus) {
-        const name = this.nameInput.val;
-        const website = this.websiteInput.val;
-        const email = this.emailInput.val;
-        const password = this.passwordInput.val;
-
-        // Close the dialog
-        this.dialogBox.noClasses('fade-in').classes('fade-out');
-        setTimeout(
-            () => {
-                this.container.remove();
-                this.backdrop.remove();
-
-                // Resolve the promise, returning the result
-                this.resolve({status, name, website, email, password});
-            },
-            250);
+    override onShow(): void {
+        this._name.focus();
     }
 }

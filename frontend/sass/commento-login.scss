@@ -1,6 +1,6 @@
 @import "colors-main.scss";
 
-.commento-login-box-container {
+.commento-dialog-container {
     position: absolute;
     left: 0;
     top: 0;
@@ -11,7 +11,7 @@
     justify-content: center;
     align-items: start;
 
-    .commento-login-box {
+    .commento-dialog {
         position: relative;
         width: 90%;
         max-width: 500px;
@@ -39,7 +39,62 @@
             font-size: 15px;
         }
 
-        @import "email-main.scss";
+        .commento-input-container {
+            display: flex;
+            justify-content: center;
+            width: 100%;
+            margin: 8px 0;
+
+            .commento-input-wrapper {
+                box-shadow: 0 1px 3px rgba(50, 50, 93, .15), 0 1px 0 rgba(0, 0, 0, .02);
+                border-radius: 4px;
+                background: $white;
+                width: 100%;
+                max-width: 400px;
+
+                .commento-input {
+                    display: inline;
+                    height: 40px;
+                    background: $white;
+                    border: none;
+                    outline: none;
+                    padding: 5px 5px 5px 10px;
+                    width: calc(100% - 150px);
+
+                    &::placeholder {
+                        color: $gray-5;
+                    }
+                }
+
+                .commento-input-button {
+                    height: 40px;
+                    min-width: 110px;
+                    float: right;
+                    background: $white;
+                    border: none;
+                    outline: none;
+                    padding: 0 10px 0 10px;
+                    border-left: 1px solid $gray-1;
+                    font-size: 12px;
+                    text-transform: uppercase;
+                    text-align: center;
+                    font-weight: bold;
+                    color: $blue-7;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                    width: unset;
+
+                    &:hover {
+                        color: $blue-6;
+                    }
+
+                    &:disabled {
+                        cursor: default;
+                        color: $gray-6;
+                    }
+                }
+            }
+        }
 
         .commento-forgot-link-container,
         .commento-login-link-container {
@@ -61,7 +116,7 @@
             font-weight: normal;
         }
 
-        .commento-btn-login-box-close {
+        .commento-dialog-btn-close {
             position: absolute;
             top: 0;
             right: 0;

@@ -19,8 +19,8 @@ import {
     ApiSelfResponse,
 } from './api';
 import { Wrap } from './element-wrap';
-import { LoginDialog, LoginStatus } from './login-dialog';
-import { SignupDialog, SignupStatus } from './signup-dialog';
+import { LoginDialog } from './login-dialog';
+import { SignupDialog } from './signup-dialog';
 
 const IDS = {
     mainArea:           'main-area',
@@ -1278,31 +1278,35 @@ export class Comentario {
     }
 
     async showLoginDialog(commentHex: string) {
-        const result = await LoginDialog.run(this.root, this.configuredOauths);
-        switch (result.status) {
-            case LoginStatus.OK:
-                // External/local auth
-                await (result.idp ?
-                    this.openOAuthPopup(result.idp, commentHex) :
-                    await this.authenticateLocally(result.email, result.password, commentHex));
-                break;
+        const dlg = await LoginDialog.run(this.root, this.configuredOauths);
+        if (dlg.confirmed) {
+            switch (dlg.navigateTo) {
+                case null:
+                    // Local auth
+                    await this.authenticateLocally(dlg.email, dlg.password, commentHex);
+                    break;
 
-            case LoginStatus.GO_TO_FORGOT_PASSWORD:
-                // Navigate to forgot password
-                this.forgotPassword();
-                break;
+                case 'forgot':
+                    // Navigate to forgot password
+                    this.forgotPassword();
+                    break;
 
-            case LoginStatus.GO_TO_SIGNUP:
-                // Switch to signup
-                await this.showSignupDialog(commentHex);
-                break;
+                case 'signup':
+                    // Switch to signup
+                    await this.showSignupDialog(commentHex);
+                    break;
+
+                default:
+                    // External auth
+                    await this.openOAuthPopup(dlg.navigateTo, commentHex);
+            }
         }
     }
 
     async showSignupDialog(commentHex: string) {
-        const result = await SignupDialog.run(this.root);
-        if (result.status === SignupStatus.OK) {
-            await this.signup(result.name, result.website, result.email, result.password, commentHex);
+        const dlg = await SignupDialog.run(this.root);
+        if (dlg.confirmed) {
+            await this.signup(dlg.name, dlg.website, dlg.email, dlg.password, commentHex);
         }
     }
 
