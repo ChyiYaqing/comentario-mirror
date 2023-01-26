@@ -24,32 +24,6 @@ blockquote {
     color: $gray-6;
 }
 
-.commento-button {
-    display: inline-flex;
-    justify-content: center;
-    align-items: center;
-    text-align: center;
-    cursor: pointer;
-    font-weight: bold;
-    line-height: 24px;
-    padding: 6px 20px;
-    border: 1px solid transparent;
-    border-radius: 3px;
-    color: #fff;
-    margin-left: 5px;
-    margin-right: 5px;
-    box-shadow: 0 4px 6px rgba(50, 50, 93, .11), 0 1px 3px rgba(0, 0, 0, .08);
-}
-
-.commento-submit-button {
-    background-color: $blue-8;
-    transition: background-color 0.2s;
-
-    &:hover, &:focus, &:active {
-        background-color: $blue-6;
-    }
-}
-
 .commento-ms-1 {
     margin-left: 0.25rem;
 }

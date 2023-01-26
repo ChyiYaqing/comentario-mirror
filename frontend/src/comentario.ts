@@ -27,6 +27,7 @@ import { MarkdownHelp } from './markdown-help';
 const IDS = {
     mainArea:           'main-area',
     login:              'login',
+    loginBtn:           'login-btn',
     modTools:           'mod-tools',
     modToolsLockButton: 'mod-tools-lock-button',
     error:              'error',
@@ -397,6 +398,10 @@ export class Comentario {
                     Wrap.new('label').attr({for: Wrap.idPrefix + IDS.anonymousCheckbox + commentHex}).inner('Comment anonymously'));
         }
 
+        // Markdown help button
+        const helpBtn = Wrap.new('a').classes('markdown-button').html('<b>M⬇</b>&nbsp;Markdown');
+        helpBtn.click(() => MarkdownHelp.run(this.root, {ref: helpBtn, placement: 'bottom-start'}));
+
         // Instantiate and set up a new form
         return UIToolkit.form(() => isEdit ? this.saveCommentEdits(commentHex) : this.submitAccountDecide(commentHex))
             .id(IDS.superContainer + commentHex)
@@ -416,10 +421,7 @@ export class Comentario {
                                 // Anonymous checkbox, if any
                                 anonContainer,
                                 // Markdown help button
-                                Wrap.new('a')
-                                    .classes('markdown-button')
-                                    .html('<b>M⬇</b>&nbsp;Markdown')
-                                    .click(() => MarkdownHelp.run(this.root))),
+                                helpBtn),
                         // Save button
                         Wrap.new('button')
                             .attr({type: 'submit'})
@@ -454,14 +456,19 @@ export class Comentario {
      */
     rootCreate(): void {
         const mainArea = Wrap.byId(IDS.mainArea);
-        const login           = Wrap.new('div').id(IDS.login).classes('login');
-        const loginText       = Wrap.new('div').classes('login-text').inner('Login').click(() => this.showLoginDialog(null));
-        const preCommentsArea = Wrap.new('div').id(IDS.preCommentsArea);
-        const commentsArea    = Wrap.new('div').id(IDS.commentsArea).classes('comments');
+        const login           = Wrap.new('div')   .id(IDS.login).classes('login');
+        const preCommentsArea = Wrap.new('div')   .id(IDS.preCommentsArea);
+        const commentsArea    = Wrap.new('div')   .id(IDS.commentsArea).classes('comments');
 
         // If there's any auth provider configured, add a Login button
         if (Object.keys(this.configuredOauths).some(k => this.configuredOauths[k])) {
-            login.append(loginText);
+            login.append(
+                Wrap.new('button')
+                    .id(IDS.loginBtn)
+                    .classes('button')
+                    .inner('Login')
+                    .attr({type: 'button'})
+                    .click(() => this.showLoginDialog(null)));
         } else if (!this.requireIdentification) {
             this.anonymousOnly = true;
         }
@@ -1230,7 +1237,10 @@ export class Comentario {
     }
 
     async showLoginDialog(commentHex: string) {
-        const dlg = await LoginDialog.run(this.root, this.configuredOauths);
+        const dlg = await LoginDialog.run(
+            this.root,
+            {ref: Wrap.byId(IDS.loginBtn), placement: 'bottom-end'},
+            this.configuredOauths);
         if (dlg.confirmed) {
             switch (dlg.navigateTo) {
                 case null:
@@ -1256,7 +1266,9 @@ export class Comentario {
     }
 
     async showSignupDialog(commentHex: string) {
-        const dlg = await SignupDialog.run(this.root);
+        const dlg = await SignupDialog.run(
+            this.root,
+            {ref: Wrap.byId(IDS.loginBtn), placement: 'bottom-end'});
         if (dlg.confirmed) {
             await this.signup(dlg.name, dlg.website, dlg.email, dlg.password, commentHex);
         }

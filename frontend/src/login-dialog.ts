@@ -1,7 +1,7 @@
 import { Wrap } from './element-wrap';
 import { StringBooleanMap } from './models';
 import { UIToolkit } from './ui-toolkit';
-import { Dialog } from './dialog';
+import { Dialog, DialogPositioning } from './dialog';
 
 export class LoginDialog extends Dialog {
 
@@ -11,9 +11,10 @@ export class LoginDialog extends Dialog {
 
     constructor(
         parent: Wrap<any>,
+        pos: DialogPositioning,
         private readonly authMethods: StringBooleanMap,
     ) {
-        super(parent, 'Log in');
+        super(parent, 'Log in', pos);
     }
 
     /**
@@ -40,10 +41,11 @@ export class LoginDialog extends Dialog {
     /**
      * Instantiate and show the dialog. Return a promise that resolves as soon as the dialog is closed.
      * @param parent Parent element for the dialog.
+     * @param pos Positioning options.
      * @param authMethods Map of enabled authentication methods.
      */
-    static run(parent: Wrap<any>, authMethods: StringBooleanMap): Promise<LoginDialog> {
-        const dlg = new LoginDialog(parent, authMethods);
+    static run(parent: Wrap<any>, pos: DialogPositioning, authMethods: StringBooleanMap): Promise<LoginDialog> {
+        const dlg = new LoginDialog(parent, pos, authMethods);
         return dlg.run(dlg);
     }
 
@@ -58,7 +60,7 @@ export class LoginDialog extends Dialog {
         oauthProviders.filter(p => this.authMethods[p])
             .forEach(idp => {
                 Wrap.new('button')
-                    .classes('button', `${idp}-button`)
+                    .classes('button', 'oauth-button', `${idp}-button`)
                     .attr({type: 'button'})
                     .inner(idp)
                     .click(() => this.dismissWith(idp))
@@ -72,12 +74,12 @@ export class LoginDialog extends Dialog {
             form.append(
                 // SSO button
                 Wrap.new('div')
-                    .classes('oauth-buttons-container')
+                    .classes('oauth-buttons')
                     .append(
                         Wrap.new('div').classes('oauth-buttons')
                             .append(
                                 Wrap.new('button')
-                                    .classes('button', 'sso-button')
+                                    .classes('button', 'oauth-button', 'sso-button')
                                     .attr({type: 'button'})
                                     .inner('Single Sign-On')
                                     .click(() => this.dismissWith('sso')))),
@@ -96,7 +98,7 @@ export class LoginDialog extends Dialog {
                 Wrap.new('div').classes('dialog-centered').inner('Proceed with social login'),
                 // OAuth buttons
                 Wrap.new('div')
-                    .classes('oauth-buttons-container')
+                    .classes('oauth-buttons')
                     .append(oauthButtons),
                 // Separator
                 localAuth && Wrap.new('hr'));
@@ -105,8 +107,8 @@ export class LoginDialog extends Dialog {
         // Local auth
         if (localAuth) {
             // Create inputs
-            this._email    = UIToolkit.input('email', 'text', 'Email address', 'email', true);
-            this._pwd = UIToolkit.input('password', 'password', 'Password', 'current-password', true);
+            this._email = UIToolkit.input('email', 'text', 'Email address', 'email', true);
+            this._pwd   = UIToolkit.input('password', 'password', 'Password', 'current-password', true);
 
             // Add the inputs to the dialog
             form.append(
@@ -114,20 +116,10 @@ export class LoginDialog extends Dialog {
                 Wrap.new('div')
                     .classes('dialog-centered')
                     .inner('Login with your email address'),
-                // Email input container
-                Wrap.new('div')
-                    .classes('input-container')
-                    .append(Wrap.new('div').classes('input-group').append(this._email)),
-                // Password input container
-                Wrap.new('div')
-                    .classes('input-container')
-                    .append(
-                        Wrap.new('div')
-                            .classes('input-group')
-                            .append(
-                                this._pwd,
-                                // Submit button next to the password input
-                                Wrap.new('button').classes('button', 'submit-button').inner('Log in').attr({type: 'submit'}))),
+                // Email
+                Wrap.new('div').classes('input-group').append(this._email),
+                // Password
+                Wrap.new('div').classes('input-group').append(this._pwd, UIToolkit.submit('Log in')),
                 // Forgot password link
                 Wrap.new('div')
                     .classes('dialog-centered')
@@ -136,8 +128,8 @@ export class LoginDialog extends Dialog {
                 Wrap.new('div')
                     .classes('dialog-centered')
                     .append(
-                        Wrap.new('span').inner('Don\'t have an account?').classes('me-1'),
-                        Wrap.new('a').inner('Sign up.').click(() => this.dismissWith('signup'))));
+                        Wrap.new('span').inner('Don\'t have an account? '),
+                        Wrap.new('a').inner('Sign up here').click(() => this.dismissWith('signup'))));
         }
         return form;
     }

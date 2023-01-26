@@ -35,6 +35,20 @@ export class UIToolkit {
     static input(name: string, type = 'text', placeholder: string = null, autocomplete: string = null, required?: boolean): Wrap<HTMLInputElement> {
         return Wrap.new('input')
             .classes('input')
-            .attr({name, type, placeholder, autocomplete, required: required && 'required'});
+            .attr({name, type, placeholder, autocomplete, required: required && 'required', size: '1'});
+    }
+
+    /**
+     * Create and return a new input container element.
+     */
+    static inputGroup(): Wrap<HTMLDivElement> {
+        return Wrap.new('div').classes('input-group');
+    }
+
+    /**
+     * Create and return a new submit button element.
+     */
+    static submit(label: string): Wrap<HTMLButtonElement> {
+        return Wrap.new('button').classes('button', 'submit-button').inner(label).attr({type: 'submit'});
     }
 }

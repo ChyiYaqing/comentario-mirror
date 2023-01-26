@@ -1,5 +1,15 @@
+import { createPopper } from '@popperjs/core/lib/popper-lite';
+import { arrow, flip, offset, preventOverflow } from '@popperjs/core';
+import { Placement } from '@popperjs/core/lib/enums';
 import { Wrap } from './element-wrap';
 import { UIToolkit } from './ui-toolkit';
+
+export interface DialogPositioning {
+    /** Reference element. */
+    ref: Wrap<any>;
+    /** Dialog placement. */
+    placement?: Placement;
+}
 
 /**
  * Generic popup dialog component.
@@ -7,7 +17,6 @@ import { UIToolkit } from './ui-toolkit';
 export class Dialog {
 
     private backdrop: Wrap<HTMLDivElement>;
-    private container: Wrap<HTMLDivElement>;
     private dialogBox: Wrap<HTMLDivElement>;
     private resolve: () => void;
     private animationDone?: () => void;
@@ -15,8 +24,12 @@ export class Dialog {
     _confirmed = false;
 
     constructor(
+        /** Parent element that will host the dialog and the backdrop. */
         private readonly parent: Wrap<any>,
+        /** Dialog title. */
         private readonly title: string,
+        /** Optional positioning settings for the dialog. */
+        private readonly pos?: DialogPositioning,
     ) {}
 
     /**
@@ -37,6 +50,7 @@ export class Dialog {
             // Create a login box
             this.dialogBox = Wrap.new('div')
                 .classes('dialog', 'fade-in')
+                .attr({role: 'dialog'})
                 // Don't propagate the click to prevent cancelling the dialog, which happens when the click reaches the
                 // parent container
                 .click(e => e.stopPropagation())
@@ -50,11 +64,8 @@ export class Dialog {
                     Wrap.new('div').classes('dialog-body').append(this.renderContent()));
 
             // Create a backdrop
-            this.backdrop = Wrap.new('div').classes('backdrop').appendTo(this.parent);
-
-            // Create a full-size background container on top of the backdrop
-            this.container = Wrap.new('div')
-                .classes('dialog-container')
+            this.backdrop = Wrap.new('div')
+                .classes('backdrop')
                 // Cancel the dialog when clicked outside
                 .click(() => this.dismiss())
                 .appendTo(this.parent);
@@ -70,8 +81,11 @@ export class Dialog {
                 this.onShow();
             };
 
-            // Add the dialog to the container
-            this.dialogBox.appendTo(this.container);
+            // Insert the dialog into the DOM
+            this.dialogBox.appendTo(this.parent);
+
+            // Position the element using Popper, if required
+            this.popperBind();
         });
     }
 
@@ -94,7 +108,7 @@ export class Dialog {
             this.animationDone = null;
 
             // Clean up the elements
-            this.container.remove();
+            this.dialogBox.remove();
             this.backdrop.remove();
 
             // Resolve the promise, returning the dialog
@@ -104,6 +118,7 @@ export class Dialog {
 
         // Animate-close the dialog
         this.dialogBox.noClasses('fade-in').classes('fade-out');
+        this.backdrop.classes('fade-out');
     }
 
     /**
@@ -121,5 +136,33 @@ export class Dialog {
             .inner(this.title)
             // Close button
             .append(UIToolkit.closeButton(() => this.dismiss()));
+    }
+
+    private popperBind() {
+        // Position the element using Popper, if required
+        if (!this.pos?.ref?.ok) {
+            return;
+        }
+
+        // Add an arrow element to the dialog
+        const wa = this.pos?.ref?.ok && Wrap.new('div').classes('dialog-arrow');
+        this.dialogBox.append(wa);
+
+        // Set up the arrow modifier
+        const modArrow = arrow;
+        modArrow.options = {element: wa.element, padding: 7};
+
+        // Set up the offset modifier
+        const modOffset = offset;
+        const horz = !!this.pos?.placement?.match(/left|right/); // True when the dialog is on left/right side of the ref
+        modOffset.options = {offset: [horz ? 8 : 0, horz ? 0 : 8]};
+
+        createPopper(
+            this.pos.ref.element,
+            this.dialogBox.element,
+            {
+                placement: this.pos.placement,
+                modifiers: [preventOverflow, flip, modArrow, modOffset],
+            });
     }
 }

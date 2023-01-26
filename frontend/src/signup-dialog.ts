@@ -1,6 +1,6 @@
 import { Wrap } from './element-wrap';
 import { UIToolkit } from './ui-toolkit';
-import { Dialog } from './dialog';
+import { Dialog, DialogPositioning } from './dialog';
 
 export class SignupDialog extends Dialog {
 
@@ -9,16 +9,17 @@ export class SignupDialog extends Dialog {
     private _email: Wrap<HTMLInputElement>;
     private _pwd: Wrap<HTMLInputElement>;
 
-    constructor(parent: Wrap<any>) {
-        super(parent, 'Create an account');
+    constructor(parent: Wrap<any>, pos: DialogPositioning) {
+        super(parent, 'Create an account', pos);
     }
 
     /**
      * Instantiate and show the dialog. Return a promise that resolves as soon as the dialog is closed.
      * @param parent Parent element for the dialog.
+     * @param pos Positioning options..
      */
-    static run(parent: Wrap<any>): Promise<SignupDialog> {
-        const dlg = new SignupDialog(parent);
+    static run(parent: Wrap<any>, pos: DialogPositioning): Promise<SignupDialog> {
+        const dlg = new SignupDialog(parent, pos);
         return dlg.run(dlg);
     }
 
@@ -51,40 +52,19 @@ export class SignupDialog extends Dialog {
     }
 
     override renderContent(): Wrap<any> {
-        // Create a login form
-        const form = UIToolkit.form(() => this.dismiss(true));
-
         // Create inputs
         this._name    = UIToolkit.input('name', 'text', 'Real name', 'name', true);
         this._website = UIToolkit.input('website', 'text', 'Website (optional)', 'url');
         this._email   = UIToolkit.input('email', 'text', 'Email address', 'email', true);
         this._pwd     = UIToolkit.input('password', 'password', 'Password', 'current-password', true);
 
-        // Add the inputs to the dialog
-        form.append(
-            // Name input container
-            Wrap.new('div')
-                .classes('input-container')
-                .append(Wrap.new('div').classes('input-group').append(this._name)),
-            // Website input container
-            Wrap.new('div')
-                .classes('input-container')
-                .append(Wrap.new('div').classes('input-group').append(this._website)),
-            // Email input container
-            Wrap.new('div')
-                .classes('input-container')
-                .append(Wrap.new('div').classes('input-group').append(this._email)),
-            // Password input container
-            Wrap.new('div')
-                .classes('input-container')
-                .append(
-                    Wrap.new('div')
-                        .classes('input-group')
-                        .append(
-                            this._pwd,
-                            // Submit button next to the password input
-                            Wrap.new('button').classes('button', 'submit-button').inner('Sign up').attr({type: 'submit'}))));
-        return form;
+        // Add the inputs to a new form
+        return UIToolkit.form(() => this.dismiss(true))
+            .append(
+                Wrap.new('div').classes('input-group').append(this._name),
+                Wrap.new('div').classes('input-group').append(this._website),
+                Wrap.new('div').classes('input-group').append(this._email),
+                Wrap.new('div').classes('input-group').append(this._pwd, UIToolkit.submit('Sign up')));
     }
 
     override onShow(): void {

@@ -28,6 +28,16 @@ export class Wrap<T extends HTMLElement> {
     }
 
     /**
+     * The underlying HTML element. Throws an error if no element present.
+     */
+    get element(): T {
+        if (!this.el) {
+            throw new Error('No underlying HTML element in the Wrap');
+        }
+        return this.el;
+    }
+
+    /**
      * Whether the underlying element is present.
      */
     get ok(): boolean {
