@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/op/go-logging"
 )
@@ -69,7 +70,7 @@ func setupTestDatabase() error {
 		_ = os.Setenv("POSTGRES", "postgres://postgres:postgres@localhost/commento_test?sslmode=disable")
 	}
 
-	if err := dbConnect(0); err != nil {
+	if err := dbConnect(0, time.Second); err != nil {
 		return err
 	}
 

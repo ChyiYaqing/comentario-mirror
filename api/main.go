@@ -1,10 +1,12 @@
 package main
 
+import "time"
+
 func main() {
 	exitIfError(loggerCreate())
 	exitIfError(versionPrint())
 	exitIfError(configParse())
-	exitIfError(dbConnect(5))
+	exitIfError(dbConnect(10, time.Second))
 	exitIfError(migrate())
 	exitIfError(smtpConfigure())
 	exitIfError(smtpTemplatesLoad())

@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-func dbConnect(retriesLeft int) error {
+func dbConnect(retriesLeft int, retryDelay time.Duration) error {
 	con := os.Getenv("POSTGRES")
 	u, err := url.Parse(con)
 	if err != nil {
@@ -28,20 +28,15 @@ func dbConnect(retriesLeft int) error {
 	err = db.Ping()
 	if err != nil {
 		if retriesLeft > 0 {
-			logger.Errorf("cannot talk to postgres, retrying in 10 seconds (%d attempts left): %v", retriesLeft-1, err)
-			time.Sleep(10 * time.Second)
-			return dbConnect(retriesLeft - 1)
-		} else {
-			logger.Errorf("cannot talk to postgres, last attempt failed: %v", err)
-			return err
+			logger.Errorf("cannot talk to postgres, retrying in %s (%d attempts left): %v", retryDelay.String(), retriesLeft-1, err)
+			time.Sleep(retryDelay)
+			return dbConnect(retriesLeft-1, retryDelay*2)
 		}
+		logger.Errorf("cannot talk to postgres, last attempt failed: %v", err)
+		return err
 	}
 
-	statement := `
-		CREATE TABLE IF NOT EXISTS migrations (
-			filename TEXT NOT NULL UNIQUE
-		);
-	`
+	statement := `create table if not exists migrations (filename text not null unique);`
 	_, err = db.Exec(statement)
 	if err != nil {
 		logger.Errorf("cannot create migrations table: %v", err)
