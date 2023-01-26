@@ -115,11 +115,11 @@ export class LoginDialog extends Dialog {
                 // Subtitle
                 Wrap.new('div')
                     .classes('dialog-centered')
-                    .inner('Login with your email address'),
+                    .inner('Log in with your email address'),
                 // Email
                 Wrap.new('div').classes('input-group').append(this._email),
                 // Password
-                Wrap.new('div').classes('input-group').append(this._pwd, UIToolkit.submit('Log in')),
+                Wrap.new('div').classes('input-group').append(this._pwd, UIToolkit.submit('Log in', true)),
                 // Forgot password link
                 Wrap.new('div')
                     .classes('dialog-centered')

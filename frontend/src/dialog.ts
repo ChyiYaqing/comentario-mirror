@@ -54,6 +54,8 @@ export class Dialog {
                 // Don't propagate the click to prevent cancelling the dialog, which happens when the click reaches the
                 // parent container
                 .click(e => e.stopPropagation())
+                // Close the dialog on Escape key
+                .keydown(e => !e.ctrlKey && !e.shiftKey && !e.altKey && !e.metaKey && e.code === 'Escape' && this.dismiss())
                 // Invoke the animation callback when it's either ended or interrupted
                 .on('animationend',    () => this.animationDone?.())
                 .on('animationcancel', () => this.animationDone?.())
@@ -65,7 +67,7 @@ export class Dialog {
 
             // Create a backdrop
             this.backdrop = Wrap.new('div')
-                .classes('backdrop')
+                .classes('backdrop', 'fade-in')
                 // Cancel the dialog when clicked outside
                 .click(() => this.dismiss())
                 .appendTo(this.parent);
@@ -118,7 +120,7 @@ export class Dialog {
 
         // Animate-close the dialog
         this.dialogBox.noClasses('fade-in').classes('fade-out');
-        this.backdrop.classes('fade-out');
+        this.backdrop.noClasses('fade-in').classes('fade-out');
     }
 
     /**

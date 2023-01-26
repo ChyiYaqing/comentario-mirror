@@ -422,11 +422,8 @@ export class Comentario {
                                 anonContainer,
                                 // Markdown help button
                                 helpBtn),
-                        // Save button
-                        Wrap.new('button')
-                            .attr({type: 'submit'})
-                            .classes('button', 'submit-button')
-                            .inner(isEdit ? 'Save Changes' : 'Add Comment')));
+                        // Submit button
+                        UIToolkit.submit(isEdit ? 'Save Changes' : 'Add Comment', false)));
     }
 
     sortPolicyApply(policy: SortPolicy) {

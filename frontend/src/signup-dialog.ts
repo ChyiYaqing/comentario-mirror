@@ -64,7 +64,7 @@ export class SignupDialog extends Dialog {
                 Wrap.new('div').classes('input-group').append(this._name),
                 Wrap.new('div').classes('input-group').append(this._website),
                 Wrap.new('div').classes('input-group').append(this._email),
-                Wrap.new('div').classes('input-group').append(this._pwd, UIToolkit.submit('Sign up')));
+                Wrap.new('div').classes('input-group').append(this._pwd, UIToolkit.submit('Sign up', true)));
     }
 
     override onShow(): void {

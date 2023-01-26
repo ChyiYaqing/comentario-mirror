@@ -238,6 +238,15 @@ export class Wrap<T extends HTMLElement> {
     }
 
     /**
+     * Bind a handler to the onKeydown event of the underlying element.
+     * @param handler Handler to bind.
+     */
+    keydown(handler: (e: KeyboardEvent) => void): Wrap<T> {
+        this.el?.addEventListener('keydown', handler);
+        return this;
+    }
+
+    /**
      * Bind a handler to the given event of the underlying element.
      * @param type Event type to bind the handler to.
      * @param handler Handler to bind.

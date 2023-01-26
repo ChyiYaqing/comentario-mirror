@@ -47,8 +47,13 @@ export class UIToolkit {
 
     /**
      * Create and return a new submit button element.
+     * @param title Title of the button, and, if glyph is false, also its label.
+     * @param glyph Whether to draw a "carriage return" glyph instead of text.
      */
-    static submit(label: string): Wrap<HTMLButtonElement> {
-        return Wrap.new('button').classes('button', 'submit-button').inner(label).attr({type: 'submit'});
+    static submit(title: string, glyph: boolean): Wrap<HTMLButtonElement> {
+        return Wrap.new('button')
+            .classes('button', 'submit-button', glyph && 'submit-glyph')
+            .inner(glyph ? '' : title)
+            .attr({type: 'submit', title});
     }
 }

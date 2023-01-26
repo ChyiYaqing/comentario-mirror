@@ -37,8 +37,8 @@
         right: 0;
         bottom: 0;
         z-index: 10;
-        background-color: #ffffff;
-        opacity: 0.6;
+        background-color: rgba(255, 255, 255, 0.6);
+        backdrop-filter: blur(4px);
     }
 
     .commento-error-box {
