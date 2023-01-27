@@ -23,6 +23,7 @@ import { LoginDialog } from './login-dialog';
 import { SignupDialog } from './signup-dialog';
 import { UIToolkit } from './ui-toolkit';
 import { MarkdownHelp } from './markdown-help';
+import { ConfirmDialog } from './confirm-dialog';
 
 const IDS = {
     mainArea:           'main-area',
@@ -459,13 +460,7 @@ export class Comentario {
 
         // If there's any auth provider configured, add a Login button
         if (Object.keys(this.configuredOauths).some(k => this.configuredOauths[k])) {
-            login.append(
-                Wrap.new('button')
-                    .id(IDS.loginBtn)
-                    .classes('button')
-                    .inner('Login')
-                    .attr({type: 'button'})
-                    .click(() => this.showLoginDialog(null)));
+            login.append(UIToolkit.button('Login').id(IDS.loginBtn).click(() => this.showLoginDialog(null)));
         } else if (!this.requireIdentification) {
             this.anonymousOnly = true;
         }
@@ -748,11 +743,11 @@ export class Comentario {
 
         // Remove button
         if (!comment.deleted && (this.isModerator || comment.commenterHex === this.selfHex)) {
-            Wrap.new('button')
+            const btn = Wrap.new('button')
                 .classes('option-button', 'option-remove')
                 .attr({type: 'button', title: 'Remove'})
-                .click(() => this.commentDelete(hex))
                 .appendTo(options);
+            btn.click(() => this.commentDelete(btn, hex));
         }
 
         // Sticky toggle button (for moderator and a top-level comments only)
@@ -828,21 +823,19 @@ export class Comentario {
             });
     }
 
-    commentDelete(commentHex: string): Promise<void> {
-        if (!confirm('Are you sure you want to delete this comment?')) {
-            return Promise.reject();
+    async commentDelete(btn: Wrap<any>, commentHex: string): Promise<void> {
+        if (!await ConfirmDialog.run(this.root, {ref: btn, placement: 'bottom-end'}, 'Are you sure you want to delete this comment?')) {
+            return;
         }
 
-        return this.apiClient.post<ApiResponseBase>('comment/delete', {commenterToken: this.commenterTokenGet(), commentHex})
-            .then(resp => {
-                if (!resp.success) {
-                    this.errorShow(resp.message);
-                    return;
-                }
+        const r = await this.apiClient.post<ApiResponseBase>('comment/delete', {commenterToken: this.commenterTokenGet(), commentHex});
+        if (!r.success) {
+            this.errorShow(r.message);
+            return;
+        }
 
-                this.errorHide();
-                Wrap.byId(IDS.text + commentHex).inner('[deleted]');
-            });
+        this.errorHide();
+        Wrap.byId(IDS.text + commentHex).inner('[deleted]');
     }
 
     updateUpDownAction(upvote: Wrap<any>, downvote: Wrap<any>, commentHex: string, direction: number) {

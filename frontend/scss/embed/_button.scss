@@ -36,8 +36,20 @@
     }
 
     &:hover, &:focus, &:active {
-        background-color: $blue-6;
         color: #fff;
+        background-color: $blue-6;
+    }
+}
+
+.commento-danger-button {
+    color: #fff;
+    background-color: $red-8;
+    transition: background-color 0.2s;
+    box-shadow: 0 4px 6px rgba(50, 50, 93, .11), 0 1px 3px rgba(0, 0, 0, .08);
+
+    &:hover, &:focus, &:active {
+        color: #fff;
+        background-color: $red-6;
     }
 }
 

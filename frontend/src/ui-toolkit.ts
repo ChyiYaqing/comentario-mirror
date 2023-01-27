@@ -39,10 +39,12 @@ export class UIToolkit {
     }
 
     /**
-     * Create and return a new input container element.
+     * Create and return a new button element.
+     * @param label Label of the button.
+     * @param btnClass Optional button class to add.
      */
-    static inputGroup(): Wrap<HTMLDivElement> {
-        return Wrap.new('div').classes('input-group');
+    static button(label: string, btnClass?: string): Wrap<HTMLButtonElement> {
+        return Wrap.new('button').classes('button', btnClass).inner(label).attr({type: 'button'});
     }
 
     /**
