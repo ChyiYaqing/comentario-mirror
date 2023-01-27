@@ -1,4 +1,4 @@
-@import "colors-main";
+@import "../colors-main";
 
 .commento-table-container {
     max-width: 100%;
@@ -10,15 +10,8 @@
         &:not(:last-child) {
             border-bottom: 1px solid transparentize($gray-6, 0.5);
         }
-
         td {
             padding: 4px 8px;
-
-            pre {
-                display: inline;
-                font-family: monospace;
-                font-size: 13px;
-            }
         }
     }
 }

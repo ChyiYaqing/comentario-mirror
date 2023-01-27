@@ -116,7 +116,7 @@ gulp.task('scss-prod', function (done) {
     'use strict';
     let res = gulp.src(scssSrc)
         .pipe(sass({outputStyle: 'compressed'}).on('error', sass.logError))
-        .pipe(cleanCss({compatibility: 'ie8', level: 2}))
+        .pipe(cleanCss())
         .pipe(gulp.dest(prodPath + cssDir));
     done();
     return res;

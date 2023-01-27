@@ -23,12 +23,12 @@ export class MarkdownHelp extends Dialog {
                 Wrap.new('table')
                     .classes('table')
                     .append(
-                        this.row('<i>italics</i>',                              'surround text with <pre>*asterisks*</pre>'),
-                        this.row('<b>bold</b>',                                 'surround text with <pre>**two asterisks**</pre>'),
-                        this.row('<pre>code</pre>',                             'surround text with <pre>`backticks`</pre>'),
-                        this.row('<del>strikethrough</del>',                    'surround text with <pre>~~two tilde characters~~</pre>'),
-                        this.row('<a href="https://example.com">hyperlink</a>', '<pre>[hyperlink](https://example.com)</pre> or just a bare URL'),
-                        this.row('<blockquote>quote</blockquote>',              'prefix with <pre>&gt;</pre>')));
+                        this.row('<i>italics</i>',                              'surround text with <code>*asterisks*</code>'),
+                        this.row('<b>bold</b>',                                 'surround text with <code>**two asterisks**</code>'),
+                        this.row('<code>code</code>',                           'surround text with <code>`backticks`</code>'),
+                        this.row('<del>strikethrough</del>',                    'surround text with <code>~~two tilde characters~~</code>'),
+                        this.row('<a href="https://example.com">hyperlink</a>', '<code>[hyperlink](https://example.com)</code> or just a bare URL'),
+                        this.row('<blockquote>quote</blockquote>',              'prefix with <code>&gt;</code>')));
     }
 
     private row(md: string, text: string): Wrap<any> {

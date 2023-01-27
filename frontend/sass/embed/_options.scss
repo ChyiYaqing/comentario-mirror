@@ -1,4 +1,4 @@
-@import "colors-main.scss";
+@import "../colors-main";
 
 @mixin mask-image($image) {
     -webkit-mask-image: url($image);

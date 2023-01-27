@@ -1,7 +1,7 @@
-@import "colors-main.scss";
+@import "../colors-main";
 
 .commento-card {
-    @import "commento-options.scss"; // SVG buttons to the right of each comment
+    @import "options"; // Buttons to the right of each comment
 
     padding: 12px 0 0 12px;
     margin-top: 16px;

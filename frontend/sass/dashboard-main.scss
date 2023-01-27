@@ -1,7 +1,7 @@
-@import "colors-main.scss";
-@import "common-main.scss";
-@import "checkbox.scss";
-@import "button.scss";
+@import "colors-main";
+@import "common-main";
+@import "checkbox";
+@import "button";
 
 .global-error, .global-ok {
     position: absolute;
@@ -111,7 +111,7 @@ body {
     }
 }
 
-@import "email-main.scss";
+@import "email-main";
 
 .mod-emails-container {
     display: flex;
