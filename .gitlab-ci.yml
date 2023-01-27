@@ -73,6 +73,9 @@ build:
     - yarn install
     - yarn run build:prod
 
+    # Copy static assets
+    - cp -r db/ templates/ build/
+
 package:
   stage: package
   image: docker
