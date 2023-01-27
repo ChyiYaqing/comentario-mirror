@@ -57,12 +57,21 @@ build:
     #-------------------------------------------------------------------------------------------------------------------
     # Fetch the dependencies explicitly (not exactly necessary, but it's easier to spot problems if we do)
     - go mod download
+
     # Make sure there are no formatting issues
     - test -z "$(go fmt ./api/)"
-    # Build the app
-    - make prod
-    # Run tests
-    - make test
+
+    # Run backend tests
+    - go test -v ./api/...
+
+    # Build the backend
+    - cd api
+    - CGO_ENABLED=0 go build -a -o "../build/comentario" -ldflags "-X main.version=$(git describe --tags)"
+
+    # Build the frontend
+    - cd ..
+    - yarn install
+    - yarn run build:prod
 
 package:
   stage: package

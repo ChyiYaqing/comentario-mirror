@@ -53,7 +53,7 @@ rm -rf "$build_dir/comentario" "$build_dir/db" "$build_dir/templates"
 
 # Build the backend
 pushd "$root_dir/api" >/dev/null
-((do_build)) && CGO_ENABLED=0 go build -a -v -o "$build_dir/comentario" -ldflags "-X main.version=$(git describe --tags)"
+((do_build)) && CGO_ENABLED=0 go build -a -o "$build_dir/comentario" -ldflags "-X main.version=$(git describe --tags)"
 popd >/dev/null
 
 # (Re)start the database
