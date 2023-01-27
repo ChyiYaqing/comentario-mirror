@@ -13,12 +13,6 @@ func redirectLogin(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, os.Getenv("ORIGIN")+"/login", 301)
 }
 
-type staticPlugs struct {
-	Origin    string
-	CdnPrefix string
-	Footer    string
-}
-
 var asset = make(map[string][]byte)
 var contentType = make(map[string]string)
 var footer string
@@ -41,7 +35,7 @@ func fileDetemplate(f string) ([]byte, error) {
 }
 
 func footerInit() error {
-	contents, err := fileDetemplate(os.Getenv("STATIC") + "/footer.html")
+	contents, err := fileDetemplate(os.Getenv("STATIC") + "/html/footer.html")
 	if err != nil {
 		logger.Errorf("cannot init footer: %v", err)
 		return err
@@ -107,9 +101,9 @@ func staticRouterInit(router *mux.Router) error {
 
 	for _, page := range pages {
 		f := page + ".html"
-		asset[subdir+page], err = fileLoad(os.Getenv("STATIC") + f)
+		asset[subdir+page], err = fileLoad(os.Getenv("STATIC") + "/html" + f)
 		if err != nil {
-			logger.Errorf("cannot detemplate %s%s: %v", os.Getenv("STATIC"), f, err)
+			logger.Errorf("cannot detemplate %s/html%s: %v", os.Getenv("STATIC"), f, err)
 			return err
 		}
 	}

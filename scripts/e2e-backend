@@ -1,0 +1,75 @@
+#!/bin/bash
+#=======================================================================================================================
+# Build and start the Comentario backend in the end-2-end testing mode
+#=======================================================================================================================
+
+set -e
+
+root_dir="$(dirname "$(dirname "$(realpath "$0")")")"
+build_dir="$root_dir/build"
+
+# Show usage info and exit
+usage() {
+    cat <<EOF >&2
+Usage: $0 [options] [[--] backend_args]
+Options:
+  -B  skip build
+  -D  skip (re)starting database
+  -h  show usage info and exit
+EOF
+    exit 0
+}
+
+# Parse the command line
+declare -i do_build=1 do_db=1
+args=$(getopt -o BDh -- "$@")
+[[ $? -ne 0 ]] && usage
+eval set -- $args
+for i; do
+    case "$i" in
+        -B)
+            do_build=0
+            shift
+            ;;
+        -D)
+            do_db=0
+            shift
+            ;;
+        -h)
+            usage
+            ;;
+        --)
+            shift;
+            break
+            ;;
+    esac
+done
+
+# Make sure destination dir exists
+mkdir -p "$build_dir"
+
+# Remove any leftovers from previous builds
+rm -rf "$build_dir/comentario" "$build_dir/db" "$build_dir/templates"
+
+# Build the backend
+pushd "$root_dir/api" >/dev/null
+((do_build)) && CGO_ENABLED=0 go build -a -v -o "$build_dir/comentario" -ldflags "-X main.version=$(git describe --tags)"
+popd >/dev/null
+
+# (Re)start the database
+if ((do_db)); then
+    docker-compose -f "$root_dir/docker-compose.yml" down -v
+    docker-compose -f "$root_dir/docker-compose.yml" up -d -- db http
+fi
+
+# Copy required assets
+echo "Copying assets to $build_dir"
+cp -r "$root_dir/db/" "$root_dir/templates/" "$build_dir"
+
+# Start the backend
+echo "Starting $build_dir/comentario"
+env \
+      'COMMENTO_ORIGIN=http://localhost:8080' \
+      'COMMENTO_PORT=8080' \
+      'COMMENTO_POSTGRES=postgres://postgres:postgres@localhost:5432/commento?sslmode=disable' \
+    "$build_dir/comentario"

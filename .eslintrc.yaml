@@ -41,6 +41,14 @@ rules:
     - function
 
 overrides:
+  # Gulp
+  - files: gulpfile.js
+    parserOptions:
+      sourceType: module
+    rules:
+      strict: off
+      camelcase: off
+
   # JavaScript files
   - files: '*.js'
     globals:
@@ -58,4 +66,3 @@ overrides:
     rules:
       '@typescript-eslint/no-explicit-any': off
       object-shorthand: error
-

@@ -1,4 +1,5 @@
-build
+/build/
 devel.env
-/.idea
+/.idea/
+/node_modules/
 .dir-locals.el

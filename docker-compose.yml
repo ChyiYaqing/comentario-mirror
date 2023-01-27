@@ -46,7 +46,7 @@ services:
   http:
     image: nginx
     ports:
-      - '8100:80'
+      - '8000:80'
     volumes:
       - $PWD/etc/comment-test:/usr/share/nginx/html:ro
 

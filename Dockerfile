@@ -1,14 +1,24 @@
 FROM alpine:3
 
-ARG RELEASE=prod
 ENV COMMENTO_BIND_ADDRESS="0.0.0.0"
 
-# Install CA certificates (for sending mail via SMTP TLS), tzdata (to allow timezone conversions)
+# Install CA certificates (for sending mail via SMTP TLS)
 RUN apk add --no-cache --update ca-certificates
 
 # Copy the previously built artifacts
-COPY build/${RELEASE} /commento/
+COPY build /comentario/
+
+# Make sure files were built and are available
+RUN test -x /comentario/comentario && \
+    test -d comentario/css && \
+    test -d comentario/db && \
+    test -d comentario/fonts && \
+    test -d comentario/html && \
+    test -d comentario/images && \
+    test -d comentario/js && \
+    test -s comentario/js/commento.js && \
+    test -d comentario/templates
 
 EXPOSE 8080
-WORKDIR /commento/
-ENTRYPOINT ["/commento/commento"]
+WORKDIR /comentario/
+ENTRYPOINT ["/comentario/comentario"]
