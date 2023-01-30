@@ -53,9 +53,9 @@ export class Dialog {
                 .attr({role: 'dialog'})
                 // Don't propagate the click to prevent cancelling the dialog, which happens when the click reaches the
                 // parent container
-                .click(e => e.stopPropagation())
+                .click((_, e) => e.stopPropagation())
                 // Close the dialog on Escape key
-                .keydown(e => !e.ctrlKey && !e.shiftKey && !e.altKey && !e.metaKey && e.code === 'Escape' && this.dismiss())
+                .keydown((_, e) => !e.ctrlKey && !e.shiftKey && !e.altKey && !e.metaKey && e.code === 'Escape' && this.dismiss())
                 // Invoke the animation callback when it's either ended or interrupted
                 .on('animationend',    () => this.animationDone?.())
                 .on('animationcancel', () => this.animationDone?.())

@@ -399,10 +399,6 @@ export class Comentario {
                     Wrap.new('label').attr({for: Wrap.idPrefix + IDS.anonymousCheckbox + commentHex}).inner('Comment anonymously'));
         }
 
-        // Markdown help button
-        const helpBtn = Wrap.new('a').classes('markdown-button').html('<b>M⬇</b>&nbsp;Markdown');
-        helpBtn.click(() => MarkdownHelp.run(this.root, {ref: helpBtn, placement: 'bottom-start'}));
-
         // Instantiate and set up a new form
         return UIToolkit.form(() => isEdit ? this.saveCommentEdits(commentHex) : this.submitAccountDecide(commentHex))
             .id(IDS.superContainer + commentHex)
@@ -422,7 +418,10 @@ export class Comentario {
                                 // Anonymous checkbox, if any
                                 anonContainer,
                                 // Markdown help button
-                                helpBtn),
+                                Wrap.new('a')
+                                    .classes('markdown-button')
+                                    .html('<b>M⬇</b>&nbsp;Markdown')
+                                    .click(btn => MarkdownHelp.run(this.root, {ref: btn, placement: 'bottom-start'}))),
                         // Submit button
                         UIToolkit.submit(isEdit ? 'Save Changes' : 'Add Comment', false)));
     }
@@ -454,9 +453,9 @@ export class Comentario {
      */
     rootCreate(): void {
         const mainArea = Wrap.byId(IDS.mainArea);
-        const login           = Wrap.new('div')   .id(IDS.login).classes('login');
-        const preCommentsArea = Wrap.new('div')   .id(IDS.preCommentsArea);
-        const commentsArea    = Wrap.new('div')   .id(IDS.commentsArea).classes('comments');
+        const login           = Wrap.new('div').id(IDS.login).classes('login');
+        const preCommentsArea = Wrap.new('div').id(IDS.preCommentsArea);
+        const commentsArea    = Wrap.new('div').id(IDS.commentsArea).classes('comments');
 
         // If there's any auth provider configured, add a Login button
         if (Object.keys(this.configuredOauths).some(k => this.configuredOauths[k])) {
@@ -743,11 +742,11 @@ export class Comentario {
 
         // Remove button
         if (!comment.deleted && (this.isModerator || comment.commenterHex === this.selfHex)) {
-            const btn = Wrap.new('button')
+            Wrap.new('button')
                 .classes('option-button', 'option-remove')
                 .attr({type: 'button', title: 'Remove'})
+                .click(btn => this.commentDelete(btn, hex))
                 .appendTo(options);
-            btn.click(() => this.commentDelete(btn, hex));
         }
 
         // Sticky toggle button (for moderator and a top-level comments only)

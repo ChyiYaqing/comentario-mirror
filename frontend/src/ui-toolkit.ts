@@ -9,7 +9,7 @@ export class UIToolkit {
      * Create and return a dialog close button.
      * @param onClick Button's click handler.
      */
-    static closeButton(onClick: (e: MouseEvent) => void): Wrap<HTMLButtonElement> {
+    static closeButton(onClick: () => void): Wrap<HTMLButtonElement> {
         return Wrap.new('button')
             .classes('dialog-btn-close')
             .attr({type: 'button', ariaLabel: 'Close'})
@@ -23,7 +23,7 @@ export class UIToolkit {
     static form(onSubmit: () => void): Wrap<HTMLFormElement> {
         return Wrap.new('form')
             // Form submit event
-            .on('submit', e => {
+            .on('submit', (_, e) => {
                 e.preventDefault();
                 onSubmit();
             });
