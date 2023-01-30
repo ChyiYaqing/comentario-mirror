@@ -152,12 +152,11 @@ export class Dialog {
 
         // Set up the arrow modifier
         const modArrow = arrow;
-        modArrow.options = {element: wa.element, padding: 7};
+        modArrow.options = {element: wa.element, padding: 8};
 
         // Set up the offset modifier
         const modOffset = offset;
-        const horz = !!this.pos?.placement?.match(/left|right/); // True when the dialog is on left/right side of the ref
-        modOffset.options = {offset: [horz ? 8 : 0, horz ? 0 : 8]};
+        modOffset.options = {offset: [8, 8]};
 
         createPopper(
             this.pos.ref.element,
