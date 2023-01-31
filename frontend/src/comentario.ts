@@ -214,14 +214,6 @@ export class Comentario {
         return commenterToken === undefined ? 'anonymous' : commenterToken;
     }
 
-    logout(): Promise<void> {
-        this.cookieSet('commentoCommenterToken', 'anonymous');
-        this.isAuthenticated = false;
-        this.isModerator = false;
-        this.selfHex = undefined;
-        return this.reload();
-    }
-
     /**
      * Load the stylesheet with the provided URL into the DOM
      * @param url Stylesheet URL.
@@ -958,7 +950,7 @@ export class Comentario {
                             .classes('profile-link')
                             .inner('Logout')
                             .attr({href: ''})
-                            .click(() => this.logout())))
+                            .click((_, e) => this.logout(e))))
             .prependTo(this.root);
     }
 
@@ -1092,6 +1084,20 @@ export class Comentario {
         }
 
         // Reload the whole bunch
+        return this.reload();
+    }
+
+    /**
+     * Log the current user out.
+     * @param e Click event that triggered the logout.
+     * @private
+     */
+    private logout(e: MouseEvent): Promise<void> {
+        e.preventDefault();
+        this.cookieSet('commentoCommenterToken', 'anonymous');
+        this.isAuthenticated = false;
+        this.isModerator = false;
+        this.selfHex = undefined;
         return this.reload();
     }
 
