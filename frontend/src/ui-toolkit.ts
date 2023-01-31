@@ -29,12 +29,24 @@ export class UIToolkit {
      * @param onSubmit Form submit handler
      */
     static form(onSubmit: () => void): Wrap<HTMLFormElement> {
-        return Wrap.new('form')
-            // Form submit event
-            .on('submit', (_, e) => {
-                e.preventDefault();
+        const submit = (f: Wrap<HTMLFormElement>, e: Event) => {
+            // Prevent default handling
+            e.preventDefault();
+
+            // Mark all inputs touched to show their validation
+            [...f.element.getElementsByTagName('input'), ...f.element.getElementsByTagName('textarea')]
+                .forEach(el => new Wrap(el).classes('touched'));
+
+            // Run the submit handler if the form is valid
+            if (f.element.checkValidity()) {
                 onSubmit();
-            });
+            }
+        };
+        return Wrap.new('form')
+            // Intercept form submit event
+            .on('submit', submit)
+            // Submit the form on Ctrl+Enter
+            .on('keydown', (f, e) => e.ctrlKey && !e.shiftKey && !e.altKey && !e.metaKey && e.code === 'Enter' && submit(f, e));
     }
 
     /**
