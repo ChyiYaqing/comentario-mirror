@@ -40,11 +40,12 @@ export class UIToolkit {
 
     /**
      * Create and return a new button element.
-     * @param label Label of the button.
-     * @param btnClass Optional button class to add.
+     * @param label Label of the button (HTML).
+     * @param onClick Button's click handler.
+     * @param classes Additional button classes to add.
      */
-    static button(label: string, btnClass?: string): Wrap<HTMLButtonElement> {
-        return Wrap.new('button').classes('button', btnClass).inner(label).attr({type: 'button'});
+    static button(label: string, onClick: (btn: Wrap<HTMLButtonElement>, e: MouseEvent) => void,  ...classes: string[]): Wrap<HTMLButtonElement> {
+        return Wrap.new('button').classes('button', ...classes).html(label).attr({type: 'button'}).click(onClick);
     }
 
     /**

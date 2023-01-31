@@ -52,46 +52,26 @@ export class LoginDialog extends Dialog {
     override renderContent(): Wrap<any> {
         // Create a login form
         const form = UIToolkit.form(() => this.dismiss(true));
-
-        // Add OAuth buttons, if applicable
-        let hasOAuth = false;
-        const oauthButtons = Wrap.new('div').classes('oauth-buttons');
         const oauthProviders = ['google', 'github', 'gitlab'];
-        oauthProviders.filter(p => this.authMethods[p])
-            .forEach(idp => {
-                Wrap.new('button')
-                    .classes('button', 'oauth-button', `${idp}-button`)
-                    .attr({type: 'button'})
-                    .inner(idp)
-                    .click(() => this.dismissWith(idp))
-                    .appendTo(oauthButtons);
-                hasOAuth = true;
-            });
+        const hasOAuth = oauthProviders.some(p => this.authMethods[p]);
+        const hasLocalAuth = this.authMethods['commento'];
 
         // SSO auth
-        const localAuth = this.authMethods['commento'];
         if (this.authMethods['sso']) {
             form.append(
                 // SSO button
                 Wrap.new('div')
                     .classes('oauth-buttons')
-                    .append(
-                        Wrap.new('div').classes('oauth-buttons')
-                            .append(
-                                Wrap.new('button')
-                                    .classes('button', 'oauth-button', 'sso-button')
-                                    .attr({type: 'button'})
-                                    .inner('Single Sign-On')
-                                    .click(() => this.dismissWith('sso')))),
+                    .append(UIToolkit.button('Single Sign-On', () => this.dismissWith('sso'), 'oauth-button', 'sso-button')),
                 // Subtitle
                 Wrap.new('div')
                     .classes('dialog-centered')
                     .inner(`Proceed with ${parent.location.host} authentication`),
                 // Separator
-                (hasOAuth || localAuth) && form.append(Wrap.new('hr')));
+                (hasOAuth || hasLocalAuth) && Wrap.new('hr'));
         }
 
-        // External auth
+        // Add OAuth buttons, if applicable
         if (hasOAuth) {
             form.append(
                 // Subtitle
@@ -99,13 +79,16 @@ export class LoginDialog extends Dialog {
                 // OAuth buttons
                 Wrap.new('div')
                     .classes('oauth-buttons')
-                    .append(oauthButtons),
+                    .append(
+                        ...oauthProviders
+                            .filter(p => this.authMethods[p])
+                            .map(idp => UIToolkit.button(idp, () => this.dismissWith(idp), 'oauth-button', `${idp}-button`))),
                 // Separator
-                localAuth && Wrap.new('hr'));
+                hasLocalAuth && Wrap.new('hr'));
         }
 
         // Local auth
-        if (localAuth) {
+        if (hasLocalAuth) {
             // Create inputs
             this._email = UIToolkit.input('email', 'text', 'Email address', 'email', true);
             this._pwd   = UIToolkit.input('password', 'password', 'Password', 'current-password', true);

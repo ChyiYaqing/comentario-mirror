@@ -292,9 +292,11 @@ export class Wrap<T extends HTMLElement> {
      * Scroll to the underlying element.
      */
     scrollTo(): Wrap<T> {
-        setTimeout(
-            () => !this.vertVisible() && this.el?.scrollIntoView({block: 'nearest', inline: 'nearest', behavior: 'smooth'}),
-            100);
+        if (this.el) {
+            setTimeout(
+                () => !this.vertVisible() && this.el.scrollIntoView({block: 'nearest', inline: 'nearest', behavior: 'smooth'}),
+                100);
+        }
         return this;
     }
 
@@ -307,6 +309,17 @@ export class Wrap<T extends HTMLElement> {
             const h = Math.min(Math.max((evt.target as HTMLTextAreaElement).scrollHeight + 16, 75), 400);
             (evt.target as HTMLTextAreaElement).style.height = `${h}px`;
         });
+        return this;
+    }
+
+    /**
+     * Run the provided handler in the case there's no underlying element.
+     * @param handler Handler to run.
+     */
+    else(handler: () => void): Wrap<T> {
+        if (!this.el) {
+            handler();
+        }
         return this;
     }
 

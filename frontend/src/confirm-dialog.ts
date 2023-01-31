@@ -22,7 +22,7 @@ export class ConfirmDialog extends Dialog {
     }
 
     override renderContent(): Wrap<any> {
-        this.btnOk = UIToolkit.button('OK', 'danger-button').click(() => this.dismiss(true));
+        this.btnOk = UIToolkit.button('OK', () => this.dismiss(true), 'danger-button');
         return Wrap.new('div')
             .append(
                 // Dialog text
@@ -30,7 +30,7 @@ export class ConfirmDialog extends Dialog {
                 // Button
                 Wrap.new('div')
                     .classes('dialog-centered')
-                    .append(UIToolkit.button('Cancel').click(() => this.dismiss()), this.btnOk));
+                    .append(UIToolkit.button('Cancel', () => this.dismiss()), this.btnOk));
     }
 
     override onShow() {

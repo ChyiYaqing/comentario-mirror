@@ -147,7 +147,7 @@ export class Dialog {
         }
 
         // Add an arrow element to the dialog
-        const wa = this.pos?.ref?.ok && Wrap.new('div').classes('dialog-arrow');
+        const wa = Wrap.new('div').classes('dialog-arrow');
         this.dialogBox.append(wa);
 
         // Set up the arrow modifier

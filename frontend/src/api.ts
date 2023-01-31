@@ -28,7 +28,7 @@ export interface ApiCommentNewResponse extends ApiResponseBase {
 }
 
 export interface ApiCommentEditResponse extends ApiResponseBase {
-    state:      'unapproved' | 'flagged';
+    state?:     'unapproved' | 'flagged';
     commentHex: string;
     html:       string;
 }

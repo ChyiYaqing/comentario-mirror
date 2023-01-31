@@ -71,7 +71,13 @@ cp -r "$root_dir/db/" "$root_dir/templates/" "$build_dir"
 # Start the backend
 echo "Starting $build_dir/comentario"
 env \
-      'COMMENTO_ORIGIN=http://localhost:8080' \
-      'COMMENTO_PORT=8080' \
-      'COMMENTO_POSTGRES=postgres://postgres:postgres@localhost:5432/commento?sslmode=disable' \
+    'COMMENTO_ORIGIN=http://localhost:8080' \
+    'COMMENTO_PORT=8080' \
+    'COMMENTO_POSTGRES=postgres://postgres:postgres@localhost:5432/commento?sslmode=disable' \
+    'COMMENTO_GITHUB_KEY=a' \
+    'COMMENTO_GITHUB_SECRET=b' \
+    'COMMENTO_GITLAB_KEY=a' \
+    'COMMENTO_GITLAB_SECRET=b' \
+    'COMMENTO_GOOGLE_KEY=a' \
+    'COMMENTO_GOOGLE_SECRET=b' \
     "$build_dir/comentario"
