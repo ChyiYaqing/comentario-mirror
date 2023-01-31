@@ -15,6 +15,7 @@
     }
 
     @import "colors-main";
+    @import "embed/colours";
     @import "embed/common";
     @import "embed/animations";
     @import "embed/button";
@@ -38,7 +39,7 @@
         bottom: 0;
         z-index: 10;
         background-color: rgba(255, 255, 255, 0.6);
-        backdrop-filter: blur(4px);
+        backdrop-filter: blur(3px);
     }
 
     .commento-error-box {

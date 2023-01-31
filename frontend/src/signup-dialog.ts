@@ -53,18 +53,18 @@ export class SignupDialog extends Dialog {
 
     override renderContent(): Wrap<any> {
         // Create inputs
-        this._name    = UIToolkit.input('name', 'text', 'Real name', 'name', true);
-        this._website = UIToolkit.input('website', 'text', 'Website (optional)', 'url');
-        this._email   = UIToolkit.input('email', 'text', 'Email address', 'email', true);
-        this._pwd     = UIToolkit.input('password', 'password', 'Password', 'current-password', true);
+        this._name    = UIToolkit.input('name',     'text',     'Real name',          'name', true);
+        this._website = UIToolkit.input('website',  'text',     'Website (optional)', 'url');
+        this._email   = UIToolkit.input('email',    'email',    'Email address',      'email', true);
+        this._pwd     = UIToolkit.input('password', 'password', 'Password',           'current-password', true);
 
         // Add the inputs to a new form
         return UIToolkit.form(() => this.dismiss(true))
             .append(
-                Wrap.new('div').classes('input-group').append(this._name),
-                Wrap.new('div').classes('input-group').append(this._website),
-                Wrap.new('div').classes('input-group').append(this._email),
-                Wrap.new('div').classes('input-group').append(this._pwd, UIToolkit.submit('Sign up', true)));
+                UIToolkit.div('input-group').append(this._name),
+                UIToolkit.div('input-group').append(this._website),
+                UIToolkit.div('input-group').append(this._email),
+                UIToolkit.div('input-group').append(this._pwd, UIToolkit.submit('Sign up', true)));
     }
 
     override onShow(): void {

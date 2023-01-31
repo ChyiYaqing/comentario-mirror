@@ -1,5 +1,6 @@
 import { Wrap } from './element-wrap';
 import { Dialog, DialogPositioning } from './dialog';
+import { UIToolkit } from './ui-toolkit';
 
 export class MarkdownHelp extends Dialog {
 
@@ -17,8 +18,7 @@ export class MarkdownHelp extends Dialog {
     }
 
     override renderContent(): Wrap<any> {
-        return Wrap.new('div')
-            .classes('table-container')
+        return UIToolkit.div('table-container')
             .append(
                 Wrap.new('table')
                     .classes('table')

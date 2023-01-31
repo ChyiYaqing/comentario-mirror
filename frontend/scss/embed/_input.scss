@@ -3,26 +3,21 @@
 
 textarea,
 input[type=text],
-input[type=email] {
+input[type=email],
+input[type=password] {
     background-color: #ffffff;
     border: 1px solid rgba(50, 50, 93, .1);
     border-radius: 3px;
     color: #525f7f;
-}
 
-input[type=text]::placeholder,
-input[type=email]::placeholder {
-    color: #cacaca;
-}
+    // Draw a red border around invalid controls that have been touched (blurred; gets added programmatically)
+    &.commento-touched:invalid {
+        border: 1px solid $red-7;
+    }
 
-textarea::placeholder {
-    color: $gray-6;
-    font-size: 20px;
-    display: flex;
-    line-height: 110px;
-    justify-content: center;
-    align-items: center;
-    text-align: center;
+    &::placeholder {
+        color: $gray-5;
+    }
 }
 
 textarea {
@@ -33,10 +28,15 @@ textarea {
     overflow: auto;
     min-height: 130px;
     width: 100%;
-}
 
-.commento-red-border {
-    border: 1px solid $red-7;
+    &::placeholder {
+        font-size: 18px;
+        display: flex;
+        line-height: 110px;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+    }
 }
 
 .commento-textarea-form {
@@ -55,15 +55,6 @@ textarea {
         align-items: center;
         margin-top: 12px;
     }
-}
-
-.commento-blurred-textarea {
-    list-style: none;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    will-change: transform;
 }
 
 .commento-anonymous-checkbox-container {

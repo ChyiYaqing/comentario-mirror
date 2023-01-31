@@ -117,6 +117,14 @@ export class Comentario {
     }
 
     /**
+     * Return a number in the range 0..19 based on the given string's content.
+     * @param s String to calculate colour index for.
+     */
+    static colourIndex(s: string) {
+        return [...s].reduce((sum, c) => sum + c.charCodeAt(0), 0) % 20;
+    }
+
+    /**
      * The main worker routine of Comentario
      * @return Promise that resolves as soon as Comentario setup is complete
      */
@@ -243,8 +251,7 @@ export class Comentario {
             if (this.anonymousOnly) {
                 anonCheckbox.checked(true).attr({disabled: 'true'});
             }
-            anonContainer = Wrap.new('div')
-                .classes('round-check', 'anonymous-checkbox-container')
+            anonContainer = UIToolkit.div('round-check', 'anonymous-checkbox-container')
                 .append(
                     anonCheckbox,
                     Wrap.new('label').attr({for: Wrap.idPrefix + IDS.anonymousCheckbox + commentHex}).inner('Comment anonymously'));
@@ -256,15 +263,12 @@ export class Comentario {
             .classes('textarea-form')
             .append(
                 // Textarea in a container
-                Wrap.new('div')
-                    .classes('textarea-container')
-                    .append(
-                        Wrap.new('textarea').id(IDS.textarea + commentHex).attr({placeholder: 'Add a comment'}).autoExpand()),
+                UIToolkit.div('textarea-container')
+                    .append(UIToolkit.textarea('Add a comment', true, true).id(IDS.textarea + commentHex)),
                 // Textarea footer
-                Wrap.new('div')
-                    .classes('textarea-form-footer')
+                UIToolkit.div('textarea-form-footer')
                     .append(
-                        Wrap.new('div')
+                        UIToolkit.div()
                             .append(
                                 // Anonymous checkbox, if any
                                 anonContainer,
@@ -284,41 +288,6 @@ export class Comentario {
 
         // Re-render the sorted comment
         this.commentsRender();
-    }
-
-    sortPolicyBox(): Wrap<HTMLDivElement> {
-        const container = Wrap.new('div').classes('sort-policy-buttons-container');
-        const buttonBar = Wrap.new('div').classes('sort-policy-buttons').appendTo(container);
-        Object.keys(this.sortingProps).forEach((sp: SortPolicy) =>
-            Wrap.new('a')
-                .id(IDS.sortPolicy + sp)
-                .classes('sort-policy-button', sp === this.sortPolicy && 'sort-policy-button-selected')
-                .inner(this.sortingProps[sp].label)
-                .appendTo(buttonBar)
-                .click(() => this.sortPolicyApply(sp)));
-        return container;
-    }
-
-    messageCreate(text: string): Wrap<HTMLDivElement> {
-        return Wrap.new('div').classes('moderation-notice').inner(text);
-    }
-
-    colorGet(name: string) {
-        const colors = [
-            '#396ab1',
-            '#da7c30',
-            '#3e9651',
-            '#cc2529',
-            '#922428',
-            '#6b4c9a',
-            '#535154',
-        ];
-
-        let total = 0;
-        for (let i = 0; i < name.length; i++) {
-            total += name.charCodeAt(i);
-        }
-        return colors[total % colors.length];
     }
 
     timeDifference(current: number, previous: number): string {
@@ -379,29 +348,24 @@ export class Comentario {
                     this.sortingProps[this.sortPolicy].comparator(a, b));
 
         const curTime = (new Date()).getTime();
-        const cards = Wrap.new('div');
+        const cards = UIToolkit.div();
         comments.forEach(comment => {
             const commenter = this.commenters[comment.commenterHex];
             const commLink = !commenter.link || commenter.link === 'undefined' || commenter.link === 'https://undefined' ? undefined : commenter.link;
             const hex = comment.commentHex;
-            const color = this.colorGet(`${comment.commenterHex}-${commenter.name}`);
+            const idxColor = Comentario.colourIndex(`${comment.commenterHex}-${commenter.name}`);
             const children = this.commentsRecurse(parentMap, hex).id(IDS.children + hex).classes('body');
-            const card = Wrap.new('div')
+            const card = UIToolkit.div('card', this.isModerator && comment.state !== 'approved' && 'dark-card', `border-${idxColor}`)
                 .id(IDS.card + hex)
-                .style(`border-left: 2px solid ${color}`)
-                .classes('card', this.isModerator && comment.state !== 'approved' && 'dark-card')
                 .append(
                     // Card header
-                    Wrap.new('div')
-                        .classes('header')
+                    UIToolkit.div('header')
                         .append(
                             // Options toolbar
-                            this.getCommentOptions(comment, hex, parentHex),
+                            this.commentOptionsBar(comment, hex, parentHex),
                             // Avatar
                             commenter.photo === 'undefined' ?
-                                Wrap.new('div')
-                                    .style(`background-color: ${color}`)
-                                    .classes('avatar')
+                                UIToolkit.div('avatar', `bg-${idxColor}`)
                                     .html(comment.commenterHex === 'anonymous' ? '?' : commenter.name[0].toUpperCase()) :
                                 Wrap.new('img')
                                     .classes('avatar-img')
@@ -416,21 +380,20 @@ export class Comentario {
                                     comment.state === 'flagged' && 'flagged')
                                 .attr({href: commLink, rel: 'nofollow noopener noreferrer'}),
                             // Subtitle
-                            Wrap.new('div')
-                                .classes('subtitle')
+                            UIToolkit.div('subtitle')
                                 .append(
                                     // Score
-                                    Wrap.new('div').id(IDS.score + hex).classes('score').inner(this.scorify(comment.score)),
+                                    UIToolkit.div('score').id(IDS.score + hex).inner(this.scorify(comment.score)),
                                     // Time ago
-                                    Wrap.new('div')
-                                        .classes('timeago')
+                                    UIToolkit.div('timeago')
                                         .inner(this.timeDifference(curTime, comment.creationMs))
                                         .attr({title: comment.creationDate.toString()}))),
                     // Card contents
-                    Wrap.new('div')
+                    UIToolkit.div()
                         .append(
-                            Wrap.new('div').id(IDS.body + hex).classes('body')
-                                .append(Wrap.new('div').id(IDS.text + hex).html(comment.html)),
+                            UIToolkit.div('body')
+                                .id(IDS.body + hex)
+                                .append(UIToolkit.div().id(IDS.text + hex).html(comment.html)),
                             children));
 
             if (!comment.deleted || !this.hideDeleted && !children.ok) {
@@ -443,11 +406,28 @@ export class Comentario {
     }
 
     /**
+     * Create and return a toolbar with sort policy buttons.
+     * @private
+     */
+    private sortPolicyBar(): Wrap<HTMLDivElement> {
+        return UIToolkit.div('sort-policy-buttons-container')
+            .append(
+                UIToolkit.div('sort-policy-buttons')
+                    .append(
+                        ...Object.keys(this.sortingProps).map((sp: SortPolicy) =>
+                            Wrap.new('a')
+                                .id(IDS.sortPolicy + sp)
+                                .classes('sort-policy-button', sp === this.sortPolicy && 'sort-policy-button-selected')
+                                .inner(this.sortingProps[sp].label)
+                                .click(() => this.sortPolicyApply(sp)))));
+    }
+
+    /**
      * Return a wrapped options toolbar for a comment.
      * @private
      */
-    private getCommentOptions(comment: Comment, hex: string, parentHex: string): Wrap<any> {
-        const options = Wrap.new('div').classes('options');
+    private commentOptionsBar(comment: Comment, hex: string, parentHex: string): Wrap<HTMLDivElement> {
+        const options = UIToolkit.div('options');
 
         // Sticky comment indicator (for non-moderator only)
         const isSticky = this.stickyCommentHex === hex;
@@ -683,19 +663,9 @@ export class Comentario {
             return this.submitAuthenticated(commentHex);
         }
 
-        const anonCheckbox = Wrap.byId(IDS.anonymousCheckbox + commentHex);
-        const textarea = Wrap.byId(IDS.textarea + commentHex);
-        if (!textarea.val?.trim()) {
-            textarea.classes('red-border');
-            return Promise.reject();
-        }
-
-        textarea.noClasses('red-border');
-        return anonCheckbox.isChecked ? this.submitAnonymous(commentHex) : this.submitAuthenticated(commentHex);
-    }
-
-    forgotPassword() {
-        window.open(`${this.origin}/forgot?commenter=true`, '_blank');
+        return Wrap.byId(IDS.anonymousCheckbox + commentHex).isChecked ?
+            this.submitAnonymous(commentHex) :
+            this.submitAuthenticated(commentHex);
     }
 
     dataTagsLoad() {
@@ -754,7 +724,7 @@ export class Comentario {
      */
     private setError(message?: string): boolean {
         if (message) {
-            this.error = (this.error || Wrap.new('div').classes('error-box').prependTo(this.root)).inner(message);
+            this.error = (this.error || UIToolkit.div('error-box').prependTo(this.root)).inner(message);
             return true;
         }
         this.error?.remove();
@@ -828,8 +798,7 @@ export class Comentario {
         this.modToolsLockBtn = UIToolkit.button(
             this.isLocked ? 'Unlock Thread' : 'Lock Thread',
             () => this.threadLockToggle());
-        this.modTools = Wrap.new('div')
-            .classes('mod-tools')
+        this.modTools = UIToolkit.div('mod-tools')
             .append(Wrap.new('span').classes('mod-tools-title').inner('Moderator tools'), this.modToolsLockBtn)
             .appendTo(this.root);
         return this.modTools;
@@ -840,14 +809,13 @@ export class Comentario {
      * @private
      */
     private createMainArea(): Wrap<HTMLDivElement> {
-        this.mainArea = Wrap.new('div').classes('main-area');
+        this.mainArea = UIToolkit.div('main-area');
 
         // If there's any auth provider configured
         if (Object.values(this.configuredOauths).some(b => b)) {
             // If not authenticated, add a Login button
             if (!this.isAuthenticated) {
-                Wrap.new('div')
-                    .classes('login')
+                UIToolkit.div('login')
                     .append(UIToolkit.button('Login', () => this.showLoginDialog(null)).id(IDS.loginBtn))
                     .appendTo(this.mainArea);
             }
@@ -860,7 +828,7 @@ export class Comentario {
         // If commenting is locked/frozen, add a corresponding message
         if (this.isLocked || this.isFrozen) {
             if (this.isAuthenticated || this.chosenAnonymous) {
-                this.mainArea.append(this.messageCreate('This thread is locked. You cannot add new comments.'));
+                this.mainArea.append(UIToolkit.div('moderation-notice').inner('This thread is locked. You cannot add new comments.'));
             }
 
         // Otherwise, add a root editor (for creating a new comment)
@@ -870,11 +838,11 @@ export class Comentario {
 
         // If there's any comment, add sort buttons
         if (this.comments.length) {
-            this.mainArea.append(this.sortPolicyBox());
+            this.mainArea.append(this.sortPolicyBar());
         }
 
         // Create a panel for comments
-        this.commentsArea = Wrap.new('div').classes('comments').appendTo(this.mainArea);
+        this.commentsArea = UIToolkit.div('comments').appendTo(this.mainArea);
         return this.mainArea;
     }
 
@@ -883,11 +851,9 @@ export class Comentario {
      * @private
      */
     private createFooter(): Wrap<HTMLDivElement> {
-        return Wrap.new('div')
-            .classes('footer')
+        return UIToolkit.div('footer')
             .append(
-                Wrap.new('div')
-                    .classes('logo-container')
+                UIToolkit.div('logo-container')
                     .append(
                         Wrap.new('a')
                             .attr({href: 'https://comentario.app/', target: '_blank'})
@@ -908,31 +874,26 @@ export class Comentario {
         this.selfHex = commenter.commenterHex;
 
         // Create an avatar element
-        const color = this.colorGet(`${commenter.commenterHex}-${commenter.name}`);
+        const idxColor = Comentario.colourIndex(`${commenter.commenterHex}-${commenter.name}`);
         const avatar = commenter.photo === 'undefined' ?
-            Wrap.new('div')
-                .classes('avatar')
-                .html(commenter.name[0].toUpperCase())
-                .style(`background-color: ${color}`) :
+            UIToolkit.div('avatar', `bg-${idxColor}`).html(commenter.name[0].toUpperCase()) :
             Wrap.new('img')
                 .classes('avatar-img')
                 .attr({src: `${this.cdn}/api/commenter/photo?commenterHex=${commenter.commenterHex}`, loading: 'lazy', alt: ''});
 
         // Create a profile bar
         const link = !commenter.link || commenter.link === 'undefined' ? undefined : commenter.link;
-        Wrap.new('div')
-            .classes('profile-bar')
+        UIToolkit.div('profile-bar')
             .append(
                 // Commenter avatar and name
-                Wrap.new('div')
-                    .classes('logged-in-as')
+                UIToolkit.div('logged-in-as')
                     .append(
                         // Avatar
                         avatar,
                         // Name and link
                         Wrap.new(link ? 'a' : 'div').classes('name').inner(commenter.name).attr({href: link, rel: 'nofollow noopener noreferrer'})),
                 // Buttons on the right
-                Wrap.new('div')
+                UIToolkit.div()
                     .append(
                         // If it's a local user, add an Edit profile link
                         commenter.provider === 'commento' &&
@@ -1019,7 +980,8 @@ export class Comentario {
         const dlg = await LoginDialog.run(
             this.root,
             {ref: Wrap.byId(IDS.loginBtn), placement: 'bottom-end'},
-            this.configuredOauths);
+            this.configuredOauths,
+            this.origin);
         if (dlg.confirmed) {
             switch (dlg.navigateTo) {
                 case null:
@@ -1027,8 +989,8 @@ export class Comentario {
                     return await this.authenticateLocally(dlg.email, dlg.password, commentHex);
 
                 case 'forgot':
-                    // Navigate to forgot password
-                    return this.forgotPassword();
+                    // Already navigated to the Forgot password page in a new tab
+                    return;
 
                 case 'signup':
                     // Switch to signup
@@ -1145,22 +1107,18 @@ export class Comentario {
      * @private
      */
     private async commentNew(commentHex: string, commenterToken: string, appendCard: boolean): Promise<void> {
-        const container = Wrap.byId(IDS.superContainer + commentHex);
-        const textarea  = Wrap.byId(IDS.textarea + commentHex);
-
         // Validate the textarea value
-        const markdown = textarea.val;
-        if (markdown === '') {
-            textarea.classes('red-border');
+        const textarea  = Wrap.byId(IDS.textarea + commentHex);
+        if (!textarea.valid) {
             return Promise.reject();
         }
-        textarea.noClasses('red-border');
 
         // Submit the comment to the backend
+        const markdown = textarea.val.trim();
         const r = await this.apiClient.post<ApiCommentNewResponse>('comment/new', {
             commenterToken,
-            domain: parent.location.host,
-            path: this.pageId,
+            domain:    parent.location.host,
+            path:      this.pageId,
             parentHex: commentHex,
             markdown,
         });
@@ -1186,24 +1144,23 @@ export class Comentario {
         };
         this.commentsByHex[r.commentHex] = comment;
 
+        // Remove the entered comment text and reset its touched state
+        textarea.value('').noClasses('touched');
+
         // Add the new card, if needed
         if (appendCard) {
             const newCard = this.commentsRecurse({root: [comment]}, 'root');
-            if (commentHex !== 'root') {
-                container.replaceWith(newCard);
-
+            if (commentHex === 'root') {
+                newCard.prependTo(this.commentsArea);
+            } else {
+                Wrap.byId(IDS.superContainer + commentHex).replaceWith(newCard);
                 this.shownReply[commentHex] = false;
                 Wrap.byId(IDS.reply + commentHex)
                     .noClasses('option-cancel')
                     .classes('option-reply')
                     .attr({title: 'Reply to this comment'})
                     .click(() => this.replyShow(commentHex));
-            } else {
-                textarea.value('');
-                newCard.prependTo(this.commentsArea);
             }
-        } else if (commentHex === 'root') {
-            textarea.value('');
         }
     }
 
@@ -1215,14 +1172,12 @@ export class Comentario {
         const textarea = Wrap.byId(IDS.textarea + commentHex);
 
         // Validate the textarea value
-        const markdown = textarea.val.trim();
-        if (markdown === '') {
-            textarea.classes('red-border');
+        if (!textarea.valid) {
             return Promise.reject();
         }
-        textarea.noClasses('red-border');
 
         // Submit the edit to the backend
+        const markdown = textarea.val.trim();
         const r = await this.apiClient.post<ApiCommentEditResponse>('comment/edit', {
             commenterToken: this.commenterTokenGet(),
             commentHex,
@@ -1260,7 +1215,7 @@ export class Comentario {
             default:
                 return;
         }
-        this.messageCreate(message).prependTo(Wrap.byId(IDS.superContainer + commentHex));
+        UIToolkit.div('moderation-notice').inner(message).prependTo(Wrap.byId(IDS.superContainer + commentHex));
     }
 
     /**

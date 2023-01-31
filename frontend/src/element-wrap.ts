@@ -73,6 +73,13 @@ export class Wrap<T extends HTMLElement> {
     }
 
     /**
+     * Whether the underlying (input) element is valid.
+     */
+    get valid(): boolean {
+        return (this.el as unknown as HTMLInputElement | HTMLTextAreaElement)?.validity?.valid;
+    }
+
+    /**
      * Set attributes of the underlying element from the provided object.
      * @param values Object that provides attribute names (keys, they can use camelCase, which will be converted to
      * kebab-case) and their values. null and undefined values cause attribute removal from the node.
@@ -297,18 +304,6 @@ export class Wrap<T extends HTMLElement> {
                 () => !this.vertVisible() && this.el.scrollIntoView({block: 'nearest', inline: 'nearest', behavior: 'smooth'}),
                 100);
         }
-        return this;
-    }
-
-    /**
-     * Enables automatic height adjusting of the underlying textarea.
-     */
-    autoExpand(): Wrap<T> {
-        this.el.addEventListener('input', evt => {
-            (evt.target as HTMLTextAreaElement).style.height = '';
-            const h = Math.min(Math.max((evt.target as HTMLTextAreaElement).scrollHeight + 16, 75), 400);
-            (evt.target as HTMLTextAreaElement).style.height = `${h}px`;
-        });
         return this;
     }
 

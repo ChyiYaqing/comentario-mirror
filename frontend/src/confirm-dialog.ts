@@ -23,14 +23,12 @@ export class ConfirmDialog extends Dialog {
 
     override renderContent(): Wrap<any> {
         this.btnOk = UIToolkit.button('OK', () => this.dismiss(true), 'danger-button');
-        return Wrap.new('div')
+        return UIToolkit.div()
             .append(
                 // Dialog text
-                Wrap.new('div').classes('dialog-centered').inner(this.text),
+                UIToolkit.div('dialog-centered').inner(this.text),
                 // Button
-                Wrap.new('div')
-                    .classes('dialog-centered')
-                    .append(UIToolkit.button('Cancel', () => this.dismiss()), this.btnOk));
+                UIToolkit.div('dialog-centered').append(UIToolkit.button('Cancel', () => this.dismiss()), this.btnOk));
     }
 
     override onShow() {

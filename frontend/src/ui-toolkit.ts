@@ -6,6 +6,14 @@ import { Wrap } from './element-wrap';
 export class UIToolkit {
 
     /**
+     * Create and return a new div element.
+     * @param classes Classes to add to the div.
+     */
+    static div(...classes: string[]): Wrap<HTMLDivElement> {
+        return Wrap.new('div').classes(...classes);
+    }
+
+    /**
      * Create and return a dialog close button.
      * @param onClick Button's click handler.
      */
@@ -35,7 +43,24 @@ export class UIToolkit {
     static input(name: string, type = 'text', placeholder: string = null, autocomplete: string = null, required?: boolean): Wrap<HTMLInputElement> {
         return Wrap.new('input')
             .classes('input')
-            .attr({name, type, placeholder, autocomplete, required: required && 'required', size: '1'});
+            .attr({name, type, placeholder, autocomplete, required: required && 'required', size: '1'})
+            // Add the touched class on blur, which is used to highlight invalid input
+            .on('blur', t => t.classes('touched'));
+    }
+
+    /**
+     * Create and return a new textarea element.
+     */
+    static textarea(placeholder: string, required: boolean, autoExpand: boolean): Wrap<HTMLTextAreaElement> {
+        return Wrap.new('textarea')
+            .attr({placeholder, required: required && 'required'})
+            // Add the touched class on blur, which is used to highlight invalid input
+            .on('blur', t => t.classes('touched'))
+            // Enable automatic height adjusting on input, if needed
+            .on('input', t =>
+                autoExpand &&
+                t.style('height:auto')
+                    .style(`height:${Math.min(Math.max(t.element.scrollHeight + t.element.offsetHeight - t.element.clientHeight, 75), 400)}px`));
     }
 
     /**

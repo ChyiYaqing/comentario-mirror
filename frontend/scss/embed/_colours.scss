@@ -1,0 +1,35 @@
+$colourize-map: (
+     "0": #3995b1,
+     "1": #da8b30,
+     "2": #5eb740,
+     "3": #e832ae,
+     "4": #6125bb,
+     "5": #a81769,
+     "6": #5f880b,
+     "7":  #396ab1,
+     "8": #edc124,
+     "9": #7fa11c,
+    "10": #cc2529,
+    "11": #8c61ff,
+    "12": #1ac0c6,
+    "13": #535154,
+    "14": #396ab1,
+    "15": #da7c30,
+    "16": #3e9651,
+    "17": #cc2529,
+    "18": #922428,
+    "19": #6b4c9a,
+);
+
+@each $i, $c in $colourize-map {
+
+    // Generate colouring classes for the left border
+    .commento-border-#{$i} {
+        border-left: 2px solid #{$c};
+    }
+
+    // Generate background colouring classes
+    .commento-bg-#{$i} {
+        background-color: #{$c};
+    }
+}

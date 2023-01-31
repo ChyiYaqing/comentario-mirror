@@ -48,8 +48,7 @@ export class Dialog {
             this.resolve = () => resolve(data);
 
             // Create a login box
-            this.dialogBox = Wrap.new('div')
-                .classes('dialog', 'fade-in')
+            this.dialogBox = UIToolkit.div('dialog', 'fade-in')
                 .attr({role: 'dialog'})
                 // Don't propagate the click to prevent cancelling the dialog, which happens when the click reaches the
                 // parent container
@@ -63,11 +62,10 @@ export class Dialog {
                     // Dialog header
                     this.renderHeader(),
                     // Dialog body + contents
-                    Wrap.new('div').classes('dialog-body').append(this.renderContent()));
+                    UIToolkit.div('dialog-body').append(this.renderContent()));
 
             // Create a backdrop
-            this.backdrop = Wrap.new('div')
-                .classes('backdrop', 'fade-in')
+            this.backdrop = UIToolkit.div('backdrop', 'fade-in')
                 // Cancel the dialog when clicked outside
                 .click(() => this.dismiss())
                 .appendTo(this.parent);
@@ -132,8 +130,7 @@ export class Dialog {
     }
 
     private renderHeader(): Wrap<HTMLDivElement> {
-        return Wrap.new('div')
-            .classes('dialog-header')
+        return UIToolkit.div('dialog-header')
             // Title
             .inner(this.title)
             // Close button
@@ -147,7 +144,7 @@ export class Dialog {
         }
 
         // Add an arrow element to the dialog
-        const wa = Wrap.new('div').classes('dialog-arrow');
+        const wa = UIToolkit.div('dialog-arrow');
         this.dialogBox.append(wa);
 
         // Set up the arrow modifier

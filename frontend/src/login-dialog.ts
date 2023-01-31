@@ -13,6 +13,7 @@ export class LoginDialog extends Dialog {
         parent: Wrap<any>,
         pos: DialogPositioning,
         private readonly authMethods: StringBooleanMap,
+        private readonly origin: string,
     ) {
         super(parent, 'Log in', pos);
     }
@@ -43,9 +44,10 @@ export class LoginDialog extends Dialog {
      * @param parent Parent element for the dialog.
      * @param pos Positioning options.
      * @param authMethods Map of enabled authentication methods.
+     * @param origin Site origin (used for redirection to the "forgot password" page).
      */
-    static run(parent: Wrap<any>, pos: DialogPositioning, authMethods: StringBooleanMap): Promise<LoginDialog> {
-        const dlg = new LoginDialog(parent, pos, authMethods);
+    static run(parent: Wrap<any>, pos: DialogPositioning, authMethods: StringBooleanMap, origin: string): Promise<LoginDialog> {
+        const dlg = new LoginDialog(parent, pos, authMethods, origin);
         return dlg.run(dlg);
     }
 
@@ -60,13 +62,10 @@ export class LoginDialog extends Dialog {
         if (this.authMethods['sso']) {
             form.append(
                 // SSO button
-                Wrap.new('div')
-                    .classes('oauth-buttons')
+                UIToolkit.div('oauth-buttons')
                     .append(UIToolkit.button('Single Sign-On', () => this.dismissWith('sso'), 'oauth-button', 'sso-button')),
                 // Subtitle
-                Wrap.new('div')
-                    .classes('dialog-centered')
-                    .inner(`Proceed with ${parent.location.host} authentication`),
+                UIToolkit.div('dialog-centered').inner(`Proceed with ${parent.location.host} authentication`),
                 // Separator
                 (hasOAuth || hasLocalAuth) && Wrap.new('hr'));
         }
@@ -75,10 +74,9 @@ export class LoginDialog extends Dialog {
         if (hasOAuth) {
             form.append(
                 // Subtitle
-                Wrap.new('div').classes('dialog-centered').inner('Proceed with social login'),
+                UIToolkit.div('dialog-centered').inner('Proceed with social login'),
                 // OAuth buttons
-                Wrap.new('div')
-                    .classes('oauth-buttons')
+                UIToolkit.div('oauth-buttons')
                     .append(
                         ...oauthProviders
                             .filter(p => this.authMethods[p])
@@ -90,26 +88,26 @@ export class LoginDialog extends Dialog {
         // Local auth
         if (hasLocalAuth) {
             // Create inputs
-            this._email = UIToolkit.input('email', 'text', 'Email address', 'email', true);
-            this._pwd   = UIToolkit.input('password', 'password', 'Password', 'current-password', true);
+            this._email = UIToolkit.input('email',    'email',    'Email address', 'email',            true);
+            this._pwd   = UIToolkit.input('password', 'password', 'Password',      'current-password', true);
 
             // Add the inputs to the dialog
             form.append(
                 // Subtitle
-                Wrap.new('div')
-                    .classes('dialog-centered')
-                    .inner('Log in with your email address'),
+                UIToolkit.div('dialog-centered').inner('Log in with your email address'),
                 // Email
-                Wrap.new('div').classes('input-group').append(this._email),
+                UIToolkit.div('input-group').append(this._email),
                 // Password
-                Wrap.new('div').classes('input-group').append(this._pwd, UIToolkit.submit('Log in', true)),
+                UIToolkit.div('input-group').append(this._pwd, UIToolkit.submit('Log in', true)),
                 // Forgot password link
-                Wrap.new('div')
-                    .classes('dialog-centered')
-                    .append(Wrap.new('a').inner('Forgot your password?').click(() => this.dismissWith('forgot'))),
+                UIToolkit.div('dialog-centered')
+                    .append(
+                        Wrap.new('a')
+                            .attr({href: `${this.origin}/forgot?commenter=true`, target: '_blank'})
+                            .inner('Forgot your password?')
+                            .click(() => this.dismissWith('forgot'))),
                 // Switch to signup link container
-                Wrap.new('div')
-                    .classes('dialog-centered')
+                UIToolkit.div('dialog-centered')
                     .append(
                         Wrap.new('span').inner('Don\'t have an account? '),
                         Wrap.new('a').inner('Sign up here').click(() => this.dismissWith('signup'))));
