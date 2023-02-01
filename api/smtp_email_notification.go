@@ -23,14 +23,14 @@ type emailNotificationPlugs struct {
 
 func smtpEmailNotification(to string, toName string, kind string, domain string, path string, commentHex string, commenterName string, title string, html string, unsubscribeSecretHex string) error {
 	h, err := tt.New("header").Parse(`MIME-Version: 1.0
-From: Commento <{{.FromAddress}}>
+From: Comentario <{{.FromAddress}}>
 To: {{.ToName}} <{{.ToAddress}}>
 Content-Type: text/html; charset=UTF-8
 Subject: {{.Subject}}
 
 `)
 	var header bytes.Buffer
-	if err := h.Execute(&header, &headerPlugs{FromAddress: os.Getenv("SMTP_FROM_ADDRESS"), ToAddress: to, ToName: toName, Subject: "[Commento] " + title}); err != nil {
+	if err := h.Execute(&header, &headerPlugs{FromAddress: os.Getenv("SMTP_FROM_ADDRESS"), ToAddress: to, ToName: toName, Subject: "[Comentario] " + title}); err != nil {
 		return err
 	}
 

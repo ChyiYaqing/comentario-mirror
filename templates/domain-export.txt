@@ -1,4 +1,4 @@
-You recently requested a data export of your Commento domain {{.Domain}}. You
+You recently requested a data export of your Comentario domain {{.Domain}}. You
 can download a GZipped archive of a JSON export of all the comments and
 commenters associated with the domain here:
 

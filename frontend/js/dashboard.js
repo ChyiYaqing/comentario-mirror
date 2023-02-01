@@ -23,7 +23,7 @@
             {
                 id: 'installation',
                 text: 'Installation Guide',
-                meaning: 'Install Commento with HTML',
+                meaning: 'Install Comentario with HTML',
                 selected: false,
                 open: global.installationOpen,
             },

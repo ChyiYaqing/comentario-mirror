@@ -5,10 +5,10 @@ textarea,
 input[type=text],
 input[type=email],
 input[type=password] {
-    background-color: #ffffff;
+    background-color: $white;
     border: 1px solid rgba(50, 50, 93, .1);
     border-radius: 3px;
-    color: #525f7f;
+    color: $gray-7;
 
     // Draw a red border around invalid controls that have been touched (blurred; gets added programmatically)
     &.commento-touched:invalid {
@@ -74,19 +74,6 @@ textarea {
 
     input[type="checkbox"] + label:after {
         margin-top: -1px;
-    }
-}
-
-.commento-markdown-button {
-    color: $gray-6 !important;
-    margin-left: 16px;
-    margin-right: 16px;
-    border: none;
-    font-weight: 400;
-    cursor: pointer;
-
-    b {
-        font-size: 12px;
     }
 }
 

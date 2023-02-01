@@ -117,11 +117,11 @@ export class Comentario {
     }
 
     /**
-     * Return a number in the range 0..19 based on the given string's content.
+     * Return a number in the range 0..22 based on the given string's content.
      * @param s String to calculate colour index for.
      */
     static colourIndex(s: string) {
-        return [...s].reduce((sum, c) => sum + c.charCodeAt(0), 0) % 20;
+        return [...s].reduce((sum, c) => sum + c.charCodeAt(0), 0) % 23;
     }
 
     /**
@@ -275,8 +275,7 @@ export class Comentario {
                                 // Markdown help button
                                 UIToolkit.button(
                                     '<b>M⬇</b>&nbsp;Markdown',
-                                    btn => MarkdownHelp.run(this.root, {ref: btn, placement: 'bottom-start'}),
-                                    'markdown-button')),
+                                    btn => MarkdownHelp.run(this.root, {ref: btn, placement: 'bottom-start'}))),
                         // Submit button
                         UIToolkit.submit(isEdit ? 'Save Changes' : 'Add Comment', false)));
     }
@@ -378,7 +377,7 @@ export class Comentario {
                                     'name',
                                     commenter.isModerator && 'moderator',
                                     comment.state === 'flagged' && 'flagged')
-                                .attr({href: commLink, rel: 'nofollow noopener noreferrer'}),
+                                .attr({href: commLink, rel: commLink && 'nofollow noopener noreferrer'}),
                             // Subtitle
                             UIToolkit.div('subtitle')
                                 .append(
@@ -796,7 +795,7 @@ export class Comentario {
      */
     private createModToolsPanel(): Wrap<HTMLDivElement> {
         this.modToolsLockBtn = UIToolkit.button(
-            this.isLocked ? 'Unlock Thread' : 'Lock Thread',
+            this.isLocked ? 'Unlock thread' : 'Lock thread',
             () => this.threadLockToggle());
         this.modTools = UIToolkit.div('mod-tools')
             .append(Wrap.new('span').classes('mod-tools-title').inner('Moderator tools'), this.modToolsLockBtn)
@@ -816,7 +815,7 @@ export class Comentario {
             // If not authenticated, add a Login button
             if (!this.isAuthenticated) {
                 UIToolkit.div('login')
-                    .append(UIToolkit.button('Login', () => this.showLoginDialog(null)).id(IDS.loginBtn))
+                    .append(UIToolkit.button('Login', () => this.showLoginDialog(null), 'fw-bold').id(IDS.loginBtn))
                     .appendTo(this.mainArea);
             }
 
@@ -858,9 +857,7 @@ export class Comentario {
                         Wrap.new('a')
                             .attr({href: 'https://comentario.app/', target: '_blank'})
                             .html('Powered by ')
-                            .append(
-                                Wrap.new('span').classes('logo'),
-                                Wrap.new('span').classes('logo-brand').inner('Comentario'))));
+                            .append(Wrap.new('span').classes('logo-brand').inner('Comentario'))));
     }
 
     /**
@@ -891,20 +888,23 @@ export class Comentario {
                         // Avatar
                         avatar,
                         // Name and link
-                        Wrap.new(link ? 'a' : 'div').classes('name').inner(commenter.name).attr({href: link, rel: 'nofollow noopener noreferrer'})),
+                        Wrap.new(link ? 'a' : 'div')
+                            .classes('name')
+                            .inner(commenter.name)
+                            .attr({href: link, rel: link && 'nofollow noopener noreferrer'})),
                 // Buttons on the right
                 UIToolkit.div()
                     .append(
-                        // If it's a local user, add an Edit profile link
+                        // If it's a local user, add a Profile link
                         commenter.provider === 'commento' &&
                             Wrap.new('a')
                                 .classes('profile-link')
-                                .inner('Edit profile')
+                                .inner('Profile')
                                 .attr({href: `${this.origin}/profile?commenterToken=${this.commenterTokenGet()}`, target: '_blank'}),
-                        // Notification settings link
+                        // Notifications link
                         Wrap.new('a')
                             .classes('profile-link')
-                            .inner('Notification settings')
+                            .inner('Notifications')
                             .attr({href: `${this.origin}/unsubscribe?unsubscribeSecretHex=${email.unsubscribeSecretHex}`, target: '_blank'}),
                         // Logout link
                         Wrap.new('a')

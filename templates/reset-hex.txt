@@ -1,6 +1,6 @@
 Hi,
 
-Someone (probably you) recently initiated the procedure to reset your Commento account password. To do this, use the link below:
+Someone (probably you) recently initiated the procedure to reset your Comentario account password. To do this, use the link below:
 
 {{.Origin}}/reset?hex={{.ResetHex}}
 

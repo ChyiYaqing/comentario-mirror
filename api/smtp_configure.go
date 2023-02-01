@@ -27,7 +27,7 @@ func smtpConfigure() error {
 
 	logger.Infof("configuring smtp: %s", host)
 	if username == "" || password == "" {
-		logger.Warningf("no SMTP username/password set, Commento will assume they aren't required")
+		logger.Warningf("no SMTP username/password set, Comentario will assume they aren't required")
 	} else {
 		smtpAuth = smtp.PlainAuth("", username, password, host)
 	}

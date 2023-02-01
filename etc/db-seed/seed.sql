@@ -777,7 +777,7 @@ insert into public.commenters (commenterhex, email, name, link, photo, provider,
     values
         ('d668b826923228bd75c64a8b99cc3d8dfa4179dd7e8121eaeced9eee8d4e20db', 'root@comentario.app', 'Admin User', 'undefined', 'undefined', 'commento', '2023-01-17 18:23:43.604399', 'ok', '$2a$10$WLeCsMc7z7vSdococ9FLF.9FdcrIsJAQCeCSYFbiqFk8qRVQ/pqRK'),
         ('296c71d3d952378bcf49da722de949396b6439caf4c426274443e81093a3cb03', 'user@example.com', 'Test User', 'undefined', 'undefined', 'commento', '2023-01-18 16:52:04.541982', 'ok', '$2a$10$3w4LEMCh1iKwJC2uMGCP0eb0BRULg77KmnZuvnlGBMs4ALDbJ5Syy'),
-        ('296c71d3d952378bcf49da722de949396b6439caf4c426274443e81093a3cb04', 'user2@example.com', 'Another One', 'undefined', 'undefined', 'commento', '2023-01-18 16:52:04.541982', 'ok', '$2a$10$3w4LEMCh1iKwJC2uMGCP0eb0BRULg77KmnZuvnlGBMs4ALDbJ5Syy');
+        ('296c71d3d952378bcf49da722de949396b6439caf4c426274443e81093a3cb04', 'user2@example.com', 'Another One', 'https://wikipedia.org/', 'undefined', 'commento', '2023-01-18 16:52:04.541982', 'ok', '$2a$10$3w4LEMCh1iKwJC2uMGCP0eb0BRULg77KmnZuvnlGBMs4ALDbJ5Syy');
 
 insert into public.domains(domain, ownerhex, name, creationdate, state, importedcomments, autospamfilter,
                            requiremoderation, requireidentification, viewsthismonth, moderateallanonymous,

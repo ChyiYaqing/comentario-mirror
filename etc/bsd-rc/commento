@@ -8,7 +8,7 @@ PATH="/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin"
 
 . /etc/rc.subr
 
-desc="Commento daemon"
+desc="Comentario daemon"
 name=commento
 rcvar=commento_enable
 

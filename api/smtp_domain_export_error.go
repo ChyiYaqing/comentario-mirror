@@ -6,14 +6,9 @@ import (
 	"os"
 )
 
-type domainExportErrorPlugs struct {
-	Origin string
-	Domain string
-}
-
 func smtpDomainExportError(to string, toName string, _ string) error {
 	var header bytes.Buffer
-	if err := headerTemplate.Execute(&header, &headerPlugs{FromAddress: os.Getenv("SMTP_FROM_ADDRESS"), ToAddress: to, ToName: toName, Subject: "Commento Data Export"}); err != nil {
+	if err := headerTemplate.Execute(&header, &headerPlugs{FromAddress: os.Getenv("SMTP_FROM_ADDRESS"), ToAddress: to, ToName: toName, Subject: "Comentario Data Export"}); err != nil {
 		return err
 	}
 

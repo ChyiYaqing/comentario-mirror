@@ -52,7 +52,7 @@ func TestCommenterLoginNonCommento(t *testing.T) {
 	_, _ = commenterNew("test@example.com", "Test", "undefined", "undefined", "google", "")
 
 	if _, err := commenterLogin("test@example.com", "hunter2"); err == nil {
-		t.Errorf("expected error not found logging into a non-Commento account")
+		t.Errorf("expected error not found logging into a non-Comentario account")
 		return
 	}
 }

@@ -1,20 +1,15 @@
 @import "source-sans";
+@import "colors-main";
 
 .commento-root {
     position: relative;
     padding: 0;
     width: 100%;
     font-family: inherit;
+    font-size: 15px;
+    line-height: 1.5;
+    color: $root-color;
 
-    * {
-        font-family: inherit;
-        font-size: 15px;
-        line-height: 1.5;
-        color: #50596c;
-        text-rendering: optimizeLegibility;
-    }
-
-    @import "colors-main";
     @import "embed/colours";
     @import "embed/common";
     @import "embed/animations";
@@ -26,10 +21,6 @@
     @import "embed/card";
     @import "embed/dialog";
     @import "embed/footer";
-
-    .commento-hidden {
-        display: none;
-    }
 
     .commento-backdrop {
         position: absolute;

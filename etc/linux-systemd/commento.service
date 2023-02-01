@@ -1,5 +1,5 @@
 [Unit]
-Description=Commento daemon service
+Description=Comentario daemon service
 After=network.target postgresql.service
 
 [Service]

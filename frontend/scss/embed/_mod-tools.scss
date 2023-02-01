@@ -2,12 +2,11 @@
 
 .commento-mod-tools {
     border-top: 1px solid rgba(50, 50, 93, .1);
+    font-size: 13px;
+    text-transform: uppercase;
 
     .commento-mod-tools-title {
-        color: $indigo-8;
-    }
-
-    button {
-        color: $gray-7;
+        color: $gray-6;
+        font-weight: bold;
     }
 }

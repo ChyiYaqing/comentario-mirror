@@ -33,11 +33,6 @@ type disqusParentId struct {
 	Id      string   `xml:"http://disqus.com/disqus-internals id,attr"`
 }
 
-type disqusPostId struct {
-	XMLName xml.Name `xml:"post"`
-	Id      string   `xml:"http://disqus.com/disqus-internals id,attr"`
-}
-
 type disqusPost struct {
 	XMLName      xml.Name       `xml:"post"`
 	Id           string         `xml:"http://disqus.com/disqus-internals id,attr"`
@@ -132,7 +127,7 @@ func domainImportDisqus(domain string, url string) (int, error) {
 		}
 	}
 
-	// For each Disqus post, create a Commento comment. Attempt to convert the
+	// For each Disqus post, create a Comentario comment. Attempt to convert the
 	// HTML to markdown.
 	numImported := 0
 	disqusIdMap := map[string]string{}

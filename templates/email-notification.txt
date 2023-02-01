@@ -52,7 +52,7 @@
         </div>
 
         <div class="footer" style="width:100%;margin-top:16px;">
-          <a href="https://commento.io" class="logo" style="float:right;font-weight:bold;color:#868e96;font-size:13px;text-decoration:none;">Powered by Commento</a>
+          <a href="https://commento.io" class="logo" style="float:right;font-weight:bold;color:#868e96;font-size:13px;text-decoration:none;">Powered by Comentario</a>
           <div class="unsubscribe" style="color:#868e96;font-size:13px;text-align:left;max-width:300px;margin-bottom:16px;">
             {{ if eq .Kind "reply" }}
               You've received this email because you opted in to receive email notifications for comment replies. To unsubscribe, <a href="{{ .Origin }}/unsubscribe?unsubscribeSecretHex={{ .UnsubscribeSecretHex }}" style="color:#868e96;font-weight:bold;text-decoration:none;">click here</a>.
