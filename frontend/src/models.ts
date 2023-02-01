@@ -39,6 +39,8 @@ export interface Email {
 export type CommentMap = { [k: string]: Comment };
 export type CommentsGroupedByHex = { [k: string]: Comment[] };
 
+export type CommenterMap = { [k: string]: Commenter };
+
 export type ComparatorFunc<T> = (a: T, b: T) => number;
 
 export type SortPolicy = 'score-desc' | 'creationdate-desc' | 'creationdate-asc';
@@ -47,3 +49,10 @@ export interface SortPolicyProps<T> {
     label:      string;
     comparator: ComparatorFunc<T>;
 }
+
+export const sortingProps: { [k in SortPolicy]: SortPolicyProps<Comment> } = {
+    'score-desc':        {label: 'Upvotes', comparator: (a, b) => b.score - a.score},
+    'creationdate-desc': {label: 'Newest',  comparator: (a, b) => a.creationMs < b.creationMs ? 1 : -1},
+    'creationdate-asc':  {label: 'Oldest',  comparator: (a, b) => a.creationMs < b.creationMs ? -1 : 1},
+};
+

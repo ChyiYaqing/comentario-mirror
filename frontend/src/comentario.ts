@@ -2,11 +2,12 @@ import { HttpClient } from './http-client';
 import {
     Comment,
     Commenter,
+    CommenterMap,
     CommentMap,
     CommentsGroupedByHex,
     Email,
+    sortingProps,
     SortPolicy,
-    SortPolicyProps,
     StringBooleanMap,
 } from './models';
 import {
@@ -24,6 +25,8 @@ import { SignupDialog } from './signup-dialog';
 import { UIToolkit } from './ui-toolkit';
 import { MarkdownHelp } from './markdown-help';
 import { ConfirmDialog } from './confirm-dialog';
+import { CommentCard, CommentCardMap, CommentRenderingContext, CommentTree } from './comment-card';
+import { Utils } from './utils';
 
 const IDS = {
     loginBtn:          'login-btn',
@@ -88,7 +91,12 @@ export class Comentario {
     /** Loaded comment objects indexed by commentHex. */
     private commentsByHex: CommentMap = {};
 
-    private readonly commenters: { [k: string]: Commenter } = {};
+    /** Map of commenters by their hsx ID. */
+    private readonly commenters: CommenterMap = {};
+
+    /** Map of comment cards by comments' hex IDs. */
+    private cardMap: CommentCardMap;
+
     private requireIdentification = true;
     private isModerator = false;
     private isFrozen = false;
@@ -103,12 +111,6 @@ export class Comentario {
     private selfHex: string = undefined;
     private readonly loadedCss: StringBooleanMap = {};
     private initialised = false;
-
-    private readonly sortingProps: { [k in SortPolicy]: SortPolicyProps<Comment> } = {
-        'score-desc':        {label: 'Upvotes', comparator: (a, b) => b.score - a.score},
-        'creationdate-desc': {label: 'Newest',  comparator: (a, b) => a.creationMs < b.creationMs ? 1 : -1},
-        'creationdate-asc':  {label: 'Oldest',  comparator: (a, b) => a.creationMs < b.creationMs ? -1 : 1},
-    };
 
     constructor(
         private readonly doc: Document,
@@ -133,14 +135,6 @@ export class Comentario {
 
         // Store the cookie
         this.doc.cookie = `comentario_auth_token=${v}; expires=${date.toUTCString()}; path=/`;
-    }
-
-    /**
-     * Return a number in the range 0..22 based on the given string's content.
-     * @param s String to calculate colour index for.
-     */
-    static colourIndex(s: string) {
-        return [...s].reduce((sum, c) => sum + c.charCodeAt(0), 0) % 23;
     }
 
     /**
@@ -291,121 +285,6 @@ export class Comentario {
         this.commentsRender();
     }
 
-    timeDifference(current: number, previous: number): string {
-        // Times are defined in milliseconds
-        const msPerSecond = 1000;
-        const msPerMinute = 60 * msPerSecond;
-        const msPerHour = 60 * msPerMinute;
-        const msPerDay = 24 * msPerHour;
-        const msPerMonth = 30 * msPerDay;
-        const msPerYear = 12 * msPerMonth;
-
-        // Time ago thresholds
-        const msJustNow = 5 * msPerSecond; // Up until 5 s
-        const msMinutesAgo = 2 * msPerMinute; // Up until 2 minutes
-        const msHoursAgo = 2 * msPerHour; // Up until 2 hours
-        const msDaysAgo = 2 * msPerDay; // Up until 2 days
-        const msMonthsAgo = 2 * msPerMonth; // Up until 2 months
-        const msYearsAgo = 2 * msPerYear; // Up until 2 years
-
-        const elapsed = current - previous;
-
-        if (elapsed < msJustNow) {
-            return 'just now';
-        } else if (elapsed < msMinutesAgo) {
-            return `${Math.round(elapsed / msPerSecond)} seconds ago`;
-        } else if (elapsed < msHoursAgo) {
-            return `${Math.round(elapsed / msPerMinute)} minutes ago`;
-        } else if (elapsed < msDaysAgo) {
-            return `${Math.round(elapsed / msPerHour)} hours ago`;
-        } else if (elapsed < msMonthsAgo) {
-            return `${Math.round(elapsed / msPerDay)} days ago`;
-        } else if (elapsed < msYearsAgo) {
-            return `${Math.round(elapsed / msPerMonth)} months ago`;
-        } else {
-            return `${Math.round(elapsed / msPerYear)} years ago`;
-        }
-    }
-
-    scorify(score: number) {
-        return score === 1 ? 'One point' : `${score} points`;
-    }
-
-    commentsRecurse(parentMap: CommentsGroupedByHex, parentHex: string): Wrap<any> {
-        // Fetch comments that have the given parentHex
-        const comments = parentMap[parentHex];
-
-        // Return an empty wrap if there's none
-        if (!comments?.length) {
-            return new Wrap();
-        }
-
-        // Apply the chosen sorting, always keeping the sticky comment on top
-        comments.sort((a, b) =>
-            !a.deleted && a.commentHex === this.stickyCommentHex ?
-                -Infinity :
-                !b.deleted && b.commentHex === this.stickyCommentHex ?
-                    Infinity :
-                    this.sortingProps[this.sortPolicy].comparator(a, b));
-
-        const curTime = (new Date()).getTime();
-        const cards = UIToolkit.div();
-        comments.forEach(comment => {
-            const commenter = this.commenters[comment.commenterHex];
-            const commLink = !commenter.link || commenter.link === 'undefined' || commenter.link === 'https://undefined' ? undefined : commenter.link;
-            const hex = comment.commentHex;
-            const idxColor = Comentario.colourIndex(`${comment.commenterHex}-${commenter.name}`);
-            const children = this.commentsRecurse(parentMap, hex).id(IDS.children + hex).classes('body');
-            const card = UIToolkit.div('card', this.isModerator && comment.state !== 'approved' && 'dark-card', `border-${idxColor}`)
-                .id(IDS.card + hex)
-                .append(
-                    // Card header
-                    UIToolkit.div('header')
-                        .append(
-                            // Options toolbar
-                            this.commentOptionsBar(comment, hex, parentHex),
-                            // Avatar
-                            commenter.photo === 'undefined' ?
-                                UIToolkit.div('avatar', `bg-${idxColor}`)
-                                    .html(comment.commenterHex === 'anonymous' ? '?' : commenter.name[0].toUpperCase()) :
-                                Wrap.new('img')
-                                    .classes('avatar-img')
-                                    .attr({src: `${this.cdn}/api/commenter/photo?commenterHex=${commenter.commenterHex}`, alt: ''}),
-                            // Name
-                            Wrap.new(commLink ? 'a' : 'div')
-                                .id(IDS.name + hex)
-                                .inner(comment.deleted ? '[deleted]' : commenter.name)
-                                .classes(
-                                    'name',
-                                    commenter.isModerator && 'moderator',
-                                    comment.state === 'flagged' && 'flagged')
-                                .attr({href: commLink, rel: commLink && 'nofollow noopener noreferrer'}),
-                            // Subtitle
-                            UIToolkit.div('subtitle')
-                                .append(
-                                    // Score
-                                    UIToolkit.div('score').id(IDS.score + hex).inner(this.scorify(comment.score)),
-                                    // Time ago
-                                    UIToolkit.div('timeago')
-                                        .inner(this.timeDifference(curTime, comment.creationMs))
-                                        .attr({title: comment.creationDate.toString()}))),
-                    // Card contents
-                    UIToolkit.div()
-                        .append(
-                            UIToolkit.div('body')
-                                .id(IDS.body + hex)
-                                .append(UIToolkit.div().id(IDS.text + hex).html(comment.html)),
-                            children));
-
-            if (!comment.deleted || !this.hideDeleted && !children.ok) {
-                cards.append(card);
-            }
-        });
-
-        // If no cards found, return an empty wrap
-        return cards.hasChildren ? cards : new Wrap();
-    }
-
     /**
      * Create and return a toolbar with sort policy buttons.
      * @private
@@ -415,104 +294,12 @@ export class Comentario {
             .append(
                 UIToolkit.div('sort-policy-buttons')
                     .append(
-                        ...Object.keys(this.sortingProps).map((sp: SortPolicy) =>
+                        ...Object.keys(sortingProps).map((sp: SortPolicy) =>
                             Wrap.new('a')
                                 .id(IDS.sortPolicy + sp)
                                 .classes('sort-policy-button', sp === this.sortPolicy && 'sort-policy-button-selected')
-                                .inner(this.sortingProps[sp].label)
+                                .inner(sortingProps[sp].label)
                                 .click(() => this.sortPolicyApply(sp)))));
-    }
-
-    /**
-     * Return a wrapped options toolbar for a comment.
-     * @private
-     */
-    private commentOptionsBar(comment: Comment, hex: string, parentHex: string): Wrap<HTMLDivElement> {
-        const options = UIToolkit.div('options');
-
-        // Sticky comment indicator (for non-moderator only)
-        const isSticky = this.stickyCommentHex === hex;
-        if (!comment.deleted && !this.isModerator && isSticky) {
-            Wrap.new('button')
-                .id(IDS.sticky + hex)
-                .classes('option-button', 'option-sticky')
-                .attr({title: 'This comment has been stickied', type: 'button', disabled: 'true'})
-                .appendTo(options);
-        }
-
-        // Approve button
-        if (this.isModerator && comment.state !== 'approved') {
-            Wrap.new('button')
-                .id(IDS.approve + hex)
-                .classes('option-button', 'option-approve')
-                .attr({type: 'button', title: 'Approve'})
-                .click(() => this.commentApprove(hex))
-                .appendTo(options);
-        }
-
-        // Remove button
-        if (!comment.deleted && (this.isModerator || comment.commenterHex === this.selfHex)) {
-            Wrap.new('button')
-                .classes('option-button', 'option-remove')
-                .attr({type: 'button', title: 'Remove'})
-                .click(btn => this.commentDelete(btn, hex))
-                .appendTo(options);
-        }
-
-        // Sticky toggle button (for moderator and a top-level comments only)
-        if (!comment.deleted && this.isModerator && parentHex === 'root') {
-            Wrap.new('button')
-                .id(IDS.sticky + hex)
-                .classes('option-button', isSticky ? 'option-unsticky' : 'option-sticky')
-                .attr({title: isSticky ? 'Unsticky' : 'Sticky', type: 'button'})
-                .click(() => this.commentSticky(hex))
-                .appendTo(options);
-        }
-
-        // Own comment: Edit button
-        if (comment.commenterHex === this.selfHex) {
-            Wrap.new('button')
-                .id(IDS.edit + hex)
-                .classes('option-button', 'option-edit')
-                .attr({type: 'button', title: 'Edit'})
-                .click(() => this.startEditing(hex))
-                .appendTo(options);
-
-        // Someone other's comment: Reply button
-        } else if (!comment.deleted) {
-            Wrap.new('button')
-                .id(IDS.reply + hex)
-                .classes('option-button', 'option-reply')
-                .attr({type: 'button', title: 'Reply'})
-                .click(() => this.replyShow(hex))
-                .appendTo(options);
-        }
-
-        // Upvote / Downvote buttons
-        if (!comment.deleted) {
-            this.updateUpDownAction(
-                Wrap.new('button')
-                    .id(IDS.upvote + hex)
-                    .classes('option-button', 'option-upvote', this.isAuthenticated && comment.direction > 0 && 'upvoted')
-                    .attr({type: 'button', title: 'Upvote'})
-                    .appendTo(options),
-                Wrap.new('button')
-                    .id(IDS.downvote + hex)
-                    .classes('option-button', 'option-downvote', this.isAuthenticated && comment.direction < 0 && 'downvoted')
-                    .attr({type: 'button', title: 'Downvote'})
-                    .appendTo(options),
-                hex,
-                comment.direction);
-        }
-
-        // Collapse button
-        Wrap.new('button')
-            .id(IDS.collapse + hex)
-            .classes('option-button', 'option-collapse')
-            .attr({type: 'button', title: 'Collapse children'})
-            .click(() => this.commentCollapse(hex))
-            .appendTo(options);
-        return options;
     }
 
     updateUpDownAction(upvote: Wrap<any>, downvote: Wrap<any>, commentHex: string, direction: number) {
@@ -627,23 +414,10 @@ export class Comentario {
     }
 
     commentsRender() {
-        // Group comments by parent hex ID: make map {parentHex: Comment[]}
-        const parentMap = this.comments.reduce(
-            (m, c) => {
-                const ph = c.parentHex;
-                if (ph in m) {
-                    m[ph].push(c);
-                } else {
-                    m[ph] = [c];
-                }
-                return m;
-            },
-            {} as CommentsGroupedByHex);
-
         // Re-render the comment recursively and add them to the comments area
         this.commentsArea
             .html('')
-            .append(this.commentsRecurse(parentMap, 'root'));
+            .append(new CommentTree().render(this.makeCommentRenderingContext(), 'root'));
     }
 
     dataTagsLoad() {
@@ -851,7 +625,7 @@ export class Comentario {
         this.selfHex = commenter.commenterHex;
 
         // Create an avatar element
-        const idxColor = Comentario.colourIndex(`${commenter.commenterHex}-${commenter.name}`);
+        const idxColor = Utils.colourIndex(`${commenter.commenterHex}-${commenter.name}`);
         const avatar = commenter.photo === 'undefined' ?
             UIToolkit.div('avatar', `bg-${idxColor}`).html(commenter.name[0].toUpperCase()) :
             Wrap.new('img')
@@ -1175,7 +949,7 @@ export class Comentario {
 
         // Add the new card, if needed
         if (appendCard) {
-            const newCard = this.commentsRecurse({root: [comment]}, 'root');
+            const newCard = new CommentTree().render(this.makeCommentRenderingContext({root: [comment]}), 'root');
             if (commentHex === 'root') {
                 newCard.prependTo(this.commentsArea);
             } else {
@@ -1284,7 +1058,7 @@ export class Comentario {
 
         // Update the score reading
         const newScore = comment.score - oldDirection + direction;
-        const ws = Wrap.byId(IDS.score + commentHex).inner(this.scorify(newScore));
+        const ws = Wrap.byId(IDS.score + commentHex).inner(Utils.score(newScore));
 
         // Run the vote with the API
         const r = await this.apiClient.post<ApiResponseBase>('comment/vote', {commenterToken: this.token, commentHex, direction});
@@ -1293,7 +1067,7 @@ export class Comentario {
         if (this.setError(!r.success && r.message)) {
             upvote.noClasses('upvoted');
             downvote.noClasses('downvoted');
-            ws.inner(this.scorify(comment.score));
+            ws.inner(Utils.score(comment.score));
             this.updateUpDownAction(upvote, downvote, commentHex, oldDirection);
             return Promise.reject();
         }
@@ -1304,16 +1078,15 @@ export class Comentario {
 
     /**
      * Toggle the given comment's sticky status.
-     * @param commentHex Comment's hex ID.
      * @private
      */
-    private async commentSticky(commentHex: string): Promise<void> {
-        // Toggle the current comment's Sticky button, if any
-        if (this.stickyCommentHex !== 'none') {
-            Wrap.byId(IDS.sticky + this.stickyCommentHex).noClasses('option-unsticky').classes('option-sticky');
+    private async commentSticky(card: CommentCard): Promise<void> {
+        // Remove the current sticky comment, if any
+        if (this.stickyCommentHex !== 'none' && this.stickyCommentHex in this.cardMap) {
+            this.cardMap[this.stickyCommentHex].sticky = false;
         }
 
-        this.stickyCommentHex = this.stickyCommentHex === commentHex ? 'none' : commentHex;
+        this.stickyCommentHex = this.stickyCommentHex === card.comment.commentHex ? 'none' : commentHex;
 
         // Save the page's sticky comment ID
         await this.submitPageAttrs();
@@ -1336,5 +1109,51 @@ export class Comentario {
             attributes:     {isLocked: this.isLocked, stickyCommentHex: this.stickyCommentHex},
         });
         this.setError(!r.success && r.message);
+    }
+
+    /**
+     * Return a new comment rendering context.
+     * @param parentMap Optional parent map to use. If not provided, a new one is created based on all available comments.
+     */
+    private makeCommentRenderingContext(parentMap?: CommentsGroupedByHex): CommentRenderingContext {
+        // If no parent map provided, group comments by parent hex ID: make map {parentHex: Comment[]}
+        if (!parentMap) {
+            parentMap = this.comments.reduce(
+                (m, c) => {
+                    const ph = c.parentHex;
+                    if (ph in m) {
+                        m[ph].push(c);
+                    } else {
+                        m[ph] = [c];
+                    }
+                    return m;
+                },
+                {} as CommentsGroupedByHex);
+
+            // Also recreate the card map
+            this.cardMap = {};
+        }
+
+        // Make a new context instance
+        return {
+            cdn:             this.cdn,
+            parentMap,
+            commenters:      this.commenters,
+            selfHex:         this.selfHex,
+            stickyHex:       this.stickyCommentHex,
+            sortPolicy:      this.sortPolicy,
+            isAuthenticated: this.isAuthenticated,
+            isModerator:     this.isModerator,
+            hideDeleted:     this.hideDeleted,
+            curTimeMs:       new Date().getTime(),
+            cardMap:         this.cardMap,
+            onApprove:       () => {}, // TODO
+            onDelete:        () => {}, // TODO
+            onEdit:          () => {}, // TODO
+            onReply:         () => {}, // TODO
+            onSticky:        card => this.commentSticky(card),
+            onVoteDown:      () => {}, // TODO
+            onVoteUp:        () => {}, // TODO
+        };
     }
 }
