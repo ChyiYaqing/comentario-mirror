@@ -1,22 +1,22 @@
 @import "../colors-main";
 
-.commento-card {
+.comentario-card {
     @import "options"; // Buttons to the right of each comment
 
     padding: 12px 0 0 12px;
     margin-top: 16px;
     border-top: 1px solid #f0f0f0;
 
-    .commento-header {
+    .comentario-header {
         padding-bottom: 4px;
     }
 
-    .commento-avatar::after {
+    .comentario-avatar::after {
         content: "";
         display: block;
     }
 
-    .commento-name {
+    .comentario-name {
         font-weight: bold;
         font-size: 14px;
         color: $gray-7 !important;
@@ -25,7 +25,7 @@
         text-overflow: ellipsis;
     }
 
-    .commento-flagged::after {
+    .comentario-flagged::after {
         content: "Flagged";
         text-transform: uppercase;
         font-size: 10px;
@@ -37,7 +37,7 @@
         line-height: 17px;
     }
 
-    .commento-moderator::after {
+    .comentario-moderator::after {
         content: "Moderator";
         text-transform: uppercase;
         font-size: 10px;
@@ -49,57 +49,57 @@
         line-height: 17px;
     }
 
-    .commento-subtitle {
+    .comentario-subtitle {
         display: block;
         color: $gray-5;
         font-size: 12px;
         margin-left: 48px;
     }
 
-    .commento-timeago {
+    .comentario-timeago {
         display: inline;
         color: $gray-6;
         font-size: 12px;
     }
 
-    .commento-score {
+    .comentario-score {
         display: inline;
         color: $gray-6;
         font-size: 12px;
         font-weight: 700;
     }
 
-    .commento-timeago::before {
+    .comentario-timeago::before {
         content: "\00a0 \00a0 \00b7 \00a0 \00a0";
     }
 
-    .commento-body {
+    .comentario-body {
         p {
             margin-top: 6px;
             margin-bottom: 6px;
         }
     }
 
-    .commento-options {
+    .comentario-options {
         float: right;
         height: 38px;
         z-index: 2;
     }
 
-    .commento-moderation {
+    .comentario-moderation {
         height: 48px;
     }
 }
 
-.commento-dark-card {
+.comentario-dark-card {
     background: $red-0;
 }
 
-.commento-highlighted-card {
+.comentario-highlighted-card {
     background: $yellow-0;
 }
 
-.commento-avatar {
+.comentario-avatar {
     width: 38px;
     height: 38px;
     border-radius: 50%;
@@ -113,7 +113,7 @@
     border: 0 transparent;
 }
 
-.commento-avatar-img {
+.comentario-avatar-img {
     width: 38px;
     height: 38px;
     border-radius: 50%;

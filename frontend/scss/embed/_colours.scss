@@ -29,12 +29,12 @@ $colourize-map: (
 @each $i, $c in $colourize-map {
 
     // Generate colouring classes for the left border
-    .commento-border-#{$i} {
+    .comentario-border-#{$i} {
         border-left: 2px solid #{$c};
     }
 
     // Generate background colouring classes
-    .commento-bg-#{$i} {
+    .comentario-bg-#{$i} {
         background-color: #{$c};
     }
 }

@@ -16,7 +16,7 @@ RUN test -x /comentario/comentario && \
     test -d comentario/html && \
     test -d comentario/images && \
     test -d comentario/js && \
-    test -s comentario/js/commento.js && \
+    test -s comentario/js/comentario.js && \
     test -d comentario/templates
 
 EXPOSE 8080

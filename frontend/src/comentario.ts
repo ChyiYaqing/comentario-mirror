@@ -59,7 +59,7 @@ export class Comentario {
     private readonly apiClient = new HttpClient(`${this.origin}/api`);
 
     /** Default ID of the container element Comentario will be embedded into. */
-    private rootId = 'commento';
+    private rootId = 'comentario';
 
     /** The root element of Comentario embed. */
     private root: Wrap<any>;
@@ -117,6 +117,25 @@ export class Comentario {
     }
 
     /**
+     * Retrieve a token of the authenticated user. If the user isn't authenticated, return 'anonymous'.
+     */
+    get token(): string {
+        return `; ${this.doc.cookie}`.split('; comentario_auth_token=').pop().split(';').shift() || 'anonymous';
+    }
+
+    /**
+     * Store a token of the authenticated user in a cookie.
+     */
+    set token(v: string) {
+        // Set the cookie expiration date one year in the future
+        const date = new Date();
+        date.setTime(date.getTime() + (365 * 24 * 60 * 60 * 1000));
+
+        // Store the cookie
+        this.doc.cookie = `comentario_auth_token=${v}; expires=${date.toUTCString()}; path=/`;
+    }
+
+    /**
      * Return a number in the range 0..22 based on the given string's content.
      * @param s String to calculate colour index for.
      */
@@ -138,7 +157,7 @@ export class Comentario {
         this.root.classes('root', !this.noFonts && 'root-font');
 
         // Begin by loading the stylesheet
-        await this.cssLoad(`${this.cdn}/css/commento.css`);
+        await this.cssLoad(`${this.cdn}/css/comentario.css`);
 
         // Load stylesheet override, if any
         if (this.cssOverride) {
@@ -205,23 +224,6 @@ export class Comentario {
         console.info(`Initialised Comentario ${this.version}`);
     }
 
-    cookieGet(name: string): string {
-        const c = `; ${this.doc.cookie}`;
-        const x = c.split(`; ${name}=`);
-        return x.length === 2 ? x.pop().split(';').shift() : null;
-    }
-
-    cookieSet(name: string, value: string) {
-        const date = new Date();
-        date.setTime(date.getTime() + (365 * 24 * 60 * 60 * 1000));
-        this.doc.cookie = `${name}=${value}; expires=${date.toUTCString()}; path=/`;
-    }
-
-    commenterTokenGet() {
-        const commenterToken = this.cookieGet('commentoCommenterToken');
-        return commenterToken === undefined ? 'anonymous' : commenterToken;
-    }
-
     /**
      * Load the stylesheet with the provided URL into the DOM
      * @param url Stylesheet URL.
@@ -258,7 +260,7 @@ export class Comentario {
         }
 
         // Instantiate and set up a new form
-        return UIToolkit.form(() => isEdit ? this.saveCommentEdits(commentHex) : this.submitAccountDecide(commentHex))
+        return UIToolkit.form(() => isEdit ? this.submitCommentEdits(commentHex) : this.submitNewComment(commentHex))
             .id(IDS.superContainer + commentHex)
             .classes('textarea-form')
             .append(
@@ -644,32 +646,9 @@ export class Comentario {
             .append(this.commentsRecurse(parentMap, 'root'));
     }
 
-    submitAuthenticated(commentHex: string): Promise<void> {
-        if (this.isAuthenticated) {
-            return this.commentNew(commentHex, this.commenterTokenGet(), true);
-        }
-
-        return this.showLoginDialog(commentHex);
-    }
-
-    submitAnonymous(commentHex: string): Promise<void> {
-        this.chosenAnonymous = true;
-        return this.commentNew(commentHex, 'anonymous', true);
-    }
-
-    submitAccountDecide(commentHex: string): Promise<void> {
-        if (this.requireIdentification) {
-            return this.submitAuthenticated(commentHex);
-        }
-
-        return Wrap.byId(IDS.anonymousCheckbox + commentHex).isChecked ?
-            this.submitAnonymous(commentHex) :
-            this.submitAuthenticated(commentHex);
-    }
-
     dataTagsLoad() {
         for (const script of this.doc.getElementsByTagName('script')) {
-            if (script.src.match(/\/js\/commento\.js$/)) {
+            if (script.src.match(/\/js\/comentario\.js$/)) {
                 const ws = new Wrap(script);
                 let s = ws.getAttr('data-page-id');
                 if (s) {
@@ -696,7 +675,7 @@ export class Comentario {
         const h = window.location.hash;
 
         // If the hash starts with a valid hex ID
-        if (h?.startsWith('#commento-')) {
+        if (h?.startsWith('#comentario-')) {
             const id = h.substring(10);
             Wrap.byId(IDS.card + id)
                 .classes('highlighted-card')
@@ -709,7 +688,7 @@ export class Comentario {
                 });
 
 
-        } else if (h?.startsWith('#commento')) {
+        } else if (h?.startsWith('#comentario')) {
             // If we're requested to scroll to the comments in general
             this.root.scrollTo();
         }
@@ -740,12 +719,13 @@ export class Comentario {
         this.isAuthenticated = false;
 
         // If we're already (knowingly) anonymous
-        if (this.commenterTokenGet() !== 'anonymous') {
+        const token = this.token;
+        if (token !== 'anonymous') {
             // Fetch the status from the backend
             try {
-                const r = await this.apiClient.post<ApiSelfResponse>('commenter/self', {commenterToken: this.commenterTokenGet()});
+                const r = await this.apiClient.post<ApiSelfResponse>('commenter/self', {commenterToken: token});
                 if (!r.success) {
-                    this.cookieSet('commentoCommenterToken', 'anonymous');
+                    this.token = 'anonymous';
                 } else {
                     this.setupCurUserProfile(r.commenter, r.email);
                     this.isAuthenticated = true;
@@ -900,7 +880,7 @@ export class Comentario {
                             Wrap.new('a')
                                 .classes('profile-link')
                                 .inner('Profile')
-                                .attr({href: `${this.origin}/profile?commenterToken=${this.commenterTokenGet()}`, target: '_blank'}),
+                                .attr({href: `${this.origin}/profile?commenterToken=${this.token}`, target: '_blank'}),
                         // Notifications link
                         Wrap.new('a')
                             .classes('profile-link')
@@ -948,7 +928,7 @@ export class Comentario {
         }
 
         // Store the authenticated token in a cookie
-        this.cookieSet('commentoCommenterToken', r.commenterToken);
+        this.token = r.commenterToken;
 
         // Submit a new comment, if needed
         if (commentHex) {
@@ -1017,7 +997,7 @@ export class Comentario {
         }
 
         // Store the obtained auth token
-        this.cookieSet('commentoCommenterToken', r.commenterToken);
+        this.token = r.commenterToken;
 
         // Open a popup window
         const popup = window.open(
@@ -1042,7 +1022,7 @@ export class Comentario {
 
         // Submit the pending comment, if there was one
         if (this.isAuthenticated && commentHex) {
-            await this.commentNew(commentHex, this.commenterTokenGet(), false);
+            await this.commentNew(commentHex, this.token, false);
         }
 
         // Reload the whole bunch
@@ -1056,7 +1036,7 @@ export class Comentario {
      */
     private logout(e: MouseEvent): Promise<void> {
         e.preventDefault();
-        this.cookieSet('commentoCommenterToken', 'anonymous');
+        this.token = 'anonymous';
         this.isAuthenticated = false;
         this.isModerator = false;
         this.selfHex = undefined;
@@ -1070,7 +1050,7 @@ export class Comentario {
     private async loadPageData(): Promise<void> {
         // Retrieve a comment list from the backend
         const r = await this.apiClient.post<ApiCommentListResponse>('comment/list', {
-            commenterToken: this.commenterTokenGet(),
+            commenterToken: this.token,
             domain:         parent.location.host,
             path:           this.pageId,
         });
@@ -1097,6 +1077,52 @@ export class Comentario {
             c.creationMs = new Date(c.creationDate).getTime();
             this.commentsByHex[c.commentHex] = c;
         });
+    }
+
+    /**
+     * Submit a new comment with the given hex ID, forcing the user to authenticate, if needed.
+     * @param commentHex Comment's hex ID.
+     * @private
+     */
+    private async submitNewComment(commentHex: string): Promise<void> {
+        if (this.requireIdentification || !Wrap.byId(IDS.anonymousCheckbox + commentHex).isChecked) {
+            return this.isAuthenticated ?
+                this.commentNew(commentHex, this.token, true) :
+                this.showLoginDialog(commentHex);
+        }
+
+        this.chosenAnonymous = true;
+        return this.commentNew(commentHex, 'anonymous', true);
+    }
+
+    /**
+     * Submit the entered comment markdown to the backend for saving.
+     * @param commentHex Comment's hex ID
+     */
+    private async submitCommentEdits(commentHex: string): Promise<void> {
+        const textarea = Wrap.byId(IDS.textarea + commentHex);
+
+        // Validate the textarea value
+        if (!textarea.valid) {
+            return Promise.reject();
+        }
+
+        // Submit the edit to the backend
+        const markdown = textarea.val.trim();
+        const r = await this.apiClient.post<ApiCommentEditResponse>('comment/edit', {commenterToken: this.token, commentHex, markdown});
+        if (this.setError(!r.success && r.message)) {
+            return;
+        }
+
+        // Update the locally stored comment's data
+        this.commentsByHex[commentHex].markdown = markdown;
+        this.commentsByHex[commentHex].html = r.html;
+
+        // Hide the editor
+        this.stopEditing(commentHex);
+
+        // Update the comment's moderation notice
+        this.updateCommentModerationNotice(commentHex, r.state);
     }
 
     /**
@@ -1165,39 +1191,6 @@ export class Comentario {
     }
 
     /**
-     * Submit the entered comment markdown to the backend for saving.
-     * @param commentHex Comment's hex ID
-     */
-    private async saveCommentEdits(commentHex: string): Promise<void> {
-        const textarea = Wrap.byId(IDS.textarea + commentHex);
-
-        // Validate the textarea value
-        if (!textarea.valid) {
-            return Promise.reject();
-        }
-
-        // Submit the edit to the backend
-        const markdown = textarea.val.trim();
-        const r = await this.apiClient.post<ApiCommentEditResponse>('comment/edit', {
-            commenterToken: this.commenterTokenGet(),
-            commentHex,
-            markdown});
-        if (this.setError(!r.success && r.message)) {
-            return;
-        }
-
-        // Update the locally stored comment's data
-        this.commentsByHex[commentHex].markdown = markdown;
-        this.commentsByHex[commentHex].html = r.html;
-
-        // Hide the editor
-        this.stopEditing(commentHex);
-
-        // Update the comment's moderation notice
-        this.updateCommentModerationNotice(commentHex, r.state);
-    }
-
-    /**
      * Add the relevant moderation notice to the given comment, if needed.
      * @param commentHex Comment's hex ID.
      * @param state Comment's moderation state.
@@ -1237,9 +1230,7 @@ export class Comentario {
      */
     private async commentApprove(commentHex: string): Promise<void> {
         // Submit the approval to the backend
-        const r = await this.apiClient.post<ApiResponseBase>(
-            'comment/approve',
-            {commenterToken: this.commenterTokenGet(), commentHex});
+        const r = await this.apiClient.post<ApiResponseBase>('comment/approve', {commenterToken: this.token, commentHex});
         if (this.setError(!r.success && r.message)) {
             return;
         }
@@ -1263,9 +1254,7 @@ export class Comentario {
         }
 
         // Run deletion with the backend
-        const r = await this.apiClient.post<ApiResponseBase>('comment/delete', {
-            commenterToken: this.commenterTokenGet(),
-            commentHex});
+        const r = await this.apiClient.post<ApiResponseBase>('comment/delete', {commenterToken: this.token, commentHex});
         if (this.setError(!r.success && r.message)) {
             return;
         }
@@ -1298,7 +1287,7 @@ export class Comentario {
         const ws = Wrap.byId(IDS.score + commentHex).inner(this.scorify(newScore));
 
         // Run the vote with the API
-        const r = await this.apiClient.post<ApiResponseBase>('comment/vote', {commenterToken: this.commenterTokenGet(), commentHex, direction});
+        const r = await this.apiClient.post<ApiResponseBase>('comment/vote', {commenterToken: this.token, commentHex, direction});
 
         // Undo the vote on failure
         if (this.setError(!r.success && r.message)) {
@@ -1341,7 +1330,7 @@ export class Comentario {
      */
     private async submitPageAttrs(): Promise<void> {
         const r = await this.apiClient.post<ApiResponseBase>('page/update', {
-            commenterToken: this.commenterTokenGet(),
+            commenterToken: this.token,
             domain:         parent.location.host,
             path:           this.pageId,
             attributes:     {isLocked: this.isLocked, stickyCommentHex: this.stickyCommentHex},

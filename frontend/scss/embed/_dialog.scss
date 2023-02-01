@@ -1,6 +1,6 @@
 @import "../colors-main";
 
-.commento-dialog {
+.comentario-dialog {
     position: absolute;
     z-index: 100;
 
@@ -20,7 +20,7 @@
         margin: 24px 0;
     }
 
-    .commento-dialog-header {
+    .comentario-dialog-header {
         position: relative;
         display: flex;
         align-items: center;
@@ -29,7 +29,7 @@
         line-height: 24px;
         font-weight: bold;
 
-        .commento-dialog-btn-close {
+        .comentario-dialog-btn-close {
             position: absolute;
             top: 0;
             right: 0;
@@ -52,11 +52,11 @@
         }
     }
 
-    .commento-dialog-body {
+    .comentario-dialog-body {
         padding: 16px;
     }
 
-    .commento-dialog-centered {
+    .comentario-dialog-centered {
         color: $gray-6;
         text-align: center;
         margin: 16px;
@@ -64,8 +64,8 @@
 
     // Arrow
 
-    .commento-dialog-arrow,
-    .commento-dialog-arrow::before {
+    .comentario-dialog-arrow,
+    .comentario-dialog-arrow::before {
         position: absolute;
         z-index: 101;
         width: 12px;
@@ -74,17 +74,17 @@
         border: 1px solid transparent;
     }
 
-    .commento-dialog-arrow {
+    .comentario-dialog-arrow {
         visibility: hidden;
     }
 
-    .commento-dialog-arrow::before {
+    .comentario-dialog-arrow::before {
         visibility: visible;
         content: '';
         transform: rotate(45deg);
     }
 
-    &[data-popper-placement^='top'] > .commento-dialog-arrow {
+    &[data-popper-placement^='top'] > .comentario-dialog-arrow {
         bottom: -6px;
         &::before {
             border-right-color: $gray-5;
@@ -92,7 +92,7 @@
         }
     }
 
-    &[data-popper-placement^='bottom'] > .commento-dialog-arrow {
+    &[data-popper-placement^='bottom'] > .comentario-dialog-arrow {
         top: -7px;
         &::before {
             background-color: $gray-3; // Match colour with the dialog header when the arrow is on the top
@@ -101,7 +101,7 @@
         }
     }
 
-    &[data-popper-placement^='left'] > .commento-dialog-arrow {
+    &[data-popper-placement^='left'] > .comentario-dialog-arrow {
         right: -6px;
         &::before {
             border-right-color: $gray-5;
@@ -109,7 +109,7 @@
         }
     }
 
-    &[data-popper-placement^='right'] > .commento-dialog-arrow {
+    &[data-popper-placement^='right'] > .comentario-dialog-arrow {
         left: -7px;
         &::before {
             border-left-color: $gray-5;

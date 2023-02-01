@@ -1,11 +1,11 @@
 @import "../colors-main";
 
-.commento-table-container {
+.comentario-table-container {
     max-width: 100%;
     overflow-x: auto;
 }
 
-.commento-table {
+.comentario-table {
     tr {
         &:not(:last-child) {
             border-bottom: 1px solid transparentize($gray-6, 0.5);

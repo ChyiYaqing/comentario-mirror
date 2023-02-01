@@ -1,19 +1,19 @@
 @import "../colors-main";
 
-.commento-login {
+.comentario-login {
     display: flex;
     justify-content: end;
     width: 100%;
 }
 
-.commento-profile-bar {
+.comentario-profile-bar {
     display: flex;
     justify-content: space-between;
     align-items: center;
     flex-wrap: wrap;
     width: 100%;
 
-    a.commento-profile-link {
+    a.comentario-profile-link {
         color: $gray-6 !important;
         margin: 6px 12px;
         font-size: 13px;
@@ -23,12 +23,12 @@
         }
     }
 
-    .commento-logged-in-as {
+    .comentario-logged-in-as {
         display: flex;
         align-items: center;
         padding: 12px 0;
 
-        .commento-name {
+        .comentario-name {
             color: $gray-8;
             font-weight: bold;
         }

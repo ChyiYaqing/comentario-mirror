@@ -1,6 +1,6 @@
 @import "../colors-main";
 
-.commento-footer {
+.comentario-footer {
     display: flex;
     justify-content: end;
     margin: 36px 0 12px 0;
@@ -10,11 +10,11 @@
     color: $gray-7;
     font-weight: 400;
 
-    .commento-logo-container {
+    .comentario-logo-container {
         display: flex;
         align-items: center;
 
-        .commento-logo-brand {
+        .comentario-logo-brand {
             font-weight: 700;
         }
     }

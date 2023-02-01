@@ -1,7 +1,7 @@
 @import "source-sans";
 @import "colors-main";
 
-.commento-root {
+.comentario-root {
     position: relative;
     padding: 0;
     width: 100%;
@@ -22,7 +22,7 @@
     @import "embed/dialog";
     @import "embed/footer";
 
-    .commento-backdrop {
+    .comentario-backdrop {
         position: absolute;
         left: 0;
         top: 0;
@@ -33,7 +33,7 @@
         backdrop-filter: blur(3px);
     }
 
-    .commento-error-box {
+    .comentario-error-box {
         width: 100%;
         border-radius: 4px;
         height: 32px;
@@ -42,7 +42,7 @@
         font-weight: 700;
     }
 
-    .commento-moderation-notice {
+    .comentario-moderation-notice {
         width: 100%;
         border-radius: 4px;
         height: 32px;
@@ -52,21 +52,21 @@
         margin-top: 16px;
     }
 
-    .commento-sort-policy-buttons-container {
+    .comentario-sort-policy-buttons-container {
         padding: 12px 0;
         font-weight: 400;
 
-        .commento-sort-policy-buttons {
+        .comentario-sort-policy-buttons {
             float: right;
 
-            .commento-sort-policy-button {
+            .comentario-sort-policy-button {
                 color: $gray-6 !important;
                 font-size: 13px;
                 padding: 0 7px;
                 cursor: pointer;
             }
 
-            .commento-sort-policy-button-selected {
+            .comentario-sort-policy-button-selected {
                 color: $blue-8 !important;
                 font-weight: bold;
             }
@@ -74,7 +74,7 @@
     }
 
 
-    &.commento-root-font {
+    &.comentario-root-font {
         * {font-family: 'Source Sans Pro', sans-serif;}
     }
 }

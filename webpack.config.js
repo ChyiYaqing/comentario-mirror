@@ -15,7 +15,7 @@ module.exports = {
         extensions: ['.tsx', '.ts', '.js'],
     },
     output: {
-        filename: 'commento.js',
+        filename: 'comentario.js',
         path: path.resolve(__dirname, 'build'),
     },
 };

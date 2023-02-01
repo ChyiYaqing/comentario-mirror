@@ -219,7 +219,7 @@ export class Wrap<T extends HTMLElement> {
      */
     classes(...classes: string[]): Wrap<T> {
         if (this.el) {
-            classes?.forEach(c => c && this.el.classList.add(`commento-${c}`));
+            classes?.forEach(c => c && this.el.classList.add(`comentario-${c}`));
         }
         return this;
     }
@@ -230,7 +230,7 @@ export class Wrap<T extends HTMLElement> {
      */
     noClasses(...classes: string[]): Wrap<T> {
         if (this.el) {
-            classes.forEach(c => c && this.el.classList.remove(`commento-${c}`));
+            classes.forEach(c => c && this.el.classList.remove(`comentario-${c}`));
         }
         return this;
     }

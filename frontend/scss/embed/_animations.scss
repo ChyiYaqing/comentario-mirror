@@ -1,32 +1,32 @@
 $animation-duration: 250ms;
 
-.commento-fade-in {
-    animation: commento-fade-in-animation $animation-duration ease-in-out forwards 1;
+.comentario-fade-in {
+    animation: comentario-fade-in-animation $animation-duration ease-in-out forwards 1;
 }
 
-.commento-fade-out {
-    animation: commento-fade-out-animation $animation-duration ease-in-out forwards 1;
+.comentario-fade-out {
+    animation: comentario-fade-out-animation $animation-duration ease-in-out forwards 1;
 }
 
-@keyframes commento-fade-in-animation {
+@keyframes comentario-fade-in-animation {
     from {opacity: 0;}
     to   {opacity: 1;}
 }
 
-@keyframes commento-fade-out-animation {
+@keyframes comentario-fade-out-animation {
     from {opacity: 1;}
     to   {opacity: 0;}
 }
 
-.commento-expand {
-    animation: commento-expand-animation $animation-duration ease-in-out forwards 1;
+.comentario-expand {
+    animation: comentario-expand-animation $animation-duration ease-in-out forwards 1;
 }
 
-.commento-collapse {
-    animation: commento-collapse-animation $animation-duration ease-in-out forwards 1;
+.comentario-collapse {
+    animation: comentario-collapse-animation $animation-duration ease-in-out forwards 1;
 }
 
-@keyframes commento-expand-animation {
+@keyframes comentario-expand-animation {
     from {
         opacity: 0;
         transform: translateY(-100%);
@@ -37,7 +37,7 @@ $animation-duration: 250ms;
     }
 }
 
-@keyframes commento-collapse-animation {
+@keyframes comentario-collapse-animation {
     from {
         opacity: 1;
         transform: translateY(0);

@@ -8,8 +8,8 @@
     // Opens the installation view.
     global.installationOpen = function () {
         const html =
-            `<script defer src="${global.cdn}/js/commento.js"></script>\n` +
-            '<div id="commento"></div>\n';
+            `<script defer src="${global.cdn}/js/comentario.js"></script>\n` +
+            '<div id="comentario"></div>\n';
         $('#code-div').text(html);
         $('pre code').each(function (i, block) {
             hljs.highlightBlock(block);
