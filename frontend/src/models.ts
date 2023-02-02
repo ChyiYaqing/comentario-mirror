@@ -4,12 +4,12 @@ export interface Comment {
     readonly commentHex:   string;
     readonly commenterHex: string;
     readonly parentHex:    string;
-    readonly state:        string;
     readonly creationDate: string;
-    readonly direction:    number;
-    readonly deleted:      boolean;
 
     // Mutable
+    state:     string;
+    deleted:   boolean;
+    direction: number;
     score:     number;
     markdown?: string;
     html?:     string;

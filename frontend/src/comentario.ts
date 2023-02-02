@@ -24,8 +24,7 @@ import { LoginDialog } from './login-dialog';
 import { SignupDialog } from './signup-dialog';
 import { UIToolkit } from './ui-toolkit';
 import { MarkdownHelp } from './markdown-help';
-import { ConfirmDialog } from './confirm-dialog';
-import { CommentCard, CommentCardMap, CommentRenderingContext, CommentTree } from './comment-card';
+import { CommentCard, CommentRenderingContext, CommentTree } from './comment-card';
 import { Utils } from './utils';
 
 const IDS = {
@@ -35,18 +34,9 @@ const IDS = {
     anonymousCheckbox: 'anonymous-checkbox-',
     sortPolicy:        'sort-policy-',
     card:              'comment-card-',
-    body:              'comment-body-',
     text:              'comment-text-',
-    score:             'comment-score-',
     edit:              'comment-edit-',
     reply:             'comment-reply-',
-    collapse:          'comment-collapse-',
-    upvote:            'comment-upvote-',
-    downvote:          'comment-downvote-',
-    approve:           'comment-approve-',
-    sticky:            'comment-sticky-',
-    children:          'comment-children-',
-    name:              'comment-name-',
 };
 
 export class Comentario {
@@ -93,10 +83,6 @@ export class Comentario {
 
     /** Map of commenters by their hsx ID. */
     private readonly commenters: CommenterMap = {};
-
-    /** Map of comment cards by comments' hex IDs. */
-    private cardMap: CommentCardMap;
-
     private requireIdentification = true;
     private isModerator = false;
     private isFrozen = false;
@@ -282,7 +268,7 @@ export class Comentario {
         this.sortPolicy = policy;
 
         // Re-render the sorted comment
-        this.commentsRender();
+        this.renderComments();
     }
 
     /**
@@ -300,21 +286,6 @@ export class Comentario {
                                 .classes('sort-policy-button', sp === this.sortPolicy && 'sort-policy-button-selected')
                                 .inner(sortingProps[sp].label)
                                 .click(() => this.sortPolicyApply(sp)))));
-    }
-
-    updateUpDownAction(upvote: Wrap<any>, downvote: Wrap<any>, commentHex: string, direction: number) {
-        let oldDir = 0, du = 1, dd = -1;
-        if (direction > 0) {
-            oldDir = 1;
-            du = 0;
-            dd = -1;
-        } else if (direction < 0) {
-            oldDir = -1;
-            du = 1;
-            dd = 0;
-        }
-        upvote  .unlisten().click(() => this.isAuthenticated ? this.vote(commentHex, oldDir, du) : this.showLoginDialog(null));
-        downvote.unlisten().click(() => this.isAuthenticated ? this.vote(commentHex, oldDir, dd) : this.showLoginDialog(null));
     }
 
     /**
@@ -393,33 +364,6 @@ export class Comentario {
             .click(() => this.replyShow(commentHex));
     }
 
-    commentCollapse(commentHex: string) {
-        Wrap.byId(IDS.children + commentHex).classes('hidden');
-        Wrap.byId(IDS.collapse + commentHex)
-            .noClasses('option-collapse')
-            .classes('option-uncollapse')
-            .attr({title: 'Expand children'})
-            .unlisten()
-            .click(() => this.commentUncollapse(commentHex));
-    }
-
-    commentUncollapse(commentHex: string) {
-        Wrap.byId(IDS.children + commentHex).noClasses('hidden');
-        Wrap.byId(IDS.collapse + commentHex)
-            .noClasses('option-uncollapse')
-            .classes('option-collapse')
-            .attr({title: 'Collapse children'})
-            .unlisten()
-            .click(() => this.commentCollapse(commentHex));
-    }
-
-    commentsRender() {
-        // Re-render the comment recursively and add them to the comments area
-        this.commentsArea
-            .html('')
-            .append(new CommentTree().render(this.makeCommentRenderingContext(), 'root'));
-    }
-
     dataTagsLoad() {
         for (const script of this.doc.getElementsByTagName('script')) {
             if (script.src.match(/\/js\/comentario\.js$/)) {
@@ -466,6 +410,16 @@ export class Comentario {
             // If we're requested to scroll to the comments in general
             this.root.scrollTo();
         }
+    }
+
+    /**
+     * (Re)render all comments recursively, adding them to the comments area.
+     * @private
+     */
+    private renderComments() {
+        this.commentsArea
+            .html('')
+            .append(new CommentTree().render(this.makeCommentRenderingContext(), 'root'));
     }
 
     /**
@@ -540,7 +494,7 @@ export class Comentario {
         );
 
         // Render the comments
-        this.commentsRender();
+        this.renderComments();
     }
 
     /**
@@ -998,82 +952,39 @@ export class Comentario {
     }
 
     /**
-     * Approve the comment with the given hex ID.
-     * @param commentHex Comment's hex ID.
+     * Approve the comment of the given card.
      * @private
      */
-    private async commentApprove(commentHex: string): Promise<void> {
+    private async commentApprove(card: CommentCard): Promise<void> {
         // Submit the approval to the backend
-        const r = await this.apiClient.post<ApiResponseBase>('comment/approve', {commenterToken: this.token, commentHex});
+        const r = await this.apiClient.post<ApiResponseBase>(
+            'comment/approve',
+            {commenterToken: this.token, commentHex: card.comment.commentHex});
         if (this.setError(!r.success && r.message)) {
             return;
         }
 
-        // Update the styling of the comment
-        Wrap.byId(IDS.card + commentHex).noClasses('dark-card');
-        Wrap.byId(IDS.name + commentHex).noClasses('flagged');
-        Wrap.byId(IDS.approve + commentHex).remove();
+        // Update the comment and card
+        card.comment.state = 'approved';
+        card.update();
     }
 
     /**
-     * Delete the comment with the given hex ID.
-     * @param btn Button element that triggered deletion (for popup positioning).
-     * @param commentHex Comment's hex ID.
+     * Delete the comment of the given card.
      * @private
      */
-    private async commentDelete(btn: Wrap<any>, commentHex: string): Promise<void> {
-        // Confirm deletion
-        if (!await ConfirmDialog.run(this.root, {ref: btn, placement: 'bottom-end'}, 'Are you sure you want to delete this comment?')) {
-            return;
-        }
-
+    private async commentDelete(card: CommentCard): Promise<void> {
         // Run deletion with the backend
-        const r = await this.apiClient.post<ApiResponseBase>('comment/delete', {commenterToken: this.token, commentHex});
+        const r = await this.apiClient.post<ApiResponseBase>(
+            'comment/delete',
+            {commenterToken: this.token, commentHex: card.comment.commentHex});
         if (this.setError(!r.success && r.message)) {
             return;
         }
 
-        // Update the comment's text
-        Wrap.byId(IDS.text + commentHex).inner('[deleted]');
-        // TODO also remove all option buttons
-    }
-
-    /**
-     * Vote (upvote, downvote, or undo vote) for the comment with the given hex ID.
-     * @param commentHex Comment's hex ID.
-     * @param oldDirection Previous vote direction.
-     * @param direction Requested vote direction.
-     * @private
-     */
-    private async vote(commentHex: string, oldDirection: number, direction: number): Promise<void> {
-        const upvote   = Wrap.byId(IDS.upvote   + commentHex).noClasses('upvoted')  .classes(direction > 0 && 'upvoted');
-        const downvote = Wrap.byId(IDS.downvote + commentHex).noClasses('downvoted').classes(direction < 0 && 'downvoted');
-        this.updateUpDownAction(upvote, downvote, commentHex, direction);
-
-        // Find the comment by its hex
-        const comment = this.commentsByHex[commentHex];
-        if (!comment) {
-            return Promise.reject();
-        }
-
-        // Update the score reading
-        const newScore = comment.score - oldDirection + direction;
-        const ws = Wrap.byId(IDS.score + commentHex).inner(Utils.score(newScore));
-
-        // Run the vote with the API
-        const r = await this.apiClient.post<ApiResponseBase>('comment/vote', {commenterToken: this.token, commentHex, direction});
-
-        // Undo the vote on failure
-        if (this.setError(!r.success && r.message)) {
-            upvote.noClasses('upvoted');
-            downvote.noClasses('downvoted');
-            ws.inner(Utils.score(comment.score));
-            this.updateUpDownAction(upvote, downvote, commentHex, oldDirection);
-            return Promise.reject();
-        }
-
-        // Succeeded
-        comment.score = newScore;
+        // Update the comment and card
+        card.comment.deleted = true;
+        card.update();
     }
 
     /**
@@ -1081,20 +992,38 @@ export class Comentario {
      * @private
      */
     private async commentSticky(card: CommentCard): Promise<void> {
-        // Remove the current sticky comment, if any
-        if (this.stickyCommentHex !== 'none' && this.stickyCommentHex in this.cardMap) {
-            this.cardMap[this.stickyCommentHex].sticky = false;
-        }
-
-        this.stickyCommentHex = this.stickyCommentHex === card.comment.commentHex ? 'none' : commentHex;
-
         // Save the page's sticky comment ID
+        this.stickyCommentHex = this.stickyCommentHex === card.comment.commentHex ? 'none' : card.comment.commentHex;
         await this.submitPageAttrs();
 
-        // Update the new comment's Sticky button
-        void Wrap.byId(IDS.sticky + commentHex)
-            .noClasses(this.stickyCommentHex === commentHex ? 'option-sticky' : 'option-unsticky')
-            .classes(this.stickyCommentHex === commentHex ? 'option-unsticky' : 'option-sticky');
+        // Reload the comments
+        return this.reload();
+    }
+
+    /**
+     * Vote (upvote, downvote, or undo vote) for the given comment.
+     * @private
+     */
+    private async commentVote(card: CommentCard, direction: -1 | 0 | 1): Promise<void> {
+        // Only registered users can vote
+        if (!this.isAuthenticated) {
+            return this.showLoginDialog(null);
+        }
+
+        // Run the vote with the API
+        const r = await this.apiClient.post<ApiResponseBase>(
+            'comment/vote',
+            {commenterToken: this.token, commentHex: card.comment.commentHex, direction});
+        if (this.setError(!r.success && r.message)) {
+            return Promise.reject();
+        }
+
+        // Update the vote and the score
+        card.comment.score += direction - card.comment.direction;
+        card.comment.direction = direction;
+
+        // Update the card
+        card.update();
     }
 
     /**
@@ -1129,14 +1058,12 @@ export class Comentario {
                     return m;
                 },
                 {} as CommentsGroupedByHex);
-
-            // Also recreate the card map
-            this.cardMap = {};
         }
 
         // Make a new context instance
         return {
             cdn:             this.cdn,
+            root:            this.root,
             parentMap,
             commenters:      this.commenters,
             selfHex:         this.selfHex,
@@ -1146,14 +1073,12 @@ export class Comentario {
             isModerator:     this.isModerator,
             hideDeleted:     this.hideDeleted,
             curTimeMs:       new Date().getTime(),
-            cardMap:         this.cardMap,
-            onApprove:       () => {}, // TODO
-            onDelete:        () => {}, // TODO
-            onEdit:          () => {}, // TODO
-            onReply:         () => {}, // TODO
+            onApprove:       card => this.commentApprove(card),
+            onDelete:        card => this.commentDelete(card),
+            onEdit:          () => { /*TODO*/ },
+            onReply:         () => { /*TODO*/ },
             onSticky:        card => this.commentSticky(card),
-            onVoteDown:      () => {}, // TODO
-            onVoteUp:        () => {}, // TODO
+            onVote:          (card, direction) => this.commentVote(card, direction),
         };
     }
 }

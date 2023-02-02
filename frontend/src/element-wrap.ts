@@ -45,13 +45,6 @@ export class Wrap<T extends HTMLElement> {
     }
 
     /**
-     * Whether the underlying element has children.
-     */
-    get hasChildren(): boolean {
-        return !!this.el?.childNodes?.length;
-    }
-
-    /**
      * Inner text of the underlying element.
      */
     get innerText(): string {
@@ -218,10 +211,7 @@ export class Wrap<T extends HTMLElement> {
      * @param classes Class(es) to add. Falsy values are ignored.
      */
     classes(...classes: string[]): Wrap<T> {
-        if (this.el) {
-            classes?.forEach(c => c && this.el.classList.add(`comentario-${c}`));
-        }
-        return this;
+        return this.setClasses(true, ...classes);
     }
 
     /**
@@ -229,8 +219,20 @@ export class Wrap<T extends HTMLElement> {
      * @param classes Class(es) to remove. Falsy values are ignored.
      */
     noClasses(...classes: string[]): Wrap<T> {
+        return this.setClasses(false, ...classes);
+    }
+
+    /**
+     * Adds or removes the specified classes to/from the underlying element.
+     * @param add Whether to add (true) or remove (false) the specified classes.
+     * @param classes Class(es) to add/remove. Falsy values are ignored.
+     */
+    setClasses(add: boolean, ...classes: string[]): Wrap<T> {
         if (this.el) {
-            classes.forEach(c => c && this.el.classList.remove(`comentario-${c}`));
+            classes
+                ?.filter(c => !!c)
+                .map(c => `comentario-${c}`)
+                .forEach(s => add ? this.el.classList.add(s) : this.el.classList.remove(s));
         }
         return this;
     }
@@ -257,9 +259,10 @@ export class Wrap<T extends HTMLElement> {
      * Bind a handler to the given event of the underlying element.
      * @param type Event type to bind the handler to.
      * @param handler Handler to bind.
+     * @param once Whether to remove the listener once it's invoked.
      */
-    on<E extends keyof HTMLElementEventMap>(type: E, handler: (target: Wrap<T>, ev: HTMLElementEventMap[E]) => void): Wrap<T> {
-        this.el?.addEventListener(type, e => handler(this, e));
+    on<E extends keyof HTMLElementEventMap>(type: E, handler: (target: Wrap<T>, ev: HTMLElementEventMap[E]) => void, once?: boolean): Wrap<T> {
+        this.el?.addEventListener(type, e => handler(this, e), {once});
         return this;
     }
 

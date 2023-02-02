@@ -62,17 +62,6 @@
         font-size: 12px;
     }
 
-    .comentario-score {
-        display: inline;
-        color: $gray-6;
-        font-size: 12px;
-        font-weight: 700;
-    }
-
-    .comentario-timeago::before {
-        content: "\00a0 \00a0 \00b7 \00a0 \00a0";
-    }
-
     .comentario-body {
         p {
             margin-top: 6px;

@@ -57,6 +57,19 @@
     transform: rotate(180deg);
 }
 
+.comentario-score {
+    display: inline;
+    color: $gray-4;
+    font-weight: 700;
+
+    &.comentario-score-upvoted {
+        color: $orange-7;
+    }
+    &.comentario-score-downvoted {
+        color: $indigo-6;
+    }
+}
+
 .comentario-upvoted {
     background: $orange-7;
 }

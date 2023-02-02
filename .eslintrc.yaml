@@ -64,5 +64,9 @@ overrides:
       - 'plugin:@typescript-eslint/eslint-recommended'
       - 'plugin:@typescript-eslint/recommended'
     rules:
+      '@typescript-eslint/no-use-before-define':
+        - warn
+        - ignoreTypeReferences: true
       '@typescript-eslint/no-explicit-any': off
+      no-use-before-define: off # Replaced by @typescript-eslint/no-use-before-define
       object-shorthand: error

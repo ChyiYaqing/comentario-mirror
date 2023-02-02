@@ -8,24 +8,6 @@ export class Utils {
         return [...s].reduce((sum, c) => sum + c.charCodeAt(0), 0) % 23;
     }
 
-
-    /**
-     * Return a string representing the given score value;
-     * @param score Score value.
-     */
-    static score(score: number) {
-        switch (score) {
-            case 0:
-                return '';
-
-            case 1:
-                return 'One point';
-
-            default:
-                return `${score} points`;
-        }
-    }
-
     /**
      * Return a string representation of a time difference in the "time ago" notation.
      * @param current Current time in milliseconds.

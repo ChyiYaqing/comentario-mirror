@@ -2,12 +2,10 @@ import { Wrap } from './element-wrap';
 import { Comment, CommenterMap, CommentsGroupedByHex, sortingProps, SortPolicy } from './models';
 import { UIToolkit } from './ui-toolkit';
 import { Utils } from './utils';
+import { ConfirmDialog } from './confirm-dialog';
 
-// eslint-disable-next-line no-use-before-define
-export type CommentCardMap = { [k: string]: CommentCard };
-
-// eslint-disable-next-line no-use-before-define
 export type CommentCardEventHandler = (c: CommentCard) => void;
+export type CommentCardVoteEventHandler = (c: CommentCard, direction: -1 | 0 | 1) => void;
 
 /**
  * Context for rendering comment trees.
@@ -15,6 +13,8 @@ export type CommentCardEventHandler = (c: CommentCard) => void;
 export interface CommentRenderingContext {
     /** Base CDN URL. */
     readonly cdn: string;
+    /** The root element (for displaying popups). */
+    readonly root: Wrap<any>;
     /** Map that links comment lists to their parent hex ID. */
     readonly parentMap: CommentsGroupedByHex;
     /** Map of known commenters. */
@@ -33,8 +33,6 @@ export interface CommentRenderingContext {
     readonly hideDeleted: boolean;
     /** Current time in milliseconds. */
     readonly curTimeMs: number;
-    /** Card map populated during rendering. */
-    readonly cardMap: CommentCardMap;
 
     // Events
     readonly onApprove: CommentCardEventHandler;
@@ -42,8 +40,7 @@ export interface CommentRenderingContext {
     readonly onEdit: CommentCardEventHandler;
     readonly onReply: CommentCardEventHandler;
     readonly onSticky: CommentCardEventHandler;
-    readonly onVoteDown: CommentCardEventHandler;
-    readonly onVoteUp: CommentCardEventHandler;
+    readonly onVote: CommentCardVoteEventHandler;
 }
 
 /**
@@ -71,7 +68,7 @@ export class CommentTree {
             // Filter out deleted comment, if they're to be hidden
             ?.filter(c => !ctx.hideDeleted || !c.deleted)
             // Render a comment card
-            // eslint-disable-next-line no-use-before-define
+            // eslint-disable-next-line @typescript-eslint/no-use-before-define
             .map(c => new CommentCard(c).render(ctx));
 
         // If there's any cards, return it wrapped in a .body
@@ -84,34 +81,27 @@ export class CommentTree {
  */
 export class CommentCard {
 
-    btnCollapse: Wrap<HTMLButtonElement>;
-    btnSticky: Wrap<HTMLButtonElement>;
-    children?: Wrap<HTMLDivElement>;
-    _collapsed = false;
+    private children?: Wrap<HTMLDivElement>;
+    private eCard?: Wrap<HTMLDivElement>;
+    private eName?: Wrap<HTMLDivElement | HTMLAnchorElement>;
+    private eScore?: Wrap<HTMLDivElement>;
+    private eText?: Wrap<HTMLDivElement>;
+    private btnApprove: Wrap<HTMLButtonElement>;
+    private btnCollapse: Wrap<HTMLButtonElement>;
+    private btnDelete: Wrap<HTMLButtonElement>;
+    private btnDownvote: Wrap<HTMLButtonElement>;
+    private btnUpvote: Wrap<HTMLButtonElement>;
+    private collapsed = false;
 
     constructor(
         readonly comment: Comment,
     ) {}
 
     /**
-     * Set the current card's children collapsed state.
+     * Current comment's flagged state.
      */
-    set collapsed(c: boolean) {
-        this._collapsed = c;
-
-        // Set children visibility
-        this.children?.classes(c && 'hidden').noClasses(!c && 'hidden');
-
-        // Set the button appearance
-        this.btnCollapse
-            ?.noClasses(c && 'option-collapse', !c && 'option-uncollapse')
-            .classes(!c && 'option-collapse', c && 'option-uncollapse');
-    }
-
-    set sticky(b: boolean) {
-        this.btnSticky
-            ?.noClasses(!b && 'option-unsticky', b && 'option-sticky')
-            .classes(b && 'option-unsticky', !b && 'option-sticky');
+    get flagged(): boolean {
+        return this.comment.state === 'flagged';
     }
 
     render(ctx: CommentRenderingContext): Wrap<HTMLDivElement> {
@@ -127,11 +117,12 @@ export class CommentCard {
         // Render children
         this.children = new CommentTree().render(ctx, hex);
 
-        // Store the card in the context
-        ctx.cardMap[hex] = this;
-
         // Render a card
-        return UIToolkit.div('card', ctx.isModerator && this.comment.state !== 'approved' && 'dark-card', `border-${idxColor}`)
+        this.eName = Wrap.new(commLink ? 'a' : 'div')
+            .inner(this.comment.deleted ? '[deleted]' : commenter.name)
+            .classes('name', commenter.isModerator && 'moderator')
+            .attr({href: commLink, rel: commLink && 'nofollow noopener noreferrer'});
+        this.eCard = UIToolkit.div('card', `border-${idxColor}`)
             .append(
                 // Card header
                 UIToolkit.div('header')
@@ -149,20 +140,11 @@ export class CommentCard {
                                     alt: '',
                                 }),
                         // Name
-                        Wrap.new(commLink ? 'a' : 'div')
-                            //TODO .id(IDS.name + hex)
-                            .inner(this.comment.deleted ? '[deleted]' : commenter.name)
-                            .classes(
-                                'name',
-                                commenter.isModerator && 'moderator',
-                                this.comment.state === 'flagged' && 'flagged')
-                            .attr({href: commLink, rel: commLink && 'nofollow noopener noreferrer'}),
+                        this.eName,
                         // Subtitle
                         UIToolkit.div('subtitle')
+                            // Time ago
                             .append(
-                                // Score
-                                UIToolkit.div('score')/* TODO .id(IDS.score + hex)*/.inner(Utils.score(this.comment.score)),
-                                // Time ago
                                 UIToolkit.div('timeago')
                                     .inner(Utils.timeAgo(ctx.curTimeMs, this.comment.creationMs))
                                     .attr({title: this.comment.creationDate.toString()}))),
@@ -171,8 +153,45 @@ export class CommentCard {
                     .append(
                         UIToolkit.div('body')
                             //TODO .id(IDS.body + hex)
-                            .append(UIToolkit.div()/*TODO .id(IDS.text + hex)*/.html(this.comment.html)),
+                            .append(this.eText = UIToolkit.div().html(this.comment.html)),
                         this.children));
+
+        // Update the card controls
+        this.update();
+        return this.eCard;
+    }
+
+    /**
+     * Update comment controls according to the related comment's properties.
+     */
+    update() {
+        const c = this.comment;
+        this.eScore
+            ?.inner(c.score.toString())
+            .setClasses(c.score > 0, 'score-upvoted').setClasses(c.score < 0, 'score-downvoted');
+        this.btnUpvote?.setClasses(c.direction > 0, 'upvoted');
+        this.btnDownvote?.setClasses(c.direction < 0, 'downvoted');
+
+        // Collapsed
+        this.btnCollapse
+            ?.attr({title: this.collapsed ? 'Expand children' : 'Collapse children'})
+            .setClasses(this.collapsed, 'option-uncollapse').setClasses(!this.collapsed, 'option-collapse');
+
+        // Deleted
+        if (c.deleted) {
+            this.eText?.inner('[deleted]');
+            // TODO also remove all option buttons, except Collapse, and (?) child comments
+        }
+
+        // Approved
+        const flagged = this.flagged;
+        this.eCard?.setClasses(flagged, 'dark-card');
+        this.eName?.setClasses(flagged, 'flagged');
+        if (!flagged && this.btnApprove) {
+            // Remove the Approve button if the comment is approved
+            this.btnApprove.remove();
+            this.btnApprove = null;
+        }
     }
 
     /**
@@ -181,40 +200,40 @@ export class CommentCard {
      */
     private commentOptionsBar(ctx: CommentRenderingContext, hex: string, parentHex: string): Wrap<HTMLDivElement> {
         const options = UIToolkit.div('options');
+        let btnSticky: Wrap<HTMLButtonElement>;
 
         // Sticky comment indicator (for non-moderator only)
         const isSticky = ctx.stickyHex === hex;
         if (!this.comment.deleted && !ctx.isModerator && isSticky) {
-            Wrap.new('button')
-                .classes('option-button', 'option-sticky')
-                .attr({title: 'This comment has been stickied', type: 'button', disabled: 'true'})
+            btnSticky = Wrap.new('button')
+                .classes('option-button')
+                .attr({type: 'button', disabled: 'true'})
                 .appendTo(options);
         }
 
         // Approve button
         if (ctx.isModerator && this.comment.state !== 'approved') {
-            Wrap.new('button')
-                // TODO .id(IDS.approve + hex)
+            this.btnApprove = Wrap.new('button')
                 .classes('option-button', 'option-approve')
                 .attr({type: 'button', title: 'Approve'})
-                // TODO .click(() => this.commentApprove(hex))
+                .click(() => ctx.onApprove(this))
                 .appendTo(options);
         }
 
-        // Remove button
+        // Delete button
         if (!this.comment.deleted && (ctx.isModerator || this.comment.commenterHex === ctx.selfHex)) {
-            Wrap.new('button')
+            this.btnDelete = Wrap.new('button')
                 .classes('option-button', 'option-remove')
                 .attr({type: 'button', title: 'Remove'})
-                // TODO .click(btn => this.commentDelete(btn, hex))
+                .click(btn => this.deleteComment(btn, ctx))
                 .appendTo(options);
         }
 
-        // Sticky toggle button (for moderator and a top-level comments only)
+        // Sticky toggle button (for moderator and top-level comments only)
         if (!this.comment.deleted && ctx.isModerator && parentHex === 'root') {
-            this.btnSticky = Wrap.new('button')
-                .classes('option-button', isSticky ? 'option-unsticky' : 'option-sticky')
-                .attr({title: isSticky ? 'Unsticky' : 'Sticky', type: 'button'})
+            btnSticky = Wrap.new('button')
+                .classes('option-button')
+                .attr({type: 'button'})
                 .click(() => ctx.onSticky(this))
                 .appendTo(options);
         }
@@ -228,7 +247,7 @@ export class CommentCard {
                 // TODO .click(() => this.startEditing(hex))
                 .appendTo(options);
 
-            // Someone other's comment: Reply button
+        // Someone other's comment: Reply button
         } else if (!this.comment.deleted) {
             Wrap.new('button')
                 // TODO .id(IDS.reply + hex)
@@ -238,31 +257,52 @@ export class CommentCard {
                 .appendTo(options);
         }
 
-        // Upvote / Downvote buttons
-        // TODO if (!this.comment.deleted) {
-        // TODO     this.updateUpDownAction(
-        // TODO         Wrap.new('button')
-        // TODO             .id(IDS.upvote + hex)
-        // TODO             .classes('option-button', 'option-upvote', ctx.isAuthenticated && this.comment.direction > 0 && 'upvoted')
-        // TODO             .attr({type: 'button', title: 'Upvote'})
-        // TODO             .appendTo(options),
-        // TODO         Wrap.new('button')
-        // TODO             .id(IDS.downvote + hex)
-        // TODO             .classes('option-button', 'option-downvote', ctx.isAuthenticated && this.comment.direction < 0 && 'downvoted')
-        // TODO             .attr({type: 'button', title: 'Downvote'})
-        // TODO             .appendTo(options),
-        // TODO         hex,
-        // TODO         this.comment.direction);
-        // TODO }
-
         // Collapse button, if there are any children
         if (this.children?.ok) {
             this.btnCollapse = Wrap.new('button')
-                .classes('option-button', 'option-collapse')
-                .attr({type: 'button', title: 'Collapse children'})
-                .click(() => this.collapsed = !this._collapsed)
+                .classes('option-button')
+                .attr({type: 'button'})
+                .click(() => this.collapse(!this.collapsed))
                 .appendTo(options);
         }
+
+        // Upvote / Downvote buttons and the score
+        if (!this.comment.deleted) {
+            options.append(
+                this.btnUpvote = Wrap.new('button')
+                    .classes('option-button', 'option-upvote')
+                    .attr({type: 'button', title: 'Upvote'})
+                    .click(() => ctx.onVote(this, this.comment.direction > 0 ? 0 : 1)),
+                this.eScore = UIToolkit.div('score').attr({title: 'Comment score'}),
+                this.btnDownvote = Wrap.new('button')
+                    .classes('option-button', 'option-downvote')
+                    .attr({type: 'button', title: 'Downvote'})
+                    .click(() => ctx.onVote(this, this.comment.direction < 0 ? 0 : -1)));
+        }
+
+        // Update the sticky button, if any (the sticky status can only be changed after a full tree reload)
+        btnSticky
+            ?.classes(isSticky ? 'option-unsticky' : 'option-sticky')
+            .attr({title: isSticky ? (ctx.isModerator ? 'Unsticky' : 'This comment has been stickied') : 'Sticky'});
         return options;
+    }
+
+    private async deleteComment(btn: Wrap<any>, ctx: CommentRenderingContext) {
+        // Confirm deletion
+        if (await ConfirmDialog.run(ctx.root, {ref: btn, placement: 'bottom-end'}, 'Are you sure you want to delete this comment?')) {
+            // Notify the callback
+            ctx.onDelete(this);
+        }
+    }
+
+    private collapse(c: boolean) {
+        if (this.children?.ok) {
+            this.collapsed = c;
+            this.children
+                .noClasses('fade-in', 'fade-out', !c && 'hidden')
+                .on('animationend', ch => ch.classes(c && 'hidden'), true)
+                .classes(c && 'fade-out', !c && 'fade-in');
+            this.update();
+        }
     }
 }
