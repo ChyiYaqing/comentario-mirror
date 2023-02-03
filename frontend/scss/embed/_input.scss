@@ -39,21 +39,24 @@ textarea {
     }
 }
 
-.comentario-textarea-form {
+.comentario-comment-editor {
+    width: 100%;
     display: flex;
     flex-direction: column;
 
-    .comentario-textarea-container {
+    .comentario-comment-editor-footer {
         display: flex;
-        justify-content: center;
-        align-items: center;
-    }
-
-    .comentario-textarea-form-footer {
-        display: flex;
+        flex-wrap: wrap;
         justify-content: space-between;
         align-items: center;
         margin-top: 12px;
+
+        .comentario-comment-editor-buttons {
+            display: flex;
+            justify-content: end;
+            flex-grow: 1;
+            flex-wrap: wrap;
+        }
     }
 }
 

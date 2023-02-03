@@ -1,15 +1,5 @@
 import { HttpClient } from './http-client';
-import {
-    Comment,
-    Commenter,
-    CommenterMap,
-    CommentMap,
-    CommentsGroupedByHex,
-    Email,
-    sortingProps,
-    SortPolicy,
-    StringBooleanMap,
-} from './models';
+import { Comment, CommenterMap, CommentsGroupedByHex, SortPolicy, StringBooleanMap } from './models';
 import {
     ApiCommentEditResponse,
     ApiCommenterLoginResponse,
@@ -20,24 +10,11 @@ import {
     ApiSelfResponse,
 } from './api';
 import { Wrap } from './element-wrap';
-import { LoginDialog } from './login-dialog';
-import { SignupDialog } from './signup-dialog';
 import { UIToolkit } from './ui-toolkit';
-import { MarkdownHelp } from './markdown-help';
 import { CommentCard, CommentRenderingContext, CommentTree } from './comment-card';
-import { Utils } from './utils';
-
-const IDS = {
-    loginBtn:          'login-btn',
-    superContainer:    'textarea-super-container-',
-    textarea:          'textarea-',
-    anonymousCheckbox: 'anonymous-checkbox-',
-    sortPolicy:        'sort-policy-',
-    card:              'comment-card-',
-    text:              'comment-text-',
-    edit:              'comment-edit-',
-    reply:             'comment-reply-',
-};
+import { CommentEditor } from './comment-editor';
+import { ProfileBar } from './profile-bar';
+import { SortBar } from './sort-bar';
 
 export class Comentario {
 
@@ -58,7 +35,10 @@ export class Comentario {
     private root: Wrap<any>;
 
     /** Error message panel (only shown when needed). */
-    private error: Wrap<HTMLDivElement>;
+    private error?: Wrap<HTMLDivElement>;
+
+    /** User profile toolbar. */
+    private profileBar: ProfileBar;
 
     /** Moderator tools panel. */
     private modTools: Wrap<HTMLDivElement>;
@@ -67,35 +47,39 @@ export class Comentario {
     /** Main area panel. */
     private mainArea: Wrap<HTMLDivElement>;
 
+    /** Container for hosting the Add comment editor. */
+    private addCommentHost: Wrap<HTMLDivElement>;
+
+    /** Currently active comment editor instance. */
+    private editor?: CommentEditor;
+
     /** Comments panel inside the mainArea. */
     private commentsArea: Wrap<HTMLDivElement>;
+
+    /** Map of commenters by their hsx ID. */
+    private readonly commenters: CommenterMap = {};
+
+    /** Map of loaded CSS stylesheet URLs. */
+    private readonly loadedCss: StringBooleanMap = {};
+
+    /** Map of comments, grouped by their parentHex. */
+    private parentHexMap?: CommentsGroupedByHex;
 
     private pageId = parent.location.pathname;
     private cssOverride: string;
     private noFonts = false;
     private hideDeleted = false;
     private autoInit = true;
-    private isAuthenticated = false;
-    private comments: Comment[] = [];
-
-    /** Loaded comment objects indexed by commentHex. */
-    private commentsByHex: CommentMap = {};
-
-    /** Map of commenters by their hsx ID. */
-    private readonly commenters: CommenterMap = {};
     private requireIdentification = true;
+    private isAuthenticated = false;
     private isModerator = false;
     private isFrozen = false;
-    private chosenAnonymous = false;
     private isLocked = false;
     private stickyCommentHex = 'none';
-    private shownReply: StringBooleanMap;
-    private readonly shownEdit: StringBooleanMap = {};
-    private configuredOauths: StringBooleanMap = {};
+    private authMethods: StringBooleanMap = {};
     private anonymousOnly = false;
     private sortPolicy: SortPolicy = 'score-desc';
-    private selfHex: string = undefined;
-    private readonly loadedCss: StringBooleanMap = {};
+    private selfHex?: string;
     private initialised = false;
 
     constructor(
@@ -134,8 +118,6 @@ export class Comentario {
             return this.reject(`No root element with id='${this.rootId}' found. Check your configuration and HTML.`);
         }
 
-        this.root.classes('root', !this.noFonts && 'root-font');
-
         // Begin by loading the stylesheet
         await this.cssLoad(`${this.cdn}/css/comentario.css`);
 
@@ -143,6 +125,33 @@ export class Comentario {
         if (this.cssOverride) {
             await this.cssLoad(this.cssOverride);
         }
+
+        // Set up the root content
+        this.root
+            .classes('root', !this.noFonts && 'root-font')
+            .append(
+                // Profile bar
+                this.profileBar = new ProfileBar(
+                    this.cdn,
+                    this.origin,
+                    this.root,
+                    (email, password) => this.authenticateLocally(email, password),
+                    idp => this.openOAuthPopup(idp),
+                    (name, website, email, password) => this.signup(name, website, email, password)),
+                // Main area
+                this.mainArea = UIToolkit.div('main-area'),
+                // Footer
+                UIToolkit.div('footer')
+                    .append(
+                        UIToolkit.div('logo-container')
+                            .append(
+                                Wrap.new('a')
+                                    .attr({href: 'https://comentario.app/', target: '_blank'})
+                                    .html('Powered by ')
+                                    .append(Wrap.new('span').classes('logo-brand').inner('Comentario')))));
+
+        // Load information about ourselves
+        await this.getAuthStatus();
 
         // Load the UI
         await this.reload();
@@ -221,150 +230,23 @@ export class Comentario {
     }
 
     /**
-     * Create a new editor for editing comment text.
-     * @param commentHex Comment's hex ID.
-     * @param isEdit Whether it's adding a new comment (false) or editing an existing one (true)
+     * Reload the app UI.
      */
-    textareaCreate(commentHex: string, isEdit: boolean): Wrap<HTMLFormElement> {
-        // "Comment anonymously" checkbox
-        let anonContainer: Wrap<any>;
-        if (!this.requireIdentification && !isEdit) {
-            const anonCheckbox = Wrap.new('input').id(IDS.anonymousCheckbox + commentHex).attr({type: 'checkbox'});
-            if (this.anonymousOnly) {
-                anonCheckbox.checked(true).attr({disabled: 'true'});
-            }
-            anonContainer = UIToolkit.div('round-check', 'anonymous-checkbox-container')
-                .append(
-                    anonCheckbox,
-                    Wrap.new('label').attr({for: Wrap.idPrefix + IDS.anonymousCheckbox + commentHex}).inner('Comment anonymously'));
-        }
+    private async reload() {
+        // Fetch page data and comments
+        await this.loadPageData();
 
-        // Instantiate and set up a new form
-        return UIToolkit.form(() => isEdit ? this.submitCommentEdits(commentHex) : this.submitNewComment(commentHex))
-            .id(IDS.superContainer + commentHex)
-            .classes('textarea-form')
-            .append(
-                // Textarea in a container
-                UIToolkit.div('textarea-container')
-                    .append(UIToolkit.textarea('Add a comment', true, true).id(IDS.textarea + commentHex)),
-                // Textarea footer
-                UIToolkit.div('textarea-form-footer')
-                    .append(
-                        UIToolkit.div()
-                            .append(
-                                // Anonymous checkbox, if any
-                                anonContainer,
-                                // Markdown help button
-                                UIToolkit.button(
-                                    '<b>M⬇</b>&nbsp;Markdown',
-                                    btn => MarkdownHelp.run(this.root, {ref: btn, placement: 'bottom-start'}))),
-                        // Submit button
-                        UIToolkit.submit(isEdit ? 'Save Changes' : 'Add Comment', false)));
-    }
+        // Update the main area
+        this.setupMainArea();
 
-    sortPolicyApply(policy: SortPolicy) {
-        Wrap.byId(IDS.sortPolicy + this.sortPolicy).noClasses('sort-policy-button-selected');
-        Wrap.byId(IDS.sortPolicy + policy).classes('sort-policy-button-selected');
-        this.sortPolicy = policy;
-
-        // Re-render the sorted comment
+        // Render the comments
         this.renderComments();
     }
 
     /**
-     * Create and return a toolbar with sort policy buttons.
-     * @private
+     * Read page settings from the data-* tags on the comentario script node.
      */
-    private sortPolicyBar(): Wrap<HTMLDivElement> {
-        return UIToolkit.div('sort-policy-buttons-container')
-            .append(
-                UIToolkit.div('sort-policy-buttons')
-                    .append(
-                        ...Object.keys(sortingProps).map((sp: SortPolicy) =>
-                            Wrap.new('a')
-                                .id(IDS.sortPolicy + sp)
-                                .classes('sort-policy-button', sp === this.sortPolicy && 'sort-policy-button-selected')
-                                .inner(sortingProps[sp].label)
-                                .click(() => this.sortPolicyApply(sp)))));
-    }
-
-    /**
-     * Create a new editor for editing a comment with the given hex ID.
-     * @param commentHex Comment's hex ID.
-     */
-    startEditing(commentHex: string) {
-        if (this.shownEdit[commentHex]) {
-            return;
-        }
-
-        this.shownEdit[commentHex] = true;
-        Wrap.byId(IDS.text + commentHex).replaceWith(this.textareaCreate(commentHex, true));
-        Wrap.byId(IDS.textarea + commentHex).value(this.commentsByHex[commentHex].markdown);
-
-        // Turn the Edit button into a Cancel edit button
-        Wrap.byId(IDS.edit + commentHex)
-            .noClasses('option-edit')
-            .classes('option-cancel')
-            .attr({title: 'Cancel edit'})
-            .unlisten()
-            .click(() => this.stopEditing(commentHex));
-    }
-
-    /**
-     * Close the created editor for editing a comment with the given hex ID, cancelling the edits.
-     * @param commentHex Comment's hex ID.
-     */
-    stopEditing(commentHex: string) {
-        delete this.shownEdit[commentHex];
-        Wrap.byId(IDS.superContainer + commentHex)
-            .html(this.commentsByHex[commentHex].html)
-            .id(IDS.text + commentHex);
-
-        // Turn the Cancel edit button back into the Edit button
-        Wrap.byId(IDS.edit + commentHex)
-            .noClasses('option-cancel')
-            .classes('option-edit')
-            .attr({title: 'Edit comment'})
-            .unlisten()
-            .click(() => this.startEditing(commentHex));
-    }
-
-    /**
-     * Create a new editor for editing a reply to the comment with the given hex ID.
-     * @param commentHex Comment's hex ID.
-     */
-    replyShow(commentHex: string) {
-        // Don't bother if there's an editor already
-        if (this.shownReply[commentHex]) {
-            return;
-        }
-
-        this.shownReply[commentHex] = true;
-        this.textareaCreate(commentHex, false).insertAfter(Wrap.byId(IDS.text + commentHex));
-        Wrap.byId(IDS.reply + commentHex)
-            .noClasses('option-reply')
-            .classes('option-cancel')
-            .attr({title: 'Cancel reply'})
-            .unlisten()
-            .click(() => this.replyCollapse(commentHex));
-    }
-
-    /**
-     * Close the created editor for editing a reply to the comment with the given hex ID.
-     * @param commentHex Comment's hex ID.
-     */
-    replyCollapse(commentHex: string) {
-        delete this.shownReply[commentHex];
-        Wrap.byId(IDS.superContainer + commentHex).remove();
-        Wrap.byId(IDS.reply + commentHex)
-            .noClasses('option-cancel')
-            .classes('option-reply')
-            .attr({title: 'Reply to this comment'})
-            .unlisten()
-            .click(() => this.replyShow(commentHex));
-    }
-
-    dataTagsLoad() {
+    private dataTagsLoad() {
         for (const script of this.doc.getElementsByTagName('script')) {
             if (script.src.match(/\/js\/comentario\.js$/)) {
                 const ws = new Wrap(script);
@@ -395,7 +277,7 @@ export class Comentario {
         // If the hash starts with a valid hex ID
         if (h?.startsWith('#comentario-')) {
             const id = h.substring(10);
-            Wrap.byId(IDS.card + id)
+            Wrap.byId(`card-${id}`)
                 .classes('highlighted-card')
                 .scrollTo()
                 .else(() => {
@@ -419,23 +301,35 @@ export class Comentario {
     private renderComments() {
         this.commentsArea
             .html('')
-            .append(new CommentTree().render(this.makeCommentRenderingContext(), 'root'));
+            .append(...new CommentTree().render(this.makeCommentRenderingContext(), 'root'));
     }
 
     /**
      * Set and display (message is given) or clean (message is falsy) an error message in the error panel.
      * @param message Message to set. If falsy, the error panel gets removed.
-     * @return Whether there was a (truthy) error.
      * @private
      */
-    private setError(message?: string): boolean {
+    private setError(message?: string) {
         if (message) {
-            this.error = (this.error || UIToolkit.div('error-box').prependTo(this.root)).inner(message);
-            return true;
+            if (!this.error) {
+                this.root.prepend(this.error = UIToolkit.div('error-box'));
+            }
+            this.error.inner(message);
+        } else {
+            this.error?.remove();
+            this.error = undefined;
         }
-        this.error?.remove();
-        this.error = undefined;
-        return false;
+    }
+
+    /**
+     * Check the provided response for error status and set the error message if it is, otherwise remove the error panel.
+     * @param response Response to check.
+     * @return Whether there was an error.
+     * @private
+     */
+    private checkError(response: ApiResponseBase): boolean {
+        this.setError(!response.success && response.message);
+        return !response.success;
     }
 
     /**
@@ -445,8 +339,10 @@ export class Comentario {
      */
     private async getAuthStatus(): Promise<void> {
         this.isAuthenticated = false;
+        this.isModerator = false;
+        this.selfHex = undefined;
 
-        // If we're already (knowingly) anonymous
+        // If we're not already (knowingly) anonymous
         const token = this.token;
         if (token !== 'anonymous') {
             // Fetch the status from the backend
@@ -455,172 +351,208 @@ export class Comentario {
                 if (!r.success) {
                     this.token = 'anonymous';
                 } else {
-                    this.setupCurUserProfile(r.commenter, r.email);
+                    this.profileBar.authenticated(r.commenter, r.email, token, () => this.logout());
                     this.isAuthenticated = true;
+
+                    // Store ourselves' data as commenter data
+                    this.commenters[r.commenter.commenterHex] = r.commenter;
+                    this.selfHex = r.commenter.commenterHex;
                 }
             } catch (e) {
                 // On any error consider the user unauthenticated
                 console.error(e);
             }
         }
-    }
 
-    /**
-     * Reload the app UI.
-     */
-    private async reload() {
-        // Remove any content from the root
-        this.root.html('');
-        this.modTools = null;
-        this.modToolsLockBtn = null;
-        this.mainArea = null;
-        this.commentsArea = null;
-        this.shownReply = {};
-
-        // Load information about ourselves
-        await this.getAuthStatus();
-
-        // Fetch page data and comments
-        await this.loadPageData();
-
-        // Create the layout
-        this.root.append(
-            // Moderator toolbar
-            this.isModerator && this.createModToolsPanel(),
-            // Main area
-            this.createMainArea(),
-            // Footer
-            this.createFooter(),
-        );
-
-        // Render the comments
-        this.renderComments();
-    }
-
-    /**
-     * Create and return a moderator toolbar element.
-     * @private
-     */
-    private createModToolsPanel(): Wrap<HTMLDivElement> {
-        this.modToolsLockBtn = UIToolkit.button(
-            this.isLocked ? 'Unlock thread' : 'Lock thread',
-            () => this.threadLockToggle());
-        this.modTools = UIToolkit.div('mod-tools')
-            .append(Wrap.new('span').classes('mod-tools-title').inner('Moderator tools'), this.modToolsLockBtn)
-            .appendTo(this.root);
-        return this.modTools;
+        // Clean up the profile bar in the case the user isn't authenticated (known auth methods will be set up later)
+        if (!this.isAuthenticated) {
+            this.profileBar.notAuthenticated();
+        }
     }
 
     /**
      * Create and return a main area element.
      * @private
      */
-    private createMainArea(): Wrap<HTMLDivElement> {
-        this.mainArea = UIToolkit.div('main-area');
+    private setupMainArea() {
+        // Clean up everything from the main area
+        this.mainArea.html('');
+        this.modTools = null;
+        this.modToolsLockBtn = null;
+        this.commentsArea = null;
 
-        // If there's any auth provider configured
-        if (Object.values(this.configuredOauths).some(b => b)) {
-            // If not authenticated, add a Login button
-            if (!this.isAuthenticated) {
-                UIToolkit.div('login')
-                    .append(UIToolkit.button('Login', () => this.showLoginDialog(null), 'fw-bold').id(IDS.loginBtn))
-                    .appendTo(this.mainArea);
-            }
-
-        } else if (!this.requireIdentification) {
-            // No auth provider available, but we allow anonymous commenting
-            this.anonymousOnly = true;
+        // Add a moderator toolbar, in necessary
+        if (this.isModerator) {
+            this.mainArea.append(
+                this.modTools = UIToolkit.div('mod-tools')
+                    .append(
+                        // Title
+                        Wrap.new('span').classes('mod-tools-title').inner('Moderator tools'),
+                        // Lock/Unlock button
+                        this.modToolsLockBtn = UIToolkit.button(
+                            this.isLocked ? 'Unlock thread' : 'Lock thread',
+                            () => this.threadLockToggle())));
         }
 
         // If commenting is locked/frozen, add a corresponding message
         if (this.isLocked || this.isFrozen) {
-            if (this.isAuthenticated || this.chosenAnonymous) {
-                this.mainArea.append(UIToolkit.div('moderation-notice').inner('This thread is locked. You cannot add new comments.'));
-            }
+            this.mainArea.append(UIToolkit.div('moderation-notice').inner('This thread is locked. You cannot add new comments.'));
 
-        // Otherwise, add a root editor (for creating a new comment)
+        // Otherwise, add a comment editor host, which will get an editor for creating a new comment
         } else {
-            this.mainArea.append(this.textareaCreate('root', false));
+            this.mainArea.append(
+                this.addCommentHost = UIToolkit.div('add-comment-host')
+                    .attr({tabindex: '0'})
+                    .on('focus', () => this.addComment(null)));
         }
 
         // If there's any comment, add sort buttons
-        if (this.comments.length) {
-            this.mainArea.append(this.sortPolicyBar());
+        if (this.parentHexMap) {
+            this.mainArea.append(new SortBar(
+                sp => {
+                    this.sortPolicy = sp;
+                    // Re-render comments using the new sort
+                    this.renderComments();
+                },
+                this.sortPolicy));
         }
 
         // Create a panel for comments
         this.commentsArea = UIToolkit.div('comments').appendTo(this.mainArea);
-        return this.mainArea;
     }
 
     /**
-     * Create and return a footer panel.
+     * Start editing new comment.
+     * @param parentCard Parent card for adding a reply to. If falsy, a top-level comment is being added
      * @private
      */
-    private createFooter(): Wrap<HTMLDivElement> {
-        return UIToolkit.div('footer')
-            .append(
-                UIToolkit.div('logo-container')
-                    .append(
-                        Wrap.new('a')
-                            .attr({href: 'https://comentario.app/', target: '_blank'})
-                            .html('Powered by ')
-                            .append(Wrap.new('span').classes('logo-brand').inner('Comentario'))));
+    private addComment(parentCard: CommentCard) {
+        // Kill any existing editor
+        this.cancelCommentEdits();
+
+        // Create a new editor
+        this.editor = new CommentEditor(
+            parentCard?.children || this.addCommentHost,
+            this.root,
+            false,
+            '',
+            this.requireIdentification,
+            this.anonymousOnly,
+            () => this.cancelCommentEdits(),
+            editor => this.submitNewComment(parentCard, editor.markdown, editor.anonymous));
     }
 
     /**
-     * Only called when there's an authenticated user. Sets up the controls related to the current user.
-     * @param commenter Currently authenticated user.
-     * @param email Email of the commenter.
+     * Start editing existing comment.
+     * @param card Card hosting the comment.
      * @private
      */
-    private setupCurUserProfile(commenter: Commenter, email: Email) {
-        this.commenters[commenter.commenterHex] = commenter;
-        this.selfHex = commenter.commenterHex;
+    private editComment(card: CommentCard) {
+        // Kill any existing editor
+        this.cancelCommentEdits();
 
-        // Create an avatar element
-        const idxColor = Utils.colourIndex(`${commenter.commenterHex}-${commenter.name}`);
-        const avatar = commenter.photo === 'undefined' ?
-            UIToolkit.div('avatar', `bg-${idxColor}`).html(commenter.name[0].toUpperCase()) :
-            Wrap.new('img')
-                .classes('avatar-img')
-                .attr({src: `${this.cdn}/api/commenter/photo?commenterHex=${commenter.commenterHex}`, loading: 'lazy', alt: ''});
+        // Create a new editor
+        this.editor = new CommentEditor(
+            card,
+            this.root,
+            true,
+            card.comment.markdown,
+            true,
+            false,
+            () => this.cancelCommentEdits(),
+            editor => this.submitCommentEdits(card, editor.markdown));
+    }
 
-        // Create a profile bar
-        const link = !commenter.link || commenter.link === 'undefined' ? undefined : commenter.link;
-        UIToolkit.div('profile-bar')
-            .append(
-                // Commenter avatar and name
-                UIToolkit.div('logged-in-as')
-                    .append(
-                        // Avatar
-                        avatar,
-                        // Name and link
-                        Wrap.new(link ? 'a' : 'div')
-                            .classes('name')
-                            .inner(commenter.name)
-                            .attr({href: link, rel: link && 'nofollow noopener noreferrer'})),
-                // Buttons on the right
-                UIToolkit.div()
-                    .append(
-                        // If it's a local user, add a Profile link
-                        commenter.provider === 'commento' &&
-                            Wrap.new('a')
-                                .classes('profile-link')
-                                .inner('Profile')
-                                .attr({href: `${this.origin}/profile?commenterToken=${this.token}`, target: '_blank'}),
-                        // Notifications link
-                        Wrap.new('a')
-                            .classes('profile-link')
-                            .inner('Notifications')
-                            .attr({href: `${this.origin}/unsubscribe?unsubscribeSecretHex=${email.unsubscribeSecretHex}`, target: '_blank'}),
-                        // Logout link
-                        Wrap.new('a')
-                            .classes('profile-link')
-                            .inner('Logout')
-                            .attr({href: ''})
-                            .click((_, e) => this.logout(e))))
-            .prependTo(this.root);
+    /**
+     * Submit a new comment to the backend, authenticating the user before if necessary.
+     * @param parentCard Parent card for adding a reply to. If falsy, a top-level comment is being added
+     * @param markdown Markdown text entered by the user.
+     * @param anonymous Whether the user chose to comment anonymously.
+     * @private
+     */
+    private async submitNewComment(parentCard: CommentCard, markdown: string, anonymous: boolean): Promise<void> {
+        // Authenticate the user, if required
+        const auth = this.requireIdentification || !anonymous;
+        if (!this.isAuthenticated && auth) {
+            await this.profileBar.loginUser();
+        }
+
+        // If we can proceed: user logged in or that wasn't required
+        if (this.isAuthenticated || !auth) {
+            // Submit the comment to the backend
+            const commenterToken = this.isAuthenticated ? this.token : 'anonymous';
+            const r = await this.apiClient.post<ApiCommentNewResponse>('comment/new', {
+                commenterToken,
+                domain:    parent.location.host,
+                path:      this.pageId,
+                parentHex: parentCard?.comment.commentHex || 'root',
+                markdown,
+            });
+            if (this.checkError(r)) {
+                return;
+            }
+
+            // Add a new comment card
+            const comment: Comment = {
+                commentHex:   r.commentHex,
+                commenterHex: this.selfHex === undefined || commenterToken === 'anonymous' ? 'anonymous' : this.selfHex,
+                markdown,
+                html:         r.html,
+                parentHex:    'root',
+                score:        0,
+                state:        r.state,
+                direction:    0,
+                creationDate: new Date().toISOString(),
+                deleted:      false,
+            };
+            const newCard = new CommentCard(comment, this.makeCommentRenderingContext({}));
+
+            // Adding a reply
+            if (parentCard) {
+                parentCard.prependCard(newCard);
+
+            } else {
+                // Adding a top-level comment
+                this.commentsArea.prepend(newCard);
+            }
+
+            // Remove the editor
+            this.cancelCommentEdits();
+        }
+    }
+
+    /**
+     * Submit the entered comment markdown to the backend for saving.
+     * @param card Card whose comment is being updated.
+     * @param markdown Markdown text entered by the user.
+     */
+    private async submitCommentEdits(card: CommentCard, markdown: string): Promise<void> {
+        // Submit the edit to the backend
+        const r = await this.apiClient.post<ApiCommentEditResponse>(
+            'comment/edit',
+            {commenterToken: this.token, commentHex: card.comment.commentHex, markdown});
+        if (this.checkError(r)) {
+            return;
+        }
+
+        // Update the locally stored comment's data
+        card.comment.markdown = markdown;
+        card.comment.html = r.html;
+
+        // Update the state of the card and its text
+        card.update();
+        card.updateText();
+
+        // Remove the editor
+        this.cancelCommentEdits();
+    }
+
+    /**
+     * Stop editing comment and remove any existing editor.
+     * @private
+     */
+    private cancelCommentEdits() {
+        this.editor?.remove();
     }
 
     /**
@@ -629,98 +561,47 @@ export class Comentario {
      * @param website User's website.
      * @param email User's email.
      * @param password User's password.
-     * @param commentHex Optional comment hex ID to add.
      */
-    private async signup(name: string, website: string, email: string, password: string, commentHex: string): Promise<void> {
+    private async signup(name: string, website: string, email: string, password: string): Promise<void> {
         // Sign the user up
         const r = await this.apiClient.post<ApiResponseBase>('commenter/new', {name, website, email, password});
-        if (this.setError(!r.success && r.message)) {
+        if (this.checkError(r)) {
             return Promise.reject();
         }
 
-        // Log the user in, submitting their comment (if any)
-        return this.authenticateLocally(email, password, commentHex);
+        // Log the user in
+        return this.authenticateLocally(email, password);
     }
 
     /**
      * Authenticate the user using local authentication (email and password).
      * @param email User's email.
      * @param password User's password.
-     * @param commentHex Optional comment hex ID to add.
      */
-    private async authenticateLocally(email: string, password: string, commentHex: string): Promise<void> {
+    private async authenticateLocally(email: string, password: string): Promise<void> {
         // Log the user in
         const r = await this.apiClient.post<ApiCommenterLoginResponse>('commenter/login', {email, password});
-        if (this.setError(!r.success && r.message)) {
+        if (this.checkError(r)) {
             return Promise.reject();
         }
 
         // Store the authenticated token in a cookie
         this.token = r.commenterToken;
 
-        // Submit a new comment, if needed
-        if (commentHex) {
-            await this.commentNew(commentHex, r.commenterToken, false);
-        }
-
-        // Reload the whole bunch
-        return this.reload();
+        // Refresh the auth status
+        return this.getAuthStatus();
     }
 
     /**
-     * Show the signup dialog.
-     * @param commentHex Optional comment hex ID to add upon signup.
-     * @private
-     */
-    private async showSignupDialog(commentHex: string): Promise<void> {
-        const dlg = await SignupDialog.run(
-            this.root,
-            {ref: Wrap.byId(IDS.loginBtn), placement: 'bottom-end'});
-        return dlg.confirmed && await this.signup(dlg.name, dlg.website, dlg.email, dlg.password, commentHex);
-    }
-
-    /**
-     * Show the login dialog.
-     * @param commentHex Optional comment hex ID to add upon login.
-     * @private
-     */
-    private async showLoginDialog(commentHex: string): Promise<void> {
-        const dlg = await LoginDialog.run(
-            this.root,
-            {ref: Wrap.byId(IDS.loginBtn), placement: 'bottom-end'},
-            this.configuredOauths,
-            this.origin);
-        if (dlg.confirmed) {
-            switch (dlg.navigateTo) {
-                case null:
-                    // Local auth
-                    return await this.authenticateLocally(dlg.email, dlg.password, commentHex);
-
-                case 'forgot':
-                    // Already navigated to the Forgot password page in a new tab
-                    return;
-
-                case 'signup':
-                    // Switch to signup
-                    return await this.showSignupDialog(commentHex);
-
-                default:
-                    // External auth
-                    return await this.openOAuthPopup(dlg.navigateTo, commentHex);
-            }
-        }
-    }
-
-    /**
-     * Open a new browser popup window for authenticating with the given identity provider.
+     * Open a new browser popup window for authenticating with the given identity provider and return a promise that
+     * resolves as soon as the user is authenticated, or rejects when the authentication has been unsuccessful.
      * @param idp Identity provider to initiate authentication with.
-     * @param commentHex Optional hex ID of the comment to add upon successful authentication.
      * @private
      */
-    private async openOAuthPopup(idp: string, commentHex: string): Promise<void> {
+    private async openOAuthPopup(idp: string): Promise<void> {
         // Request a token
         const r = await this.apiClient.get<ApiCommenterTokenNewResponse>('commenter/token/new');
-        if (this.setError(!r.success && r.message)) {
+        if (this.checkError(r)) {
             return this.reject(r.message);
         }
 
@@ -746,28 +627,16 @@ export class Comentario {
         });
 
         // Refresh the auth status
-        await this.getAuthStatus();
-
-        // Submit the pending comment, if there was one
-        if (this.isAuthenticated && commentHex) {
-            await this.commentNew(commentHex, this.token, false);
-        }
-
-        // Reload the whole bunch
-        return this.reload();
+        return this.getAuthStatus();
     }
 
     /**
      * Log the current user out.
-     * @param e Click event that triggered the logout.
      * @private
      */
-    private logout(e: MouseEvent): Promise<void> {
-        e.preventDefault();
+    private async logout(): Promise<void> {
         this.token = 'anonymous';
-        this.isAuthenticated = false;
-        this.isModerator = false;
-        this.selfHex = undefined;
+        await this.getAuthStatus();
         return this.reload();
     }
 
@@ -776,18 +645,15 @@ export class Comentario {
      * @private
      */
     private async loadPageData(): Promise<void> {
-        // Retrieve a comment list from the backend
+        // Retrieve page settings and a comment list from the backend
         const r = await this.apiClient.post<ApiCommentListResponse>('comment/list', {
             commenterToken: this.token,
             domain:         parent.location.host,
             path:           this.pageId,
         });
-        if (this.setError(!r.success && r.message)) {
+        if (this.checkError(r)) {
             return;
         }
-
-        // Store all known commenters
-        Object.assign(this.commenters, r.commenters);
 
         // Store page- and backend-related properties
         this.requireIdentification = r.requireIdentification;
@@ -795,148 +661,32 @@ export class Comentario {
         this.isFrozen              = r.isFrozen;
         this.isLocked              = r.attributes.isLocked;
         this.stickyCommentHex      = r.attributes.stickyCommentHex;
-        this.configuredOauths      = r.configuredOauths;
+        this.authMethods           = r.configuredOauths;
         this.sortPolicy            = r.defaultSortPolicy;
 
-        // Update comment models and make a hex-comment map
-        this.comments = r.comments;
-        this.commentsByHex = {};
-        this.comments.forEach(c => {
-            c.creationMs = new Date(c.creationDate).getTime();
-            this.commentsByHex[c.commentHex] = c;
-        });
-    }
+        // Check if no auth provider available, but we allow anonymous commenting
+        this.anonymousOnly = !this.requireIdentification && !Object.values(this.authMethods).includes(true);
 
-    /**
-     * Submit a new comment with the given hex ID, forcing the user to authenticate, if needed.
-     * @param commentHex Comment's hex ID.
-     * @private
-     */
-    private async submitNewComment(commentHex: string): Promise<void> {
-        if (this.requireIdentification || !Wrap.byId(IDS.anonymousCheckbox + commentHex).isChecked) {
-            return this.isAuthenticated ?
-                this.commentNew(commentHex, this.token, true) :
-                this.showLoginDialog(commentHex);
-        }
+        // Configure methods in the profile bar
+        this.profileBar.authMethods = this.authMethods;
 
-        this.chosenAnonymous = true;
-        return this.commentNew(commentHex, 'anonymous', true);
-    }
+        // Build a map by grouping all comments by their parentHex value
+        this.parentHexMap = r.comments.reduce(
+            (m, c) => {
+                // Also calculate each comment's creation time in milliseconds
+                c.creationMs = new Date(c.creationDate).getTime();
+                const ph = c.parentHex;
+                if (ph in m) {
+                    m[ph].push(c);
+                } else {
+                    m[ph] = [c];
+                }
+                return m;
+            },
+            {} as CommentsGroupedByHex);
 
-    /**
-     * Submit the entered comment markdown to the backend for saving.
-     * @param commentHex Comment's hex ID
-     */
-    private async submitCommentEdits(commentHex: string): Promise<void> {
-        const textarea = Wrap.byId(IDS.textarea + commentHex);
-
-        // Validate the textarea value
-        if (!textarea.valid) {
-            return Promise.reject();
-        }
-
-        // Submit the edit to the backend
-        const markdown = textarea.val.trim();
-        const r = await this.apiClient.post<ApiCommentEditResponse>('comment/edit', {commenterToken: this.token, commentHex, markdown});
-        if (this.setError(!r.success && r.message)) {
-            return;
-        }
-
-        // Update the locally stored comment's data
-        this.commentsByHex[commentHex].markdown = markdown;
-        this.commentsByHex[commentHex].html = r.html;
-
-        // Hide the editor
-        this.stopEditing(commentHex);
-
-        // Update the comment's moderation notice
-        this.updateCommentModerationNotice(commentHex, r.state);
-    }
-
-    /**
-     * Submit a new comment entered under the given hex ID.
-     * @param commentHex Comment's hex ID.
-     * @param commenterToken Token of the current commenter.
-     * @param appendCard Whether to also add a new card for the created comment.
-     * @private
-     */
-    private async commentNew(commentHex: string, commenterToken: string, appendCard: boolean): Promise<void> {
-        // Validate the textarea value
-        const textarea  = Wrap.byId(IDS.textarea + commentHex);
-        if (!textarea.valid) {
-            return Promise.reject();
-        }
-
-        // Submit the comment to the backend
-        const markdown = textarea.val.trim();
-        const r = await this.apiClient.post<ApiCommentNewResponse>('comment/new', {
-            commenterToken,
-            domain:    parent.location.host,
-            path:      this.pageId,
-            parentHex: commentHex,
-            markdown,
-        });
-        if (this.setError(!r.success && r.message)) {
-            return;
-        }
-
-        // Update the comment's moderation notice
-        this.updateCommentModerationNotice(commentHex, r.state);
-
-        // Store the updated comment in the local map
-        const comment: Comment = {
-            commentHex:   r.commentHex,
-            commenterHex: this.selfHex === undefined || commenterToken === 'anonymous' ? 'anonymous' : this.selfHex,
-            markdown,
-            html:         r.html,
-            parentHex:    'root',
-            score:        0,
-            state:        'approved',
-            direction:    0,
-            creationDate: new Date().toISOString(),
-            deleted:      false,
-        };
-        this.commentsByHex[r.commentHex] = comment;
-
-        // Remove the entered comment text and reset its touched state
-        textarea.value('').noClasses('touched');
-
-        // Add the new card, if needed
-        if (appendCard) {
-            const newCard = new CommentTree().render(this.makeCommentRenderingContext({root: [comment]}), 'root');
-            if (commentHex === 'root') {
-                newCard.prependTo(this.commentsArea);
-            } else {
-                Wrap.byId(IDS.superContainer + commentHex).replaceWith(newCard);
-                this.shownReply[commentHex] = false;
-                Wrap.byId(IDS.reply + commentHex)
-                    .noClasses('option-cancel')
-                    .classes('option-reply')
-                    .attr({title: 'Reply to this comment'})
-                    .click(() => this.replyShow(commentHex));
-            }
-        }
-    }
-
-    /**
-     * Add the relevant moderation notice to the given comment, if needed.
-     * @param commentHex Comment's hex ID.
-     * @param state Comment's moderation state.
-     * @private
-     */
-    private updateCommentModerationNotice(commentHex: string, state: 'unapproved' | 'flagged') {
-        let message = '';
-        switch (state) {
-            case 'unapproved':
-                message = 'Your comment is under moderation.';
-                break;
-            case 'flagged':
-                message = 'Your comment was flagged as spam and is under moderation.';
-                break;
-            default:
-                return;
-        }
-        UIToolkit.div('moderation-notice').inner(message).prependTo(Wrap.byId(IDS.superContainer + commentHex));
+        // Store all known commenters
+        Object.assign(this.commenters, r.commenters);
     }
 
     /**
@@ -955,12 +705,12 @@ export class Comentario {
      * Approve the comment of the given card.
      * @private
      */
-    private async commentApprove(card: CommentCard): Promise<void> {
+    private async approveComment(card: CommentCard): Promise<void> {
         // Submit the approval to the backend
         const r = await this.apiClient.post<ApiResponseBase>(
             'comment/approve',
             {commenterToken: this.token, commentHex: card.comment.commentHex});
-        if (this.setError(!r.success && r.message)) {
+        if (this.checkError(r)) {
             return;
         }
 
@@ -973,12 +723,12 @@ export class Comentario {
      * Delete the comment of the given card.
      * @private
      */
-    private async commentDelete(card: CommentCard): Promise<void> {
+    private async deleteComment(card: CommentCard): Promise<void> {
         // Run deletion with the backend
         const r = await this.apiClient.post<ApiResponseBase>(
             'comment/delete',
             {commenterToken: this.token, commentHex: card.comment.commentHex});
-        if (this.setError(!r.success && r.message)) {
+        if (this.checkError(r)) {
             return;
         }
 
@@ -991,12 +741,12 @@ export class Comentario {
      * Toggle the given comment's sticky status.
      * @private
      */
-    private async commentSticky(card: CommentCard): Promise<void> {
+    private async stickyComment(card: CommentCard): Promise<void> {
         // Save the page's sticky comment ID
         this.stickyCommentHex = this.stickyCommentHex === card.comment.commentHex ? 'none' : card.comment.commentHex;
         await this.submitPageAttrs();
 
-        // Reload the comments
+        // Reload all comments
         return this.reload();
     }
 
@@ -1004,17 +754,22 @@ export class Comentario {
      * Vote (upvote, downvote, or undo vote) for the given comment.
      * @private
      */
-    private async commentVote(card: CommentCard, direction: -1 | 0 | 1): Promise<void> {
+    private async voteComment(card: CommentCard, direction: -1 | 0 | 1): Promise<void> {
         // Only registered users can vote
         if (!this.isAuthenticated) {
-            return this.showLoginDialog(null);
+            await this.profileBar.loginUser();
+
+            // Failed to authenticate
+            if (!this.isAuthenticated) {
+                return;
+            }
         }
 
         // Run the vote with the API
         const r = await this.apiClient.post<ApiResponseBase>(
             'comment/vote',
             {commenterToken: this.token, commentHex: card.comment.commentHex, direction});
-        if (this.setError(!r.success && r.message)) {
+        if (this.checkError(r)) {
             return Promise.reject();
         }
 
@@ -1037,48 +792,33 @@ export class Comentario {
             path:           this.pageId,
             attributes:     {isLocked: this.isLocked, stickyCommentHex: this.stickyCommentHex},
         });
-        this.setError(!r.success && r.message);
+        this.checkError(r);
     }
 
     /**
      * Return a new comment rendering context.
-     * @param parentMap Optional parent map to use. If not provided, a new one is created based on all available comments.
+     * @param parentMap Optional parent map to use. If not provided, uses the map for all comments on the page (parentHexMap).
      */
     private makeCommentRenderingContext(parentMap?: CommentsGroupedByHex): CommentRenderingContext {
-        // If no parent map provided, group comments by parent hex ID: make map {parentHex: Comment[]}
-        if (!parentMap) {
-            parentMap = this.comments.reduce(
-                (m, c) => {
-                    const ph = c.parentHex;
-                    if (ph in m) {
-                        m[ph].push(c);
-                    } else {
-                        m[ph] = [c];
-                    }
-                    return m;
-                },
-                {} as CommentsGroupedByHex);
-        }
-
-        // Make a new context instance
         return {
             cdn:             this.cdn,
             root:            this.root,
-            parentMap,
+            parentMap:       parentMap || this.parentHexMap,
             commenters:      this.commenters,
             selfHex:         this.selfHex,
             stickyHex:       this.stickyCommentHex,
             sortPolicy:      this.sortPolicy,
             isAuthenticated: this.isAuthenticated,
             isModerator:     this.isModerator,
+            isLocked:        this.isLocked || this.isFrozen,
             hideDeleted:     this.hideDeleted,
             curTimeMs:       new Date().getTime(),
-            onApprove:       card => this.commentApprove(card),
-            onDelete:        card => this.commentDelete(card),
-            onEdit:          () => { /*TODO*/ },
-            onReply:         () => { /*TODO*/ },
-            onSticky:        card => this.commentSticky(card),
-            onVote:          (card, direction) => this.commentVote(card, direction),
+            onApprove:       card => this.approveComment(card),
+            onDelete:        card => this.deleteComment(card),
+            onEdit:          card => this.editComment(card),
+            onReply:         card => this.addComment(card),
+            onSticky:        card => this.stickyComment(card),
+            onVote:          (card, direction) => this.voteComment(card, direction),
         };
     }
 }

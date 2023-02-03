@@ -45,10 +45,10 @@ export class Wrap<T extends HTMLElement> {
     }
 
     /**
-     * Inner text of the underlying element.
+     * Whether the underlying element has children.
      */
-    get innerText(): string {
-        return this.el?.innerText;
+    get hasChildren(): boolean {
+        return !!this.el?.childNodes?.length;
     }
 
     /**
@@ -63,13 +63,6 @@ export class Wrap<T extends HTMLElement> {
      */
     get isChecked(): boolean {
         return (this.el as unknown as HTMLInputElement)?.checked;
-    }
-
-    /**
-     * Whether the underlying (input) element is valid.
-     */
-    get valid(): boolean {
-        return (this.el as unknown as HTMLInputElement | HTMLTextAreaElement)?.validity?.valid;
     }
 
     /**
@@ -145,13 +138,11 @@ export class Wrap<T extends HTMLElement> {
     }
 
     /**
-     * Insert the underlying element as the first child to the specified parent.
-     * @param parent Wrapper of the new parent for the element.
+     * Insert the specified elements as first children to the underlying element.
+     * @param children Wrapped child elements to insert. Falsy and empty wrappers are skipped.
      */
-    prependTo(parent: Wrap<any>): Wrap<T> {
-        if (this.el && parent.el) {
-            parent.el.prepend(this.el);
-        }
+    prepend(...children: Wrap<any>[]): Wrap<T> {
+        this.el?.prepend(...children.filter(w => w?.ok).map(w => w.el));
         return this;
     }
 
@@ -171,38 +162,16 @@ export class Wrap<T extends HTMLElement> {
      * @param children Wrapped child elements to add. Falsy and empty wrappers are skipped.
      */
     append(...children: Wrap<any>[]): Wrap<T> {
-        if (this.el) {
-            children.forEach(w => w?.ok && this.el.appendChild(w.el));
-        }
+        this.el?.append(...children.filter(w => w?.ok).map(w => w.el));
         return this;
     }
 
     /**
-     * Replace the underlying element in the DOM with the given one.
-     */
-    replaceWith(newEl: Wrap<any>): Wrap<T> {
-        if (newEl.el) {
-            this.el?.replaceWith(newEl.el);
-        }
-        return this;
-    }
-
-    /**
-     * Remove the underlying element from the DOM.
+     * Remove the underlying element from the DOM and from this wrapper.
      */
     remove(): Wrap<T> {
         this.el?.parentNode?.removeChild(this.el);
-        return this;
-    }
-
-    /**
-     * Insert the underlying element as the next sibling to the given element.
-     * @param sibling Wrapper of new sibling for the element.
-     */
-    insertAfter(sibling: Wrap<any>): Wrap<T> {
-        if (this.el && sibling.el) {
-            sibling.el.parentNode.insertBefore(this.el, sibling.el.nextSibling);
-        }
+        this.el = undefined;
         return this;
     }
 
@@ -258,23 +227,12 @@ export class Wrap<T extends HTMLElement> {
     /**
      * Bind a handler to the given event of the underlying element.
      * @param type Event type to bind the handler to.
-     * @param handler Handler to bind.
+     * @param handler Handler to bind (falsy value doesn't cause the handler to be bound).
      * @param once Whether to remove the listener once it's invoked.
      */
     on<E extends keyof HTMLElementEventMap>(type: E, handler: (target: Wrap<T>, ev: HTMLElementEventMap[E]) => void, once?: boolean): Wrap<T> {
-        this.el?.addEventListener(type, e => handler(this, e), {once});
-        return this;
-    }
-
-    /**
-     * Remove all event listeners from the underlying element.
-     * NB: This method can cause a replacement of the underlying element.
-     */
-    unlisten(): Wrap<T> {
-        if (this.el) {
-            const clone = this.el.cloneNode(true) as T;
-            this.el.parentNode?.replaceChild(clone, this.el);
-            this.el = clone;
+        if (typeof handler === 'function') {
+            this.el?.addEventListener(type, e => handler(this, e), {once});
         }
         return this;
     }

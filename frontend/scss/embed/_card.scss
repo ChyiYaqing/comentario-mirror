@@ -7,7 +7,7 @@
     margin-top: 16px;
     border-top: 1px solid #f0f0f0;
 
-    .comentario-header {
+    .comentario-card-header {
         padding-bottom: 4px;
     }
 
@@ -62,22 +62,28 @@
         font-size: 12px;
     }
 
-    .comentario-body {
-        p {
-            margin-top: 6px;
-            margin-bottom: 6px;
-        }
-    }
-
     .comentario-options {
         float: right;
         height: 38px;
         z-index: 2;
     }
 
-    .comentario-moderation {
-        height: 48px;
+    .comentario-card-body {
+        p {
+            margin-top: 6px;
+            margin-bottom: 6px;
+        }
     }
+
+    // Hide the header and the body when there's an editor inside the card (immediate children only, not in the nested
+    // cards)
+    &.comentario-editor-inserted {
+        > .comentario-card-header,
+        > .comentario-card-body {
+            display: none;
+        }
+    }
+
 }
 
 .comentario-dark-card {

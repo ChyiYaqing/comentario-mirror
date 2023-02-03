@@ -28,6 +28,29 @@ blockquote {
     color: $gray-6;
 }
 
+.comentario-add-comment-host {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    align-content: center;
+    background-color: $white;
+    font-size: 15px;
+
+    // Only show border and such when there's no editor inserted
+    &:not(.comentario-editor-inserted) {
+        min-height: 130px;
+        border: 1px solid rgba(50, 50, 93, .1);
+        border-radius: 3px;
+        cursor: text;
+
+        &:before {
+            display: block;
+            color: $gray-5;
+            content: 'Add a comment';
+        }
+    }
+}
+
 // Margins
 
 .comentario-ms-1 {

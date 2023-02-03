@@ -26,9 +26,10 @@ export class UIToolkit {
 
     /**
      * Create and return a new popup dialog element.
-     * @param onSubmit Form submit handler
+     * @param onSubmit Form submit handler.
+     * @param onCancel Form cancel handler (triggered when the user presses Esc).
      */
-    static form(onSubmit: () => void): Wrap<HTMLFormElement> {
+    static form(onSubmit: () => void, onCancel?: () => void): Wrap<HTMLFormElement> {
         const submit = (f: Wrap<HTMLFormElement>, e: Event) => {
             // Prevent default handling
             e.preventDefault();
@@ -42,11 +43,25 @@ export class UIToolkit {
                 onSubmit();
             }
         };
+        const cancel = (e: Event) => {
+            // If there's a cancel handler provided
+            if (onCancel) {
+                e.preventDefault();
+                onCancel();
+            }
+        };
         return Wrap.new('form')
             // Intercept form submit event
             .on('submit', submit)
-            // Submit the form on Ctrl+Enter
-            .on('keydown', (f, e) => e.ctrlKey && !e.shiftKey && !e.altKey && !e.metaKey && e.code === 'Enter' && submit(f, e));
+            // Submit the form on Ctrl+Enter and cancel with Esc
+            .on('keydown', (f, e) => {
+                switch (e.code) {
+                    case 'Enter':
+                        return e.ctrlKey && !e.shiftKey && !e.altKey && !e.metaKey && submit(f, e);
+                    case 'Escape':
+                        return !e.ctrlKey && !e.shiftKey && !e.altKey && !e.metaKey && cancel(e);
+                }
+            });
     }
 
     /**

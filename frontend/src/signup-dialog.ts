@@ -59,7 +59,7 @@ export class SignupDialog extends Dialog {
         this._pwd     = UIToolkit.input('password', 'password', 'Password',           'current-password', true);
 
         // Add the inputs to a new form
-        return UIToolkit.form(() => this.dismiss(true))
+        return UIToolkit.form(() => this.dismiss(true), () => this.dismiss())
             .append(
                 UIToolkit.div('input-group').append(this._name),
                 UIToolkit.div('input-group').append(this._website),

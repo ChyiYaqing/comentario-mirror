@@ -7,7 +7,7 @@ export interface Comment {
     readonly creationDate: string;
 
     // Mutable
-    state:     string;
+    state:     'approved' | 'unapproved' | 'flagged';
     deleted:   boolean;
     direction: number;
     score:     number;
@@ -36,7 +36,6 @@ export interface Email {
     readonly sendModeratorNotifications?: boolean;
 }
 
-export type CommentMap = { [k: string]: Comment };
 export type CommentsGroupedByHex = { [k: string]: Comment[] };
 
 export type CommenterMap = { [k: string]: Commenter };
