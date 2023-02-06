@@ -208,10 +208,10 @@ export class Wrap<T extends HTMLElement> {
 
     /**
      * Bind a handler to the onClick event of the underlying element.
-     * @param handler Handler to bind.
+     * @param handler Handler to bind (non-function value will be ignored).
      */
     click(handler: (target: Wrap<T>, e: MouseEvent) => void): Wrap<T> {
-        this.el?.addEventListener('click', e => handler(this, e));
+        this.on('click', handler);
         return this;
     }
 
@@ -220,14 +220,14 @@ export class Wrap<T extends HTMLElement> {
      * @param handler Handler to bind.
      */
     keydown(handler: (target: Wrap<T>, e: KeyboardEvent) => void): Wrap<T> {
-        this.el?.addEventListener('keydown', e => handler(this, e));
+        this.on('keydown', handler);
         return this;
     }
 
     /**
      * Bind a handler to the given event of the underlying element.
      * @param type Event type to bind the handler to.
-     * @param handler Handler to bind (falsy value doesn't cause the handler to be bound).
+     * @param handler Handler to bind (non-function value doesn't cause the handler to be bound).
      * @param once Whether to remove the listener once it's invoked.
      */
     on<E extends keyof HTMLElementEventMap>(type: E, handler: (target: Wrap<T>, ev: HTMLElementEventMap[E]) => void, once?: boolean): Wrap<T> {

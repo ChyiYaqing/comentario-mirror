@@ -2,7 +2,7 @@ import { Comment, Commenter, Email, SortPolicy } from './models';
 
 export interface ApiResponseBase {
     success: boolean;
-    message: string;
+    message?: string;
 }
 
 export interface ApiSelfResponse extends ApiResponseBase {

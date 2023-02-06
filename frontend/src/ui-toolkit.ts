@@ -111,4 +111,14 @@ export class UIToolkit {
             .inner(glyph ? '' : title)
             .attr({type: 'submit', title});
     }
+
+    /**
+     * Return a textual representation of an SVG image.
+     * @param width Viewport width.
+     * @param height Viewport height.
+     * @param content SVG content.
+     */
+    static svg(width: number, height: number, content: string): string {
+        return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}">${content}</svg>`;
+    }
 }

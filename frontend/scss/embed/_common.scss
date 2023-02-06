@@ -54,21 +54,33 @@ blockquote {
 // Margins
 
 .comentario-ms-1 {
-    margin-left: 0.25rem;
+    margin-left: 0.25rem !important;
 }
 
 .comentario-me-1 {
-    margin-right: 0.25rem;
+    margin-right: 0.25rem !important;
 }
 
 // Font weight
 
 .comentario-fw-bold {
-    font-weight: bold;
+    font-weight: bold !important;
 }
 
 // Utilities
 
 .comentario-hidden {
-    display: none;
+    display: none !important;
+}
+
+// Colourising
+
+.comentario-text-success {
+    color: $green-7 !important;
+}
+.comentario-text-danger {
+    color: $red-7 !important;
+}
+.comentario-text-warning {
+    color: $yellow-7 !important;
 }

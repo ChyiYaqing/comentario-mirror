@@ -30,11 +30,11 @@ $colourize-map: (
 
     // Generate colouring classes for the left border
     .comentario-border-#{$i} {
-        border-left: 2px solid #{$c};
+        border-left: 2px solid #{$c} !important;
     }
 
     // Generate background colouring classes
     .comentario-bg-#{$i} {
-        background-color: #{$c};
+        background-color: #{$c} !important;
     }
 }
