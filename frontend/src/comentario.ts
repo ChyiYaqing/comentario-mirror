@@ -276,22 +276,29 @@ export class Comentario {
 
         // If the hash starts with a valid hex ID
         if (h?.startsWith('#comentario-')) {
-            const id = h.substring(10);
-            Wrap.byId(`card-${id}`)
-                .classes('highlighted-card')
-                .scrollTo()
-                .else(() => {
-                    // Make sure it's a (sort of) valid ID before showing the user a message
-                    if (id.length === 64) {
-                        this.setError('The comment you\'re looking for doesn\'t exist; possibly it was deleted.');
-                    }
-                });
-
+            this.scrollToComment(h.substring(12));
 
         } else if (h?.startsWith('#comentario')) {
             // If we're requested to scroll to the comments in general
             this.root.scrollTo();
         }
+    }
+
+    /**
+     * Scroll to the comment with the specified hex ID.
+     * @param commentHex Comment hex ID.
+     * @private
+     */
+    private scrollToComment(commentHex: string) {
+        Wrap.byId(`card-${commentHex}`)
+            .classes('bg-highlight')
+            .scrollTo()
+            .else(() => {
+                // Make sure it's a (sort of) valid ID before showing the user a message
+                if (commentHex?.length === 64) {
+                    this.setError('The comment you\'re looking for doesn\'t exist; possibly it was deleted.');
+                }
+            });
     }
 
     /**
@@ -481,11 +488,12 @@ export class Comentario {
         if (this.isAuthenticated || !auth) {
             // Submit the comment to the backend
             const commenterToken = this.isAuthenticated ? this.token : 'anonymous';
+            const parentHex = parentCard?.comment.commentHex || 'root';
             const r = await this.apiClient.post<ApiCommentNewResponse>('comment/new', {
                 commenterToken,
                 domain:    parent.location.host,
                 path:      this.pageId,
-                parentHex: parentCard?.comment.commentHex || 'root',
+                parentHex,
                 markdown,
             });
             if (this.checkError(r)) {
@@ -498,26 +506,34 @@ export class Comentario {
                 commenterHex: this.selfHex === undefined || commenterToken === 'anonymous' ? 'anonymous' : this.selfHex,
                 markdown,
                 html:         r.html,
-                parentHex:    'root',
+                parentHex,
                 score:        0,
                 state:        r.state,
                 direction:    0,
                 creationDate: new Date().toISOString(),
                 deleted:      false,
             };
-            const newCard = new CommentCard(comment, this.makeCommentRenderingContext({}));
 
-            // Adding a reply
-            if (parentCard) {
-                parentCard.prependCard(newCard);
+            // Make sure parent map exists
+            if (!this.parentHexMap) {
+                this.parentHexMap = {};
+            }
 
+            // Add the comment to the parent map
+            if (parentHex in this.parentHexMap) {
+                this.parentHexMap[parentHex].push(comment);
             } else {
-                // Adding a top-level comment
-                this.commentsArea.prepend(newCard);
+                this.parentHexMap[parentHex] = [comment];
             }
 
             // Remove the editor
             this.cancelCommentEdits();
+
+            // Re-render comments
+            this.renderComments();
+
+            // Scroll to the added comment
+            this.scrollToComment(comment.commentHex);
         }
     }
 
@@ -589,7 +605,12 @@ export class Comentario {
         this.token = r.commenterToken;
 
         // Refresh the auth status
-        return this.getAuthStatus();
+        await this.getAuthStatus();
+
+        // If authenticated, reload all comments and page data
+        if (this.isAuthenticated) {
+            await this.reload();
+        }
     }
 
     /**
@@ -627,7 +648,12 @@ export class Comentario {
         });
 
         // Refresh the auth status
-        return this.getAuthStatus();
+        await this.getAuthStatus();
+
+        // If authenticated, reload all comments and page data
+        if (this.isAuthenticated) {
+            await this.reload();
+        }
     }
 
     /**
@@ -797,13 +823,12 @@ export class Comentario {
 
     /**
      * Return a new comment rendering context.
-     * @param parentMap Optional parent map to use. If not provided, uses the map for all comments on the page (parentHexMap).
      */
-    private makeCommentRenderingContext(parentMap?: CommentsGroupedByHex): CommentRenderingContext {
+    private makeCommentRenderingContext(): CommentRenderingContext {
         return {
             cdn:             this.cdn,
             root:            this.root,
-            parentMap:       parentMap || this.parentHexMap,
+            parentMap:       this.parentHexMap,
             commenters:      this.commenters,
             selfHex:         this.selfHex,
             stickyHex:       this.stickyCommentHex,

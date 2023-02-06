@@ -1,3 +1,5 @@
+@import "../colors-main";
+
 $animation-duration: 250ms;
 
 .comentario-fade-in {
@@ -26,6 +28,10 @@ $animation-duration: 250ms;
     animation: comentario-collapse-animation $animation-duration ease-in-out forwards 1;
 }
 
+.comentario-bg-highlight {
+    animation: comentario-bg-highlight-animation 5s ease forwards 1;
+}
+
 @keyframes comentario-expand-animation {
     from {
         opacity: 0;
@@ -46,4 +52,11 @@ $animation-duration: 250ms;
         opacity: 0;
         transform: translateY(-100%);
     }
+}
+
+@keyframes comentario-bg-highlight-animation {
+    0%   { background-color: transparent; }
+    10%  { background-color: $yellow-4; }
+    50%  { background-color: $yellow-4; }
+    100% { background-color: transparent; }
 }
