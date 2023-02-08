@@ -158,7 +158,7 @@ deploy:
     - helm upgrade
       --namespace ys-comentario
       --install
-      --set "clusterIssuer=letsencrypt-staging" # TODO
+      --set "clusterIssuer=letsencrypt-staging"
       --set "image.repository=$CI_REGISTRY_IMAGE"
       --set "image.tag=$VERSION"
       --set "comentario.smtpHost=mail.privateemail.com"
