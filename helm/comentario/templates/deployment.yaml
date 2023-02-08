@@ -1,0 +1,120 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "comentario.fullname" . }}
+  labels:
+    {{- include "comentario.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "comentario.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "comentario.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "comentario.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: {{ .Values.image.repository }}:{{ .Values.image.tag | default "latest" }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: COMENTARIO_PORT
+              value: '8080'
+            - name: COMENTARIO_ORIGIN
+              value: 'https://{{ .Values.ingress.host }}/'
+            - name: COMENTARIO_FORBID_NEW_OWNERS
+              value: '{{ .Values.comentario.forbidNewOwners }}'
+            - name: COMENTARIO_SMTP_HOST
+              value: '{{ .Values.comentario.smtpHost }}'
+            - name: COMENTARIO_SMTP_PORT
+              value: '{{ .Values.comentario.smtpPort }}'
+            - name: COMENTARIO_SMTP_FROM_ADDRESS
+              value: '{{ .Values.comentario.smtpFromAddress }}'
+            - name: COMENTARIO_POSTGRES
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.comentario.secretName }}
+                  key: postgresUrl
+            - name: COMENTARIO_SMTP_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.comentario.secretName }}
+                  key: smtpUsername
+            - name: COMENTARIO_SMTP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.comentario.secretName }}
+                  key: smtpPassword
+            - name: COMENTARIO_GOOGLE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.comentario.secretName }}
+                  key: googleKey
+            - name: COMENTARIO_GOOGLE_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.comentario.secretName }}
+                  key: googleSecret
+            # GitHub/Twitter auth are broken in Comentario
+            # - name: COMENTARIO_GITHUB_KEY
+            #   valueFrom:
+            #     secretKeyRef:
+            #       name: {{ .Values.comentario.secretName }}
+            #       key: githubKey
+            # - name: COMENTARIO_GITHUB_SECRET
+            #   valueFrom:
+            #     secretKeyRef:
+            #       name: {{ .Values.comentario.secretName }}
+            #       key: githubSecret
+            #- name: COMENTARIO_TWITTER_KEY
+            #  valueFrom:
+            #    secretKeyRef:
+            #      name: {{ .Values.comentario.secretName }}
+            #      key: twitterKey
+            #- name: COMENTARIO_TWITTER_SECRET
+            #  valueFrom:
+            #    secretKeyRef:
+            #      name: {{ .Values.comentario.secretName }}
+            #      key: twitterSecret
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

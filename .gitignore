@@ -3,3 +3,4 @@ devel.env
 /.idea/
 /node_modules/
 .dir-locals.el
+/k8s/comentario-secrets.yaml

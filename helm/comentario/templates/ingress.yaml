@@ -1,0 +1,66 @@
+{{- if .Values.ingress.enabled -}}
+{{- $fullName := include "comentario.fullname" . -}}
+{{- $svcPort := .Values.service.port -}}
+
+# HTTP catch-all rule redirecting to HTTPS
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: {{ $fullName }}-http
+  labels:
+    {{- include "comentario.labels" . | nindent 4 }}
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: Host({{ .Values.ingress.host | quote }})
+      kind: Rule
+      services:
+        # This service isn't ever going to be called
+        - name: {{ $fullName }}
+          port: {{ $svcPort }}
+      middlewares:
+        - name: https-redirect
+
+---
+# Main host's pass-through to the backend
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: {{ $fullName }}-https
+  labels:
+    {{- include "comentario.labels" $ | nindent 4 }}
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host({{ .Values.ingress.host | quote }})
+      kind: Rule
+      services:
+        - name: {{ $fullName }}
+          port: {{ $svcPort }}
+      middlewares:
+        - name: gzip-compress
+  tls:
+    secretName: {{ $fullName }}-cert-secret
+
+{{/* =================================== Middlewares ===================================*/}}
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: https-redirect
+spec:
+  redirectScheme:
+    scheme: https
+    permanent: true
+    port: "443"
+
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: gzip-compress
+spec:
+  compress: {}
+{{- end }}
