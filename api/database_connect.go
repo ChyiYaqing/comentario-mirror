@@ -45,7 +45,7 @@ func dbConnect(retriesLeft int, retryDelay time.Duration) error {
 
 	maxIdleConnections, err := strconv.Atoi(os.Getenv("MAX_IDLE_PG_CONNECTIONS"))
 	if err != nil {
-		logger.Warningf("cannot parse COMMENTO_MAX_IDLE_PG_CONNECTIONS: %v", err)
+		logger.Warningf("cannot parse COMENTARIO_MAX_IDLE_PG_CONNECTIONS: %v", err)
 		maxIdleConnections = 50
 	}
 

@@ -8,17 +8,17 @@ services:
       args:
         RELEASE: prod
     environment:
-      COMMENTO_ORIGIN: http://localhost:8080
-      COMMENTO_PORT: 8080
-      COMMENTO_POSTGRES: postgres://postgres:postgres@db:5432/commento?sslmode=disable
+      COMENTARIO_ORIGIN: http://localhost:8080
+      COMENTARIO_PORT: 8080
+      COMENTARIO_POSTGRES: postgres://postgres:postgres@db:5432/comentario?sslmode=disable
 
       # Dummy data for testing
-      COMMENTO_GITHUB_KEY: a
-      COMMENTO_GITHUB_SECRET: b
-      COMMENTO_GITLAB_KEY: a
-      COMMENTO_GITLAB_SECRET: b
-      COMMENTO_GOOGLE_KEY: a
-      COMMENTO_GOOGLE_SECRET: b
+      COMENTARIO_GITHUB_KEY: a
+      COMENTARIO_GITHUB_SECRET: b
+      COMENTARIO_GITLAB_KEY: a
+      COMENTARIO_GITLAB_SECRET: b
+      COMENTARIO_GOOGLE_KEY: a
+      COMENTARIO_GOOGLE_SECRET: b
     ports:
       - "8080:8080"
     depends_on:
@@ -29,7 +29,7 @@ services:
   db:
     image: postgres:11
     environment:
-      POSTGRES_DB: commento
+      POSTGRES_DB: comentario
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     ports:

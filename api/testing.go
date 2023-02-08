@@ -63,11 +63,11 @@ func dropTables() error {
 }
 
 func setupTestDatabase() error {
-	if os.Getenv("COMMENTO_POSTGRES") != "" {
-		// set it manually because we need to use commento_test, not commento, by mistake
-		_ = os.Setenv("POSTGRES", os.Getenv("COMMENTO_POSTGRES"))
+	if os.Getenv("COMENTARIO_POSTGRES") != "" {
+		// set it manually because we need to use comentario_test, not comentario, by mistake
+		_ = os.Setenv("POSTGRES", os.Getenv("COMENTARIO_POSTGRES"))
 	} else {
-		_ = os.Setenv("POSTGRES", "postgres://postgres:postgres@localhost/commento_test?sslmode=disable")
+		_ = os.Setenv("POSTGRES", "postgres://postgres:postgres@localhost/comentario_test?sslmode=disable")
 	}
 
 	if err := dbConnect(0, time.Second); err != nil {

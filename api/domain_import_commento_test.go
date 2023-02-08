@@ -85,7 +85,7 @@ func TestImportCommento(t *testing.T) {
 	}()
 	port := listener.Addr().(*net.TCPAddr).Port
 
-	// Launch http server serving commento json gzipped data
+	// Launch http server serving json gzipped data
 	go func() {
 		_ = http.Serve(listener, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			gzipper := gzip.NewWriter(w)

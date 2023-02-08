@@ -26,5 +26,5 @@ COPY ./db/ /comentario/db/
 
 EXPOSE 8080
 WORKDIR /comentario/
-ENV COMMENTO_BIND_ADDRESS="0.0.0.0"
+ENV COMENTARIO_BIND_ADDRESS="0.0.0.0"
 ENTRYPOINT ["/comentario/comentario"]

@@ -4,7 +4,7 @@ services:
   db:
     image: postgres:11
     environment:
-      POSTGRES_DB: commento_test
+      POSTGRES_DB: comentario_test
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     ports:

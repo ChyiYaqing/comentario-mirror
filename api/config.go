@@ -17,7 +17,7 @@ func configParse() error {
 	defaults := map[string]string{
 		"CONFIG_FILE": "",
 
-		"POSTGRES": "postgres://postgres:postgres@localhost/commento?sslmode=disable",
+		"POSTGRES": "postgres://postgres:postgres@localhost/comentario?sslmode=disable",
 
 		// PostgreSQL recommends max_connections in the order of hundreds. The default
 		// is 100, so let's use half that and leave the other half for other services.
@@ -56,18 +56,18 @@ func configParse() error {
 		"GITLAB_URL":    "https://gitlab.com",
 	}
 
-	if os.Getenv("COMMENTO_CONFIG_FILE") != "" {
-		if err := configFileLoad(os.Getenv("COMMENTO_CONFIG_FILE")); err != nil {
+	if os.Getenv("COMENTARIO_CONFIG_FILE") != "" {
+		if err := configFileLoad(os.Getenv("COMENTARIO_CONFIG_FILE")); err != nil {
 			return err
 		}
 	}
 
 	for key, value := range defaults {
 		var err error
-		if os.Getenv("COMMENTO_"+key) == "" {
+		if os.Getenv("COMENTARIO_"+key) == "" {
 			err = os.Setenv(key, value)
 		} else {
-			err = os.Setenv(key, os.Getenv("COMMENTO_"+key))
+			err = os.Setenv(key, os.Getenv("COMENTARIO_"+key))
 		}
 		if err != nil {
 			return err
@@ -77,7 +77,7 @@ func configParse() error {
 	// Mandatory config parameters
 	for _, env := range []string{"POSTGRES", "PORT", "ORIGIN", "FORBID_NEW_OWNERS", "MAX_IDLE_PG_CONNECTIONS"} {
 		if os.Getenv(env) == "" {
-			logger.Errorf("missing COMMENTO_%s environment variable", env)
+			logger.Errorf("missing COMENTARIO_%s environment variable", env)
 			return errorMissingConfig
 		}
 	}
@@ -103,7 +103,7 @@ func configParse() error {
 	}
 
 	if os.Getenv("FORBID_NEW_OWNERS") != "true" && os.Getenv("FORBID_NEW_OWNERS") != "false" {
-		logger.Errorf("COMMENTO_FORBID_NEW_OWNERS neither 'true' nor 'false'")
+		logger.Errorf("COMENTARIO_FORBID_NEW_OWNERS neither 'true' nor 'false'")
 		return errorInvalidConfigValue
 	}
 
@@ -119,7 +119,7 @@ func configParse() error {
 	}
 
 	if !file.IsDir() {
-		logger.Errorf("COMMENTO_STATIC=%s is not a directory", static)
+		logger.Errorf("COMENTARIO_STATIC=%s is not a directory", static)
 		return errorNotADirectory
 	}
 
@@ -128,10 +128,10 @@ func configParse() error {
 	}
 
 	if num, err := strconv.Atoi(os.Getenv("MAX_IDLE_PG_CONNECTIONS")); err != nil {
-		logger.Errorf("invalid COMMENTO_MAX_IDLE_PG_CONNECTIONS: %v", err)
+		logger.Errorf("invalid COMENTARIO_MAX_IDLE_PG_CONNECTIONS: %v", err)
 		return errorInvalidConfigValue
 	} else if num <= 0 {
-		logger.Errorf("COMMENTO_MAX_IDLE_PG_CONNECTIONS should be a positive integer")
+		logger.Errorf("COMENTARIO_MAX_IDLE_PG_CONNECTIONS should be a positive integer")
 		return errorInvalidConfigValue
 	}
 

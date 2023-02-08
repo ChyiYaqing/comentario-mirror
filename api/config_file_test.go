@@ -8,7 +8,7 @@ import (
 func TestConfigFileLoadBasics(t *testing.T) {
 	failTestOnError(t, setupTestEnv())
 
-	f, err := os.CreateTemp("", "commento")
+	f, err := os.CreateTemp("", "comentario")
 	if err != nil {
 		t.Errorf("error creating temporary file: %v", err)
 		return
@@ -28,27 +28,27 @@ func TestConfigFileLoadBasics(t *testing.T) {
 
 	contents := `
 		# Comentario port
-		COMMENTO_PORT=8000
-		COMMENTO_GZIP_STATIC=true
+		COMENTARIO_PORT=8000
+		COMENTARIO_GZIP_STATIC=true
 	`
 	if _, err := f.Write([]byte(contents)); err != nil {
 		t.Errorf("error writing to temporary file: %v", err)
 		return
 	}
 
-	_ = os.Setenv("COMMENTO_PORT", "9000")
+	_ = os.Setenv("COMENTARIO_PORT", "9000")
 	if err := configFileLoad(f.Name()); err != nil {
 		t.Errorf("unexpected error loading config file: %v", err)
 		return
 	}
 
-	if os.Getenv("COMMENTO_PORT") != "9000" {
-		t.Errorf("expected COMMENTO_PORT=9000 got COMMENTO_PORT=%s", os.Getenv("COMMENTO_PORT"))
+	if os.Getenv("COMENTARIO_PORT") != "9000" {
+		t.Errorf("expected COMENTARIO_PORT=9000 got COMENTARIO_PORT=%s", os.Getenv("COMENTARIO_PORT"))
 		return
 	}
 
-	if os.Getenv("COMMENTO_GZIP_STATIC") != "true" {
-		t.Errorf("expected COMMENTO_GZIP_STATIC=true got COMMENTO_GZIP_STATIC=%s", os.Getenv("COMMENTO_GZIP_STATIC"))
+	if os.Getenv("COMENTARIO_GZIP_STATIC") != "true" {
+		t.Errorf("expected COMENTARIO_GZIP_STATIC=true got COMENTARIO_GZIP_STATIC=%s", os.Getenv("COMENTARIO_GZIP_STATIC"))
 		return
 	}
 }
@@ -56,7 +56,7 @@ func TestConfigFileLoadBasics(t *testing.T) {
 func TestConfigFileLoadInvalid(t *testing.T) {
 	failTestOnError(t, setupTestEnv())
 
-	f, err := os.CreateTemp("", "commento")
+	f, err := os.CreateTemp("", "comentario")
 	if err != nil {
 		t.Errorf("error creating temporary file: %v", err)
 		return
@@ -75,7 +75,7 @@ func TestConfigFileLoadInvalid(t *testing.T) {
 	}()
 
 	contents := `
-		COMMENTO_PORT=8000
+		COMENTARIO_PORT=8000
 		INVALID_LINE
 	`
 	if _, err := f.Write([]byte(contents)); err != nil {

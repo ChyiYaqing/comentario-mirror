@@ -7,7 +7,7 @@ import (
 )
 
 func TestConfigParseBasics(t *testing.T) {
-	_ = os.Setenv("COMMENTO_ORIGIN", "https://commento.io")
+	_ = os.Setenv("COMENTARIO_ORIGIN", "https://comentario.app")
 
 	if err := configParse(); err != nil {
 		t.Errorf("unexpected error when parsing config: %v", err)
@@ -15,20 +15,20 @@ func TestConfigParseBasics(t *testing.T) {
 	}
 
 	if os.Getenv("BIND_ADDRESS") != "127.0.0.1" {
-		t.Errorf("expected COMMENTO_BIND_ADDRESS=127.0.0.1, but COMMENTO_BIND_ADDRESS=%s instead", os.Getenv("BIND_ADDRESS"))
+		t.Errorf("expected COMENTARIO_BIND_ADDRESS=127.0.0.1, but COMENTARIO_BIND_ADDRESS=%s instead", os.Getenv("BIND_ADDRESS"))
 		return
 	}
 
-	_ = os.Setenv("COMMENTO_BIND_ADDRESS", "192.168.1.100")
+	_ = os.Setenv("COMENTARIO_BIND_ADDRESS", "192.168.1.100")
 
-	_ = os.Setenv("COMMENTO_PORT", "")
+	_ = os.Setenv("COMENTARIO_PORT", "")
 	if err := configParse(); err != nil {
 		t.Errorf("unexpected error when parsing config: %v", err)
 		return
 	}
 
 	if os.Getenv("BIND_ADDRESS") != "192.168.1.100" {
-		t.Errorf("expected COMMENTO_BIND_ADDRESS=192.168.1.100, but COMMENTO_BIND_ADDRESS=%s instead", os.Getenv("BIND_ADDRESS"))
+		t.Errorf("expected COMENTARIO_BIND_ADDRESS=192.168.1.100, but COMENTARIO_BIND_ADDRESS=%s instead", os.Getenv("BIND_ADDRESS"))
 		return
 	}
 
@@ -38,7 +38,7 @@ func TestConfigParseBasics(t *testing.T) {
 		return
 	}
 
-	_ = os.Setenv("COMMENTO_PORT", "1886")
+	_ = os.Setenv("COMENTARIO_PORT", "1886")
 
 	if err := configParse(); err != nil {
 		t.Errorf("unexpected error when parsing config: %v", err)
@@ -52,7 +52,7 @@ func TestConfigParseBasics(t *testing.T) {
 }
 
 func TestConfigParseNoOrigin(t *testing.T) {
-	_ = os.Setenv("COMMENTO_ORIGIN", "")
+	_ = os.Setenv("COMENTARIO_ORIGIN", "")
 
 	if err := configParse(); err == nil {
 		t.Errorf("expected error not found parsing config without ORIGIN")
@@ -61,7 +61,7 @@ func TestConfigParseNoOrigin(t *testing.T) {
 }
 
 func TestConfigParseStatic(t *testing.T) {
-	_ = os.Setenv("COMMENTO_ORIGIN", "https://commento.io")
+	_ = os.Setenv("COMENTARIO_ORIGIN", "https://comentario.app")
 
 	if err := configParse(); err != nil {
 		t.Errorf("unexpected error when parsing config: %v", err)
@@ -75,11 +75,11 @@ func TestConfigParseStatic(t *testing.T) {
 	}
 
 	if os.Getenv("STATIC") != binPath {
-		t.Errorf("COMMENTO_STATIC != %s when unset", binPath)
+		t.Errorf("COMENTARIO_STATIC != %s when unset", binPath)
 		return
 	}
 
-	_ = os.Setenv("COMMENTO_STATIC", "/usr/")
+	_ = os.Setenv("COMENTARIO_STATIC", "/usr/")
 
 	if err := configParse(); err != nil {
 		t.Errorf("unexpected error when parsing config: %v", err)
@@ -87,14 +87,14 @@ func TestConfigParseStatic(t *testing.T) {
 	}
 
 	if os.Getenv("STATIC") != "/usr" {
-		t.Errorf("COMMENTO_STATIC != /usr when unset")
+		t.Errorf("COMENTARIO_STATIC != /usr when unset")
 		return
 	}
 }
 
 func TestConfigParseStaticDNE(t *testing.T) {
-	_ = os.Setenv("COMMENTO_ORIGIN", "https://commento.io")
-	_ = os.Setenv("COMMENTO_STATIC", "/does/not/exist/surely/")
+	_ = os.Setenv("COMENTARIO_ORIGIN", "https://comentario.app")
+	_ = os.Setenv("COMENTARIO_STATIC", "/does/not/exist/surely/")
 
 	if err := configParse(); err == nil {
 		t.Errorf("expected error not found when a non-existant directory is used")
@@ -103,8 +103,8 @@ func TestConfigParseStaticDNE(t *testing.T) {
 }
 
 func TestConfigParseStaticNotADirectory(t *testing.T) {
-	_ = os.Setenv("COMMENTO_ORIGIN", "https://commento.io")
-	_ = os.Setenv("COMMENTO_STATIC", os.Args[0])
+	_ = os.Setenv("COMENTARIO_ORIGIN", "https://comentario.app")
+	_ = os.Setenv("COMENTARIO_STATIC", os.Args[0])
 
 	if err := configParse(); err != errorNotADirectory {
 		t.Errorf("expected error not found when a file is used")
@@ -113,43 +113,43 @@ func TestConfigParseStaticNotADirectory(t *testing.T) {
 }
 
 func TestConfigOriginTrailingSlash(t *testing.T) {
-	_ = os.Setenv("COMMENTO_ORIGIN", "https://commento.io/")
-	_ = os.Setenv("COMMENTO_STATIC", "")
+	_ = os.Setenv("COMENTARIO_ORIGIN", "https://comentario.app/")
+	_ = os.Setenv("COMENTARIO_STATIC", "")
 
 	if err := configParse(); err != nil {
 		t.Errorf("unexpected error when parsing config: %v", err)
 		return
 	}
 
-	if os.Getenv("ORIGIN") != "https://commento.io" {
-		t.Errorf("expected ORIGIN=https://commento.io got ORIGIN=%s", os.Getenv("ORIGIN"))
+	if os.Getenv("ORIGIN") != "https://comentario.app" {
+		t.Errorf("expected ORIGIN=https://comentario.app got ORIGIN=%s", os.Getenv("ORIGIN"))
 		return
 	}
 }
 
 func TestConfigMaxConnections(t *testing.T) {
-	_ = os.Setenv("COMMENTO_ORIGIN", "https://commento.io")
-	_ = os.Setenv("COMMENTO_STATIC", "")
+	_ = os.Setenv("COMENTARIO_ORIGIN", "https://comentario.app")
+	_ = os.Setenv("COMENTARIO_STATIC", "")
 
-	_ = os.Setenv("COMMENTO_MAX_IDLE_PG_CONNECTIONS", "100")
+	_ = os.Setenv("COMENTARIO_MAX_IDLE_PG_CONNECTIONS", "100")
 	if err := configParse(); err != nil {
 		t.Errorf("unexpected error when MAX_IDLE_PG_CONNECTIONS=100: %v", err)
 		return
 	}
 
-	_ = os.Setenv("COMMENTO_MAX_IDLE_PG_CONNECTIONS", "text")
+	_ = os.Setenv("COMENTARIO_MAX_IDLE_PG_CONNECTIONS", "text")
 	if err := configParse(); err == nil {
 		t.Errorf("expected error with MAX_IDLE_PG_CONNECTIONS=text not found")
 		return
 	}
 
-	_ = os.Setenv("COMMENTO_MAX_IDLE_PG_CONNECTIONS", "0")
+	_ = os.Setenv("COMENTARIO_MAX_IDLE_PG_CONNECTIONS", "0")
 	if err := configParse(); err == nil {
 		t.Errorf("expected error with MAX_IDLE_PG_CONNECTIONS=0 not found")
 		return
 	}
 
-	_ = os.Setenv("COMMENTO_MAX_IDLE_PG_CONNECTIONS", "-1")
+	_ = os.Setenv("COMENTARIO_MAX_IDLE_PG_CONNECTIONS", "-1")
 	if err := configParse(); err == nil {
 		t.Errorf("expected error with MAX_IDLE_PG_CONNECTIONS=-1 not found")
 		return

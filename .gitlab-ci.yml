@@ -37,7 +37,7 @@ build:
     POSTGRES_PASSWORD: postgres
     POSTGRES_DB: comentario_test
     # Required for the app to run
-    COMMENTO_POSTGRES: postgres://postgres:postgres@postgres/comentario_test?sslmode=disable
+    COMENTARIO_POSTGRES: postgres://postgres:postgres@postgres/comentario_test?sslmode=disable
   cache:
     key:
       files:

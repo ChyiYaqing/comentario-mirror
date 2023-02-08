@@ -37,7 +37,7 @@ func configFileLoad(filepath string) error {
 		key := line[:i]
 		value := line[i+1:]
 
-		if !strings.HasPrefix(key, "COMMENTO_") {
+		if !strings.HasPrefix(key, "COMENTARIO_") {
 			continue
 		}
 

@@ -15,12 +15,12 @@ func googleOauthConfigure() error {
 	}
 
 	if os.Getenv("GOOGLE_KEY") == "" {
-		logger.Errorf("COMMENTO_GOOGLE_KEY not configured, but COMMENTO_GOOGLE_SECRET is set")
+		logger.Errorf("COMENTARIO_GOOGLE_KEY not configured, but COMENTARIO_GOOGLE_SECRET is set")
 		return errorOauthMisconfigured
 	}
 
 	if os.Getenv("GOOGLE_SECRET") == "" {
-		logger.Errorf("COMMENTO_GOOGLE_SECRET not configured, but COMMENTO_GOOGLE_KEY is set")
+		logger.Errorf("COMENTARIO_GOOGLE_SECRET not configured, but COMENTARIO_GOOGLE_KEY is set")
 		return errorOauthMisconfigured
 	}
 

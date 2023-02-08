@@ -1,6 +1,6 @@
 FROM alpine:3
 
-ENV COMMENTO_BIND_ADDRESS="0.0.0.0"
+ENV COMENTARIO_BIND_ADDRESS="0.0.0.0"
 
 # Install CA certificates (for sending mail via SMTP TLS)
 RUN apk add --no-cache --update ca-certificates
