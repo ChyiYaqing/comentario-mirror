@@ -121,10 +121,6 @@ deploy:
     -   kubectl --namespace ys-comentario create -f k8s/postgres-pvc.yaml
     - fi
 
-    # Fetch database username/password
-    - postgres_usr="$(kubectl --namespace ys-comentario get secret comentario-secrets -o jsonpath="{.data.postgresUsername}" | base64 -d)"
-    - postgres_pwd="$(kubectl --namespace ys-comentario get secret comentario-secrets -o jsonpath="{.data.postgresPassword}" | base64 -d)"
-
     # Install PostgreSQL if it isn't installed
     - helm repo add bitnami https://charts.bitnami.com/bitnami
     - if ! helm status --namespace ys-comentario comentario-postgres; then
@@ -133,9 +129,9 @@ deploy:
           --set "image.repository=postgres"
           --set "image.tag=$POSTGRES_VERSION"
           --set "primary.persistence.existingClaim=comentario-postgres-pvc"
-          --set "auth.username=$postgres_usr"
-          --set "auth.password=$postgres_pwd"
-          --set "auth.database=comentario"
+          --set "global.postgresql.auth.existingSecret=comentario-secrets"
+          --set "global.postgresql.auth.secretKeys.adminPasswordKey=postgresPassword"
+          --set "global.postgresql.auth.database=comentario"
           --wait
           comentario-postgres
           bitnami/postgresql
@@ -146,9 +142,9 @@ deploy:
           --set "image.repository=postgres"
           --set "image.tag=$POSTGRES_VERSION"
           --set "primary.persistence.existingClaim=comentario-postgres-pvc"
-          --set "auth.username=$postgres_usr"
-          --set "auth.password=$postgres_pwd"
-          --set "auth.database=comentario"
+          --set "global.postgresql.auth.existingSecret=comentario-secrets"
+          --set "global.postgresql.auth.secretKeys.adminPasswordKey=postgresPassword"
+          --set "global.postgresql.auth.database=comentario"
           --wait
           comentario-postgres
           bitnami/postgresql
