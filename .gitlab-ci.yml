@@ -129,42 +129,42 @@ deploy:
     - helm repo add bitnami https://charts.bitnami.com/bitnami
     - if ! helm status --namespace ys-comentario comentario-postgres; then
     -   helm install
-      --namespace ys-comentario
-      --set "image.repository=postgres"
-      --set "image.tag=$POSTGRES_VERSION"
-      --set "persistence.existingClaim=comentario-postgres-pvc"
-      --set "postgresqlUsername=$postgres_usr"
-      --set "postgresqlPassword=$postgres_pwd"
-      --set "postgresqlDatabase=comentario"
-      --wait
-      comentario-postgres
-      bitnami/postgresql
+          --namespace ys-comentario
+          --set "image.repository=postgres"
+          --set "image.tag=$POSTGRES_VERSION"
+          --set "persistence.existingClaim=comentario-postgres-pvc"
+          --set "postgresqlUsername=$postgres_usr"
+          --set "postgresqlPassword=$postgres_pwd"
+          --set "postgresqlDatabase=comentario"
+          --wait
+          comentario-postgres
+          bitnami/postgresql
     # It's already installed: upgrade PostgreSQL if needed
     - elif [[ "$UPGRADE_POSTGRES" == "true" ]]; then
     -   helm upgrade
-      --namespace ys-comentario
-      --set "image.repository=postgres"
-      --set "image.tag=$POSTGRES_VERSION"
-      --set "persistence.existingClaim=comentario-postgres-pvc"
-      --set "postgresqlUsername=$postgres_usr"
-      --set "postgresqlPassword=$postgres_pwd"
-      --set "postgresqlDatabase=comentario"
-      --wait
-      comentario-postgres
-      bitnami/postgresql
+          --namespace ys-comentario
+          --set "image.repository=postgres"
+          --set "image.tag=$POSTGRES_VERSION"
+          --set "persistence.existingClaim=comentario-postgres-pvc"
+          --set "postgresqlUsername=$postgres_usr"
+          --set "postgresqlPassword=$postgres_pwd"
+          --set "postgresqlDatabase=comentario"
+          --wait
+          comentario-postgres
+          bitnami/postgresql
     - fi
 
     # Perform chart installation/upgrade, waiting for it to complete (up to two minutes)
     - helm upgrade
-      --namespace ys-comentario
-      --install
-      --set "clusterIssuer=letsencrypt-staging"
-      --set "image.repository=$CI_REGISTRY_IMAGE"
-      --set "image.tag=$VERSION"
-      --set "comentario.smtpHost=mail.privateemail.com"
-      --set "comentario.smtpFromAddress=noreply@yktoo.com"
-      --set "ingress.host=comment.yktoo.com"
-      --wait
-      --timeout 2m
-      comentario-yktoo-com
-      helm/comentario
+        --namespace ys-comentario
+        --install
+        --set "clusterIssuer=letsencrypt-staging"
+        --set "image.repository=$CI_REGISTRY_IMAGE"
+        --set "image.tag=$VERSION"
+        --set "comentario.smtpHost=mail.privateemail.com"
+        --set "comentario.smtpFromAddress=noreply@yktoo.com"
+        --set "ingress.host=comment.yktoo.com"
+        --wait
+        --timeout 2m
+        comentario-yktoo-com
+        helm/comentario
