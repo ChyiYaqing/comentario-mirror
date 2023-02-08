@@ -132,10 +132,10 @@ deploy:
           --namespace ys-comentario
           --set "image.repository=postgres"
           --set "image.tag=$POSTGRES_VERSION"
-          --set "persistence.existingClaim=comentario-postgres-pvc"
-          --set "postgresqlUsername=$postgres_usr"
-          --set "postgresqlPassword=$postgres_pwd"
-          --set "postgresqlDatabase=comentario"
+          --set "primary.persistence.existingClaim=comentario-postgres-pvc"
+          --set "auth.username=$postgres_usr"
+          --set "auth.password=$postgres_pwd"
+          --set "auth.database=comentario"
           --wait
           comentario-postgres
           bitnami/postgresql
@@ -145,10 +145,10 @@ deploy:
           --namespace ys-comentario
           --set "image.repository=postgres"
           --set "image.tag=$POSTGRES_VERSION"
-          --set "persistence.existingClaim=comentario-postgres-pvc"
-          --set "postgresqlUsername=$postgres_usr"
-          --set "postgresqlPassword=$postgres_pwd"
-          --set "postgresqlDatabase=comentario"
+          --set "primary.persistence.existingClaim=comentario-postgres-pvc"
+          --set "auth.username=$postgres_usr"
+          --set "auth.password=$postgres_pwd"
+          --set "auth.database=comentario"
           --wait
           comentario-postgres
           bitnami/postgresql
