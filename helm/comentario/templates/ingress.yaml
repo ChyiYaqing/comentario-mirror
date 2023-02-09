@@ -20,7 +20,7 @@ spec:
         - name: {{ $fullName }}
           port: {{ $svcPort }}
       middlewares:
-        - name: https-redirect
+        - name: {{ $fullName }}-https-redirect
 
 ---
 # Main host's pass-through to the backend
@@ -40,7 +40,7 @@ spec:
         - name: {{ $fullName }}
           port: {{ $svcPort }}
       middlewares:
-        - name: gzip-compress
+        - name: {{ $fullName }}-gzip-compress
   tls:
     secretName: {{ $fullName }}-cert-secret
 
@@ -49,7 +49,7 @@ spec:
 apiVersion: traefik.containo.us/v1alpha1
 kind: Middleware
 metadata:
-  name: https-redirect
+  name: {{ $fullName }}-https-redirect
 spec:
   redirectScheme:
     scheme: https
@@ -60,7 +60,7 @@ spec:
 apiVersion: traefik.containo.us/v1alpha1
 kind: Middleware
 metadata:
-  name: gzip-compress
+  name: {{ $fullName }}-gzip-compress
 spec:
   compress: {}
 {{- end }}
