@@ -6,8 +6,8 @@ export type CommentEditorCallback = (ce: CommentEditor) => void;
 
 export class CommentEditor extends Wrap<HTMLFormElement>{
 
-    private cbAnonymous: Wrap<HTMLInputElement>;
-    private textarea: Wrap<HTMLTextAreaElement>;
+    private readonly cbAnonymous: Wrap<HTMLInputElement>;
+    private readonly textarea: Wrap<HTMLTextAreaElement>;
 
     /**
      * Create a new editor for editing comment text.
@@ -39,7 +39,7 @@ export class CommentEditor extends Wrap<HTMLFormElement>{
             if (anonymousOnly) {
                 this.cbAnonymous.checked(true).attr({disabled: 'true'});
             }
-            anonContainer = UIToolkit.div('round-check', 'anonymous-checkbox-container')
+            anonContainer = UIToolkit.div('checkbox-container')
                 .append(
                     this.cbAnonymous,
                     Wrap.new('label').attr({for: this.cbAnonymous.getAttr('id')}).inner('Comment anonymously'));
@@ -53,17 +53,15 @@ export class CommentEditor extends Wrap<HTMLFormElement>{
                 // Textarea footer
                 UIToolkit.div('comment-editor-footer')
                     .append(
-                        UIToolkit.div()
-                            .append(
-                                // Anonymous checkbox, if any
-                                anonContainer,
-                                // Markdown help button
-                                UIToolkit.button(
-                                    '<b>M⬇</b>&nbsp;Markdown',
-                                    btn => MarkdownHelp.run(root, {ref: btn, placement: 'bottom-start'}))),
+                        // Markdown help button
+                        UIToolkit.button(
+                            '<b>M⬇</b>&nbsp;Markdown',
+                            btn => MarkdownHelp.run(root, {ref: btn, placement: 'bottom-start'})),
                         // Buttons
                         UIToolkit.div('comment-editor-buttons')
                             .append(
+                                // Anonymous checkbox, if any
+                                anonContainer,
                                 // Cancel
                                 UIToolkit.button('Cancel', () => onCancel(this)),
                                 // Submit

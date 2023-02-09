@@ -288,6 +288,14 @@ export class Wrap<T extends HTMLElement> {
     }
 
     /**
+     * Whether the underlying element has the given class.
+     * @param c Class to check for.
+     */
+    hasClass(c: string): boolean {
+        return !!this.el?.classList.contains(`comentario-${c}`);
+    }
+
+    /**
      * Return whether the underlying element is fully visible on the screen along its vertical axis.
      * @private
      */

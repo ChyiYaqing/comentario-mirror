@@ -410,7 +410,8 @@ export class Comentario {
             this.mainArea.append(
                 this.addCommentHost = UIToolkit.div('add-comment-host')
                     .attr({tabindex: '0'})
-                    .on('focus', () => this.addComment(null)));
+                    // Activate the editor on focus, but only if it isn't active yet
+                    .on('focus', t => !t.hasClass('editor-inserted') && this.addComment(null)));
         }
 
         // If there's any comment, add sort buttons

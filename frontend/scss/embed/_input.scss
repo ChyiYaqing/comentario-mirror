@@ -54,29 +54,62 @@ textarea {
         .comentario-comment-editor-buttons {
             display: flex;
             justify-content: end;
+            align-items: center;
             flex-grow: 1;
             flex-wrap: wrap;
         }
     }
 }
 
-.comentario-anonymous-checkbox-container {
-    float: right;
-    margin: 20px 16px;
+.comentario-checkbox-container {
+    display: inline-block;
+    min-height: 22px;
+    padding-left: 24px;
+    margin-bottom: 2px;
 
-    input[type="checkbox"] + label {
-        padding-left: 24px;
-        font-size: 12px;
-        font-weight: bold;
+    input {
+        float: left;
+        margin-left: -24px;
+        width: 20px;
+        height: 20px;
+        vertical-align: top;
+        background: #fff no-repeat center;
+        background-size: contain;
+        border: 1px solid rgba(0,0,0,.25);
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        appearance: none;
+
+        &:checked {
+            background-color: $blue-7;
+            border-color: $blue-7;
+        }
+        &:disabled {
+            pointer-events: none;
+            filter: none;
+            opacity: 0.5;
+        }
+        &[disabled],
+        &:disabled {
+            ~ label {
+                cursor: default;
+                opacity: 0.5;
+            }
+        }
+
+    }
+
+    input[type="checkbox"] {
+        border-radius: 5px;
+
+        &:checked {
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='none' stroke='%23fff' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='M6 10l3 3l6-6'/%3e%3c/svg%3e");
+        }
+    }
+
+    label {
         color: $gray-7;
-    }
-
-    input[type="checkbox"] + label:before {
-        margin-top: 1px;
-    }
-
-    input[type="checkbox"] + label:after {
-        margin-top: -1px;
+        font-size: 13px;
     }
 }
 
