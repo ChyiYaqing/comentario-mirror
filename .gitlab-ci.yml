@@ -181,5 +181,5 @@ deploy:
         --set "ingress.host=edge.comentario.app"
         --wait
         --timeout 2m
-        comentario-yktoo-com
+        comentario-demo
         helm/comentario
