@@ -34,8 +34,8 @@ export class ProfileBar extends Wrap<HTMLDivElement> {
      */
     set authMethods(am: StringBooleanMap) {
         this._authMethods = am;
-        // Enable or disable the login button based on the availability of any auth method
-        this.btnLogin?.attr({disabled: am && Object.values(am).includes(true) ? null : 'true'});
+        // Hide or show the login button based on the availability of any auth method
+        this.btnLogin?.setClasses(!am || !Object.values(am).includes(true), 'hidden');
     }
 
     /**
@@ -120,6 +120,9 @@ export class ProfileBar extends Wrap<HTMLDivElement> {
      * Show a login dialog and return a promise that's resolved when the dialog is closed.
      */
     async loginUser(): Promise<void> {
+        if (!this._authMethods) {
+            return Promise.reject('No configured authentication methods.');
+        }
         const dlg = await LoginDialog.run(
             this.root,
             {ref: this.btnLogin, placement: 'bottom-end'},

@@ -35,9 +35,12 @@
 
     .comentario-error-box {
         width: 100%;
+        padding: 2rem;
+        margin-top: 1rem;
+        margin-bottom: 1rem;
         border-radius: 4px;
-        height: 32px;
         text-align: center;
+        background-color: $red-1;
         color: $red-7;
         font-weight: 700;
     }

@@ -321,7 +321,7 @@ export class Comentario {
             if (!this.error) {
                 this.root.prepend(this.error = UIToolkit.div('error-box'));
             }
-            this.error.inner(message);
+            this.error.inner(`Error: ${message}.`);
         } else {
             this.error?.remove();
             this.error = undefined;
@@ -678,7 +678,9 @@ export class Comentario {
             path:           this.pageId,
         });
         if (this.checkError(r)) {
-            return;
+            // Disable login on error
+            this.profileBar.authMethods = null;
+            return this.reject(`Failed to load page data: ${r.message}`);
         }
 
         // Store page- and backend-related properties
