@@ -22,15 +22,15 @@ For starters, your readers value their privacy. Not caring about them is disresp
 
 ### Deploying in Kubernetes
 
-1. Create a new namespace: `kubectl create namespace ys-comentario`
-2. Edit the values in `k8s/comentario-secrets.template.yaml` and save it as `k8s/comentario-secrets.yaml`
-3. Create the secret: `kubectl create -f k8s/comentario-secrets.yaml`
+1. Create a new namespace (in these examples I'll refer to it as `NAMESPACE`): `kubectl create namespace NAMESPACE`
+2. Edit the values in `k8s/comentario-secrets.yaml` as required. Don't forget to base64-encode the values as the last step.
+3. Create the secret: `kubectl create -f k8s/comentario-secrets.yaml -n NAMESPACE`
 
 ### Backing up the database
 
 ```bash
-kubectl exec -t -n ys-comentario \
-    $(kubectl get -n ys-comentario pods -l app.kubernetes.io/instance=comentario-postgres -o name) \
+kubectl exec -t -n NAMESPACE \
+    $(kubectl get -n NAMESPACE pods -l app.kubernetes.io/instance=comentario-postgres -o name) \
     -- pg_dump -U postgres -d comentario > /path/to/comentario.sql
 ```
 
@@ -39,8 +39,8 @@ kubectl exec -t -n ys-comentario \
 We cannot send it via the pipe directly (dunno why), so we copy it over first and clean up afterwards.
 
 ```bash
-PG_POD=$(kubectl get -n ys-comentario pods -l app.kubernetes.io/instance=comentario-postgres -o 'jsonpath={.items..metadata.name}')
-kubectl cp -n ys-comentario /path/to/comentario.sql $PG_POD:/tmp/c.sql
-kubectl exec -t -n ys-comentario $PG_POD -- psql -U postgres -d comentario -f /tmp/c.sql
-kubectl exec -t -n ys-comentario $PG_POD -- rm /tmp/c.sql
+PG_POD=$(kubectl get -n NAMESPACE pods -l app.kubernetes.io/instance=comentario-postgres -o 'jsonpath={.items..metadata.name}')
+kubectl cp -n NAMESPACE /path/to/comentario.sql $PG_POD:/tmp/c.sql
+kubectl exec -t -n NAMESPACE $PG_POD -- psql -U postgres -d comentario -f /tmp/c.sql
+kubectl exec -t -n NAMESPACE $PG_POD -- rm /tmp/c.sql
 ```
