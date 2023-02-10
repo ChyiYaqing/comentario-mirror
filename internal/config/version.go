@@ -1,0 +1,78 @@
+package config
+
+import (
+	"bytes"
+	"encoding/json"
+	"io"
+	"net/http"
+	"net/url"
+	"time"
+)
+
+func VersionCheckStart() error {
+	go func() {
+		printedError := false
+		errorCount := 0
+		latestSeen := ""
+
+		for {
+			time.Sleep(5 * time.Minute)
+
+			data := url.Values{
+				"version": {Version},
+			}
+
+			var body []byte
+			var err error
+			func() {
+				var resp *http.Response
+				resp, err = http.Post("https://version.commento.io/api/check", "application/x-www-form-urlencoded", bytes.NewBufferString(data.Encode()))
+				if err != nil {
+					// Print the error only once; we don't want to spam the logs with this every five minutes
+					if !printedError && errorCount > 5 {
+						logger.Errorf("error checking version: %v", err)
+						printedError = true
+					}
+				} else {
+					defer resp.Body.Close()
+					body, err = io.ReadAll(resp.Body)
+				}
+			}()
+			if err != nil {
+				errorCount++
+				if !printedError && errorCount > 5 {
+					logger.Errorf("error reading body: %s", err)
+					printedError = true
+				}
+				continue
+			}
+
+			type response struct {
+				Success   bool   `json:"success"`
+				Message   string `json:"message"`
+				Latest    string `json:"latest"`
+				NewUpdate bool   `json:"newUpdate"`
+			}
+
+			r := response{}
+			err = json.Unmarshal(body, &r)
+			if err != nil || !r.Success {
+				errorCount++
+				if !printedError && errorCount > 5 {
+					logger.Errorf("error checking version: %s", r.Message)
+					printedError = true
+				}
+				continue
+			}
+
+			if r.NewUpdate && r.Latest != latestSeen {
+				logger.Infof("New update available! Latest version: %s", r.Latest)
+				latestSeen = r.Latest
+			}
+
+			errorCount = 0
+			printedError = false
+		}
+	}()
+	return nil
+}

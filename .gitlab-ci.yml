@@ -72,11 +72,9 @@ build:
     - go test -v ./api/...
 
     # Build the backend
-    - cd api
     - CGO_ENABLED=0 go build -a -o "../build/comentario" -ldflags "-X main.version=$(git describe --tags)"
 
     # Build the frontend
-    - cd ..
     - yarn install --frozen-lockfile --no-progress --cache-folder .yarn-cache
     - yarn run build:prod
 

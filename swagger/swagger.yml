@@ -1,0 +1,921 @@
+info:
+  title: Comentario
+  version: 1.0.0
+consumes:
+  - application/json
+produces:
+  - application/json
+schemes:
+  - http
+swagger: "2.0"
+basePath: /api
+
+definitions:
+
+  apiResponseBase:
+    description: Base API response
+    type: object
+    readOnly: true
+    properties:
+      success:
+        type: boolean
+        x-omitempty: false
+      message:
+        type: string
+
+  comment:
+    type: object
+    properties:
+      commentHex:
+        $ref: "#/definitions/hexId"
+      commenterHex:
+        type: string
+      parentHex:
+        type: string
+      creationDate:
+        type: string
+      state:
+        $ref: "#/definitions/commentState"
+      deleted:
+        type: boolean
+      direction:
+        type: integer
+      score:
+        type: integer
+      markdown:
+        type: string
+      html:
+        type: string
+
+  commenter:
+    type: object
+    properties:
+      commenterHex:
+        $ref: "#/definitions/hexId"
+      email:
+        type: string
+        format: email
+      name:
+        type: string
+      link:
+        type: string
+      photo:
+        type: string
+      provider:
+        type: string
+      joinDate:
+        type: string
+      isModerator:
+        type: boolean
+        x-omitempty: false
+
+  commenterToken:
+    description: Authenticated commenter token, or 'anonymous' when commenting anonymously
+    type: string
+    minLength: 9 # 'anonymous'
+    maxLength: 64 # '57f7f460a42f203954860385675676996fde87df8e99c54e0f1669e55389f70e'
+
+  commentState:
+    description: Comment state
+    type: string
+    enum:
+      - approved
+      - unapproved
+      - flagged
+
+  email:
+    type: object
+    properties:
+      email:
+        type: string
+        format: email
+      unsubscribeSecretHex:
+        $ref: "#/definitions/hexId"
+      lastEmailNotificationDate:
+        type: string
+      sendReplyNotifications:
+        type: boolean
+        x-omitempty: false
+      sendModeratorNotifications:
+        type: boolean
+        x-omitempty: false
+
+  hexId:
+    description: ID consisting of 64 hex digits
+    type: string
+    minLength: 64
+    maxLength: 64
+    pattern: '[0-9a-f]{64}'
+
+  page:
+    description: Page hosting comments
+    type: object
+    properties:
+      domain:
+        type: string
+      path:
+        type: string
+      isLocked:
+        type: boolean
+      commentCount:
+        type: integer
+      stickyCommentHex:
+        type: string
+      title:
+        type: string
+
+  sortPolicy:
+    description: Sort policy
+    type: string
+    enum:
+      - score-desc
+      - creationdate-desc
+      - creationdate-asc
+
+paths:
+
+  #---------------------------------------------------------------------------------------------------------------------
+  # Auth
+  #---------------------------------------------------------------------------------------------------------------------
+
+  /forgot:
+    post:
+      operationId: Forgot
+      # TODO add real parameters and responses
+      responses:
+        200:
+          description: Success or failure response (see 'success' property)
+          schema:
+            $ref: "#/definitions/apiResponseBase"
+
+  /reset:
+    post:
+      operationId: Reset
+      # TODO add real parameters and responses
+      responses:
+        200:
+          description: Success or failure response (see 'success' property)
+          schema:
+            $ref: "#/definitions/apiResponseBase"
+
+  #---------------------------------------------------------------------------------------------------------------------
+  # Comments
+  #---------------------------------------------------------------------------------------------------------------------
+
+  /comment/approve:
+    post:
+      operationId: CommentApprove
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required:
+              - commenterToken
+              - commentHex
+            properties:
+              commenterToken:
+                $ref: "#/definitions/commenterToken"
+              commentHex:
+                $ref: "#/definitions/hexId"
+      responses:
+        200:
+          description: Success or failure response (see 'success' property)
+          schema:
+            $ref: "#/definitions/apiResponseBase"
+
+  /comment/count:
+    post:
+      operationId: CommentCount
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required:
+              - domain
+              - paths
+            properties:
+              domain:
+                type: string
+              paths:
+                type: array
+                items:
+                  type: string
+      responses:
+        200:
+          description: Success or failure response (see 'success' property)
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                x-omitempty: false
+              message:
+                type: string
+              commentCounts:
+                type: object # map[string]int
+
+  /comment/delete:
+    post:
+      operationId: CommentDelete
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required:
+              - commenterToken
+              - commentHex
+            properties:
+              commenterToken:
+                $ref: "#/definitions/commenterToken"
+              commentHex:
+                $ref: "#/definitions/hexId"
+      responses:
+        200:
+          description: Success or failure response (see 'success' property)
+          schema:
+            $ref: "#/definitions/apiResponseBase"
+
+  /comment/edit:
+    post:
+      operationId: CommentEdit
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required:
+              - commenterToken
+              - commentHex
+              - markdown
+            properties:
+              commenterToken:
+                $ref: "#/definitions/commenterToken"
+              commentHex:
+                $ref: "#/definitions/hexId"
+              markdown:
+                type: string
+      responses:
+        200:
+          description: Success or failure response (see 'success' property)
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                x-omitempty: false
+              message:
+                type: string
+              html:
+                type: string
+
+  /comment/list:
+    post:
+      operationId: CommentList
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required:
+              - commenterToken
+              - domain
+              - path
+            properties:
+              commenterToken:
+                $ref: "#/definitions/commenterToken"
+              domain:
+                type: string
+              path:
+                type: string
+      responses:
+        200:
+          description: Success or failure response (see 'success' property)
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                x-omitempty: false
+              message:
+                type: string
+              domain:
+                type: string
+              comments:
+                type: array
+                items:
+                  $ref: "#/definitions/comment"
+              commenters:
+                type: object # map[string]commenter
+              requireModeration:
+                type: boolean
+              requireIdentification:
+                type: boolean
+              isFrozen:
+                type: boolean
+              isModerator:
+                type: boolean
+              defaultSortPolicy:
+                $ref: "#/definitions/sortPolicy"
+              attributes:
+                $ref: "#/definitions/page"
+              configuredOauths:
+                type: object # map[string]bool
+
+  /comment/new:
+    post:
+      operationId: CommentNew
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required:
+              - commenterToken
+              - domain
+              - path
+              - parentHex
+              - markdown
+            properties:
+              commenterToken:
+                $ref: "#/definitions/commenterToken"
+              domain:
+                type: string
+              path:
+                type: string
+              parentHex:
+                type: string
+              markdown:
+                type: string
+      responses:
+        200:
+          description: Success or failure response (see 'success' property)
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                x-omitempty: false
+              message:
+                type: string
+              commentHex:
+                $ref: "#/definitions/hexId"
+              html:
+                type: string
+              state:
+                $ref: "#/definitions/commentState"
+
+  /comment/vote:
+    post:
+      operationId: CommentVote
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required:
+              - commenterToken
+              - commentHex
+              - direction
+            properties:
+              commenterToken:
+                $ref: "#/definitions/commenterToken"
+              commentHex:
+                $ref: "#/definitions/hexId"
+              direction:
+                type: integer
+                enum:
+                  - -1
+                  - 0
+                  - 1
+      responses:
+        200:
+          description: Success or failure response (see 'success' property)
+          schema:
+            $ref: "#/definitions/apiResponseBase"
+
+  #---------------------------------------------------------------------------------------------------------------------
+  # Commenters
+  #---------------------------------------------------------------------------------------------------------------------
+
+  /commenter/self:
+    post:
+      operationId: CommenterSelf
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required:
+              - commenterToken
+            properties:
+              commenterToken:
+                $ref: "#/definitions/commenterToken"
+      responses:
+        200:
+          description: Success or failure response (see 'success' property)
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                x-omitempty: false
+              message:
+                type: string
+              commenter:
+                $ref: "#/definitions/commenter"
+              email:
+                $ref: "#/definitions/email"
+
+  /commenter/new:
+    post:
+      operationId: CommenterNew
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required:
+              - name
+              - email
+              - password
+            properties:
+              name:
+                type: string
+              website:
+                type: string
+              email:
+                type: string
+                format: email
+              password:
+                type: string
+      responses:
+        200:
+          description: Success or failure response (see 'success' property)
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                x-omitempty: false
+              message:
+                type: string
+              confirmEmail:
+                type: boolean
+
+  /commenter/login:
+    post:
+      operationId: CommenterLogin
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required:
+              - email
+              - password
+            properties:
+              email:
+                type: string
+                format: email
+              password:
+                type: string
+      responses:
+        200:
+          description: Success or failure response (see 'success' property)
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                x-omitempty: false
+              message:
+                type: string
+              commenterToken:
+                $ref: "#/definitions/commenterToken"
+              commenter:
+                $ref: "#/definitions/commenter"
+              email:
+                $ref: "#/definitions/email"
+
+  /commenter/photo:
+    get:
+      operationId:  CommenterPhoto
+      # TODO add real parameters and responses
+      responses:
+        200:
+          description: Success or failure response (see 'success' property)
+          schema:
+            $ref: "#/definitions/apiResponseBase"
+
+  /commenter/token/new:
+    get:
+      operationId: CommenterTokenNew
+      responses:
+        200:
+          description: Success or failure response (see 'success' property)
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                x-omitempty: false
+              message:
+                type: string
+              commenterToken:
+                $ref: "#/definitions/commenterToken"
+
+  /commenter/update:
+    post:
+      operationId: CommenterUpdate
+      # TODO add real parameters and responses
+      responses:
+        200:
+          description: Success or failure response (see 'success' property)
+          schema:
+            $ref: "#/definitions/apiResponseBase"
+
+  #---------------------------------------------------------------------------------------------------------------------
+  # Domains
+  #---------------------------------------------------------------------------------------------------------------------
+
+  /domain/clear:
+    post:
+      operationId: DomainClear
+      # TODO add real parameters and responses
+      responses:
+        200:
+          description: Success or failure response (see 'success' property)
+          schema:
+            $ref: "#/definitions/apiResponseBase"
+
+  /domain/delete:
+    post:
+      operationId: DomainDelete
+      # TODO add real parameters and responses
+      responses:
+        200:
+          description: Success or failure response (see 'success' property)
+          schema:
+            $ref: "#/definitions/apiResponseBase"
+
+  /domain/export/begin:
+    post:
+      operationId: DomainExportBegin
+      # TODO add real parameters and responses
+      responses:
+        200:
+          description: Success or failure response (see 'success' property)
+          schema:
+            $ref: "#/definitions/apiResponseBase"
+
+  /domain/export/download:
+    get:
+      operationId: DomainExportDownload
+      # TODO add real parameters and responses
+      responses:
+        200:
+          description: Success or failure response (see 'success' property)
+          schema:
+            $ref: "#/definitions/apiResponseBase"
+
+  /domain/import/commento:
+    post:
+      operationId: DomainImportCommento
+      # TODO add real parameters and responses
+      responses:
+        200:
+          description: Success or failure response (see 'success' property)
+          schema:
+            $ref: "#/definitions/apiResponseBase"
+
+  /domain/import/disqus:
+    post:
+      operationId: DomainImportDisqus
+      # TODO add real parameters and responses
+      responses:
+        200:
+          description: Success or failure response (see 'success' property)
+          schema:
+            $ref: "#/definitions/apiResponseBase"
+
+  /domain/list:
+    post:
+      operationId: DomainList
+      # TODO add real parameters and responses
+      responses:
+        200:
+          description: Success or failure response (see 'success' property)
+          schema:
+            $ref: "#/definitions/apiResponseBase"
+
+  /domain/moderator/delete:
+    post:
+      operationId: DomainModeratorDelete
+      # TODO add real parameters and responses
+      responses:
+        200:
+          description: Success or failure response (see 'success' property)
+          schema:
+            $ref: "#/definitions/apiResponseBase"
+
+  /domain/moderator/new:
+    post:
+      operationId: DomainModeratorNew
+      # TODO add real parameters and responses
+      responses:
+        200:
+          description: Success or failure response (see 'success' property)
+          schema:
+            $ref: "#/definitions/apiResponseBase"
+
+  /domain/new:
+    post:
+      operationId: DomainNew
+      # TODO add real parameters and responses
+      responses:
+        200:
+          description: Success or failure response (see 'success' property)
+          schema:
+            $ref: "#/definitions/apiResponseBase"
+
+  /domain/sso/new:
+    post:
+      operationId: DomainSso/New
+      # TODO add real parameters and responses
+      responses:
+        200:
+          description: Success or failure response (see 'success' property)
+          schema:
+            $ref: "#/definitions/apiResponseBase"
+
+  /domain/statistics:
+    post:
+      operationId: DomainStatistics
+      # TODO add real parameters and responses
+      responses:
+        200:
+          description: Success or failure response (see 'success' property)
+          schema:
+            $ref: "#/definitions/apiResponseBase"
+
+  /domain/update:
+    post:
+      operationId: DomainUpdate
+      # TODO add real parameters and responses
+      responses:
+        200:
+          description: Success or failure response (see 'success' property)
+          schema:
+            $ref: "#/definitions/apiResponseBase"
+
+  #---------------------------------------------------------------------------------------------------------------------
+  # Emails
+  #---------------------------------------------------------------------------------------------------------------------
+
+  /email/get:
+    post:
+      operationId: EmailGet
+      # TODO add real parameters and responses
+      responses:
+        200:
+          description: Success or failure response (see 'success' property)
+          schema:
+            $ref: "#/definitions/apiResponseBase"
+
+  /email/moderate:
+    get:
+      operationId: EmailModerate
+      # TODO add real parameters and responses
+      responses:
+        200:
+          description: Success or failure response (see 'success' property)
+          schema:
+            $ref: "#/definitions/apiResponseBase"
+
+  /email/update:
+    post:
+      operationId: EmailUpdate
+      # TODO add real parameters and responses
+      responses:
+        200:
+          description: Success or failure response (see 'success' property)
+          schema:
+            $ref: "#/definitions/apiResponseBase"
+
+  #---------------------------------------------------------------------------------------------------------------------
+  # Owners
+  #---------------------------------------------------------------------------------------------------------------------
+
+  /owner/confirm-hex:
+    get:
+      operationId: OwnerConfirmHex
+      consumes:
+        - application/x-www-form-urlencoded
+      parameters:
+        - in: formData
+          name: confirmHex
+          required: true
+          type: string
+          minLength: 64
+          maxLength: 64
+      responses:
+        307:
+          description: Redirect to login
+          headers:
+            Location:
+              type: string
+
+  /owner/new:
+    post:
+      operationId: OwnerNew
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required:
+              - name
+              - email
+              - password
+            properties:
+              name:
+                type: string
+              email:
+                type: string
+                format: email
+              password:
+                type: string
+      responses:
+        200:
+          description: Success or failure response (see 'success' property)
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                x-omitempty: false
+              message:
+                type: string
+              confirmEmail:
+                type: boolean
+
+  /owner/login:
+    post:
+      operationId: OwnerLogin
+      # TODO add real parameters and responses
+      responses:
+        200:
+          description: Success or failure response (see 'success' property)
+          schema:
+            $ref: "#/definitions/apiResponseBase"
+
+  /owner/self:
+    post:
+      operationId: OwnerSelf
+      # TODO add real parameters and responses
+      responses:
+        200:
+          description: Success or failure response (see 'success' property)
+          schema:
+            $ref: "#/definitions/apiResponseBase"
+
+  /owner/delete:
+    post:
+      operationId: OwnerDelete
+      # TODO add real parameters and responses
+      responses:
+        200:
+          description: Success or failure response (see 'success' property)
+          schema:
+            $ref: "#/definitions/apiResponseBase"
+
+  #---------------------------------------------------------------------------------------------------------------------
+  # Pages
+  #---------------------------------------------------------------------------------------------------------------------
+
+  /page/update:
+    post:
+      operationId: PageUpdate
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required:
+              - commenterToken
+              - domain
+              - path
+              - attributes
+            properties:
+              commenterToken:
+                $ref: "#/definitions/commenterToken"
+              domain:
+                type: string
+              path:
+                type: string
+              attributes:
+                $ref: "#/definitions/page"
+      responses:
+        200:
+          description: Success or failure response (see 'success' property)
+          schema:
+            $ref: "#/definitions/apiResponseBase"
+
+  #---------------------------------------------------------------------------------------------------------------------
+  # OAuth
+  #---------------------------------------------------------------------------------------------------------------------
+
+  /oauth/google/redirect:
+    get:
+      operationId: OauthGoogleRedirect
+      # TODO add real parameters and responses
+      responses:
+        200:
+          description: Success or failure response (see 'success' property)
+          schema:
+            $ref: "#/definitions/apiResponseBase"
+
+  /oauth/google/callback:
+    get:
+      operationId: OauthGoogleCallback
+      # TODO add real parameters and responses
+      responses:
+        200:
+          description: Success or failure response (see 'success' property)
+          schema:
+            $ref: "#/definitions/apiResponseBase"
+
+  /oauth/github/redirect:
+    get:
+      operationId: OauthGithubRedirect
+      # TODO add real parameters and responses
+      responses:
+        200:
+          description: Success or failure response (see 'success' property)
+          schema:
+            $ref: "#/definitions/apiResponseBase"
+
+  /oauth/github/callback:
+    get:
+      operationId: OauthGithubCallback
+      # TODO add real parameters and responses
+      responses:
+        200:
+          description: Success or failure response (see 'success' property)
+          schema:
+            $ref: "#/definitions/apiResponseBase"
+
+  /oauth/gitlab/redirect:
+    get:
+      operationId: OauthGitlabRedirect
+      # TODO add real parameters and responses
+      responses:
+        200:
+          description: Success or failure response (see 'success' property)
+          schema:
+            $ref: "#/definitions/apiResponseBase"
+
+  /oauth/gitlab/callback:
+    get:
+      operationId: OauthGitlabCallback
+      # TODO add real parameters and responses
+      responses:
+        200:
+          description: Success or failure response (see 'success' property)
+          schema:
+            $ref: "#/definitions/apiResponseBase"
+
+  /oauth/sso/redirect:
+    get:
+      operationId: OauthSsoRedirect
+      # TODO add real parameters and responses
+      responses:
+        200:
+          description: Success or failure response (see 'success' property)
+          schema:
+            $ref: "#/definitions/apiResponseBase"
+
+  /oauth/sso/callback:
+    get:
+      operationId: OauthSsoCallback
+      # TODO add real parameters and responses
+      responses:
+        200:
+          description: Success or failure response (see 'success' property)
+          schema:
+            $ref: "#/definitions/apiResponseBase"
