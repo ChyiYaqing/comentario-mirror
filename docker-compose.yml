@@ -27,7 +27,7 @@ services:
       - comentario_network
 
   db:
-    image: postgres:11
+    image: postgres:15-alpine
     environment:
       POSTGRES_DB: comentario
       POSTGRES_USER: postgres

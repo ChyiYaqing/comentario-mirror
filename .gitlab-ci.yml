@@ -14,8 +14,8 @@ stages:
   - deploy
 
 variables:
-  CI_TOOLS_VERSION: "v1"
-  POSTGRES_VERSION: "11"
+  CI_TOOLS_VERSION: "v2"
+  POSTGRES_VERSION: "15-alpine"
   # Override to "true" to upgrade the existing PostgreSQL release (only relevant if there is one)
   UPGRADE_POSTGRES: "false"
   # Namespace to deploy Kubernetes objects into
@@ -58,8 +58,6 @@ build:
   before_script:
     # Create the required dirs
     - mkdir -p .go
-    # Install Yarn
-    - npm install -g yarn@1.22.19
   script:
     #-------------------------------------------------------------------------------------------------------------------
     # Build the app
@@ -123,19 +121,19 @@ deploy-dev:
 
     # Perform chart installation/upgrade (edge.comentario.app), waiting for it to complete (up to two minutes)
     - helm upgrade
-      --namespace $NAMESPACE
-      --install
-      --set "clusterIssuer=letsencrypt-prod"
-      --set "image.repository=$CI_REGISTRY_IMAGE"
-      --set "image.tag=$VERSION"
-      --set "comentario.secretName=comentario-edge-secrets"
-      --set "comentario.smtpHost=mail.privateemail.com"
-      --set "comentario.smtpFromAddress=noreply@yktoo.com"
-      --set "ingress.host=edge.comentario.app"
-      --wait
-      --timeout 2m
-      comentario-edge
-      helm/comentario
+        --namespace $NAMESPACE
+        --install
+        --set "clusterIssuer=letsencrypt-prod"
+        --set "image.repository=$CI_REGISTRY_IMAGE"
+        --set "image.tag=$VERSION"
+        --set "comentario.secretName=comentario-edge-secrets"
+        --set "comentario.smtpHost=mail.privateemail.com"
+        --set "comentario.smtpFromAddress=noreply@yktoo.com"
+        --set "ingress.host=edge.comentario.app"
+        --wait
+        --timeout 2m
+        comentario-edge
+        helm/comentario
 
 deploy-tag:
   stage: deploy
@@ -155,45 +153,47 @@ deploy-tag:
 
     # Install PostgreSQL if it isn't installed
     - helm repo add bitnami https://charts.bitnami.com/bitnami
+    - helm repo update
     - if ! helm status --namespace $NAMESPACE comentario-postgres; then
     -   helm install
-      --namespace $NAMESPACE
-      --set "image.repository=postgres"
-      --set "image.tag=$POSTGRES_VERSION"
-      --set "primary.persistence.existingClaim=comentario-postgres-pvc"
-      --set "global.postgresql.auth.existingSecret=comentario-yktoo-com-secrets"
-      --set "global.postgresql.auth.secretKeys.adminPasswordKey=postgresPassword"
-      --set "global.postgresql.auth.database=comentario"
-      --wait
-      comentario-postgres
-      bitnami/postgresql
+          --namespace $NAMESPACE
+          --set "image.repository=postgres"
+          --set "image.tag=$POSTGRES_VERSION"
+          --set "primary.persistence.existingClaim=comentario-postgres-pvc"
+          --set "global.postgresql.auth.existingSecret=comentario-yktoo-com-secrets"
+          --set "global.postgresql.auth.secretKeys.adminPasswordKey=postgresPassword"
+          --set "global.postgresql.auth.database=comentario"
+          --wait
+          comentario-postgres
+          bitnami/postgresql
+
     # It's already installed: upgrade PostgreSQL if needed
     - elif [[ "$UPGRADE_POSTGRES" == "true" ]]; then
     -   helm upgrade
-      --namespace $NAMESPACE
-      --set "image.repository=postgres"
-      --set "image.tag=$POSTGRES_VERSION"
-      --set "primary.persistence.existingClaim=comentario-postgres-pvc"
-      --set "global.postgresql.auth.existingSecret=comentario-yktoo-com-secrets"
-      --set "global.postgresql.auth.secretKeys.adminPasswordKey=postgresPassword"
-      --set "global.postgresql.auth.database=comentario"
-      --wait
-      comentario-postgres
-      bitnami/postgresql
+          --namespace $NAMESPACE
+          --set "image.repository=postgres"
+          --set "image.tag=$POSTGRES_VERSION"
+          --set "primary.persistence.existingClaim=comentario-postgres-pvc"
+          --set "global.postgresql.auth.existingSecret=comentario-yktoo-com-secrets"
+          --set "global.postgresql.auth.secretKeys.adminPasswordKey=postgresPassword"
+          --set "global.postgresql.auth.database=comentario"
+          --wait
+          comentario-postgres
+          bitnami/postgresql
     - fi
 
     # Perform chart installation/upgrade (comment.yktoo.com), waiting for it to complete (up to two minutes)
     - helm upgrade
-      --namespace $NAMESPACE
-      --install
-      --set "clusterIssuer=letsencrypt-prod"
-      --set "image.repository=$CI_REGISTRY_IMAGE"
-      --set "image.tag=$VERSION"
-      --set "comentario.secretName=comentario-yktoo-com-secrets"
-      --set "comentario.smtpHost=mail.privateemail.com"
-      --set "comentario.smtpFromAddress=noreply@yktoo.com"
-      --set "ingress.host=comment.yktoo.com"
-      --wait
-      --timeout 2m
-      comentario-yktoo-com
-      helm/comentario
+        --namespace $NAMESPACE
+        --install
+        --set "clusterIssuer=letsencrypt-prod"
+        --set "image.repository=$CI_REGISTRY_IMAGE"
+        --set "image.tag=$VERSION"
+        --set "comentario.secretName=comentario-yktoo-com-secrets"
+        --set "comentario.smtpHost=mail.privateemail.com"
+        --set "comentario.smtpFromAddress=noreply@yktoo.com"
+        --set "ingress.host=comment.yktoo.com"
+        --wait
+        --timeout 2m
+        comentario-yktoo-com
+        helm/comentario

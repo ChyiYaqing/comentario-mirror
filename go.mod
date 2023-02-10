@@ -1,6 +1,6 @@
 module gitlab.com/commento/commento/api
 
-go 1.19
+go 1.20
 
 require (
 	github.com/adtac/go-akismet v0.0.0-20181220032308-0ca9e1023047
