@@ -1,6 +1,7 @@
 package api
 
 import (
+	"gitlab.com/comentario/comentario/internal/svc"
 	"gitlab.com/comentario/comentario/internal/util"
 	"net/http"
 )
@@ -11,27 +12,27 @@ func domainDelete(domain string) error {
 	}
 
 	statement := `delete from domains where domain = $1;`
-	_, err := DB.Exec(statement, domain)
+	_, err := svc.DB.Exec(statement, domain)
 	if err != nil {
 		return util.ErrorNoSuchDomain
 	}
 
 	statement = `delete from views where views.domain = $1;`
-	_, err = DB.Exec(statement, domain)
+	_, err = svc.DB.Exec(statement, domain)
 	if err != nil {
 		logger.Errorf("cannot delete domain from views: %v", err)
 		return util.ErrorInternal
 	}
 
 	statement = `delete from moderators where moderators.domain = $1;`
-	_, err = DB.Exec(statement, domain)
+	_, err = svc.DB.Exec(statement, domain)
 	if err != nil {
 		logger.Errorf("cannot delete domain from moderators: %v", err)
 		return util.ErrorInternal
 	}
 
 	statement = `delete from ssotokens where ssotokens.domain = $1;`
-	_, err = DB.Exec(statement, domain)
+	_, err = svc.DB.Exec(statement, domain)
 	if err != nil {
 		logger.Errorf("cannot delete domain from ssotokens: %v", err)
 		return util.ErrorInternal

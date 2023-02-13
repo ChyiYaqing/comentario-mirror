@@ -1,6 +1,7 @@
 package api
 
 import (
+	"gitlab.com/comentario/comentario/internal/svc"
 	"gitlab.com/comentario/comentario/internal/util"
 	"golang.org/x/crypto/bcrypt"
 	"net/http"
@@ -13,7 +14,7 @@ func commenterLogin(email string, password string) (string, error) {
 	}
 
 	statement := `select commenterHex, passwordHash from commenters where email = $1 and provider = 'commento';`
-	row := DB.QueryRow(statement, email)
+	row := svc.DB.QueryRow(statement, email)
 
 	var commenterHex string
 	var passwordHash string
@@ -33,7 +34,7 @@ func commenterLogin(email string, password string) (string, error) {
 	}
 
 	statement = `insert into commenterSessions(commenterToken, commenterHex, creationDate) values($1, $2, $3);`
-	_, err = DB.Exec(statement, commenterToken, commenterHex, time.Now().UTC())
+	_, err = svc.DB.Exec(statement, commenterToken, commenterHex, time.Now().UTC())
 	if err != nil {
 		logger.Errorf("cannot insert commenterToken token: %v\n", err)
 		return "", util.ErrorInternal

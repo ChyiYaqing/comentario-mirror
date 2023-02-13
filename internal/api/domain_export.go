@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"gitlab.com/comentario/comentario/internal/mail"
+	"gitlab.com/comentario/comentario/internal/svc"
 	"gitlab.com/comentario/comentario/internal/util"
 	"net/http"
 	"time"
@@ -23,7 +24,7 @@ func domainExportBegin(email string, toName string, domain string) {
 		from comments
 		where domain = $1;
 	`
-	rows1, err := DB.Query(statement, domain)
+	rows1, err := svc.DB.Query(statement, domain)
 	if err != nil {
 		logger.Errorf("cannot select comments while exporting %s: %v", domain, err)
 		domainExportBeginError(email, toName, domain, util.ErrorInternal)
@@ -47,7 +48,7 @@ func domainExportBegin(email string, toName string, domain string) {
 		from commenters, comments
 		where comments.domain = $1 and commenters.commenterHex = comments.commenterHex;
 	`
-	rows2, err := DB.Query(statement, domain)
+	rows2, err := svc.DB.Query(statement, domain)
 	if err != nil {
 		logger.Errorf("cannot select commenters while exporting %s: %v", domain, err)
 		domainExportBeginError(email, toName, domain, util.ErrorInternal)
@@ -92,7 +93,7 @@ func domainExportBegin(email string, toName string, domain string) {
 		exports (exportHex, binData, domain, creationDate)
 		values  ($1,        $2,      $3    , $4          );
 	`
-	_, err = DB.Exec(statement, exportHex, gje, domain, time.Now().UTC())
+	_, err = svc.DB.Exec(statement, exportHex, gje, domain, time.Now().UTC())
 	if err != nil {
 		logger.Errorf("error inserting expiry binary data while exporting %s: %v", domain, err)
 		domainExportBeginError(email, toName, domain, util.ErrorInternal)

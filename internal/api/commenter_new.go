@@ -2,6 +2,7 @@ package api
 
 import (
 	"gitlab.com/comentario/comentario/internal/mail"
+	"gitlab.com/comentario/comentario/internal/svc"
 	"gitlab.com/comentario/comentario/internal/util"
 	"net/http"
 	"time"
@@ -38,7 +39,7 @@ func commenterNew(email string, name string, link string, photo string, provider
 		return "", util.ErrorInternal
 	}
 
-	passwordHash := []byte{}
+	var passwordHash []byte
 	if password != "" {
 		passwordHash, err = bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 		if err != nil {
@@ -48,7 +49,7 @@ func commenterNew(email string, name string, link string, photo string, provider
 	}
 
 	statement := `insert into commenters(commenterHex, email, name, link, photo, provider, passwordHash, joinDate) values($1, $2, $3, $4, $5, $6, $7, $8);`
-	_, err = DB.Exec(statement, commenterHex, email, name, link, photo, provider, string(passwordHash), time.Now().UTC())
+	_, err = svc.DB.Exec(statement, commenterHex, email, name, link, photo, provider, string(passwordHash), time.Now().UTC())
 	if err != nil {
 		logger.Errorf("cannot insert commenter: %v", err)
 		return "", util.ErrorInternal

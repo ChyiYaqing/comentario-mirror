@@ -1,6 +1,7 @@
 package api
 
 import (
+	"gitlab.com/comentario/comentario/internal/svc"
 	"gitlab.com/comentario/comentario/internal/util"
 	"net/http"
 )
@@ -11,21 +12,21 @@ func domainClear(domain string) error {
 	}
 
 	statement := `delete from votes using comments where comments.commentHex = votes.commentHex and comments.domain = $1;`
-	_, err := DB.Exec(statement, domain)
+	_, err := svc.DB.Exec(statement, domain)
 	if err != nil {
 		logger.Errorf("cannot delete votes: %v", err)
 		return util.ErrorInternal
 	}
 
 	statement = `delete from comments where comments.domain = $1;`
-	_, err = DB.Exec(statement, domain)
+	_, err = svc.DB.Exec(statement, domain)
 	if err != nil {
 		logger.Errorf(statement, domain)
 		return util.ErrorInternal
 	}
 
 	statement = `delete from pages where pages.domain = $1;`
-	_, err = DB.Exec(statement, domain)
+	_, err = svc.DB.Exec(statement, domain)
 	if err != nil {
 		logger.Errorf(statement, domain)
 		return util.ErrorInternal

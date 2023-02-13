@@ -1,6 +1,7 @@
 package api
 
 import (
+	"gitlab.com/comentario/comentario/internal/svc"
 	"gitlab.com/comentario/comentario/internal/util"
 	"time"
 )
@@ -17,14 +18,14 @@ func domainModeratorList(domain string) ([]moderator, error) {
 		from moderators
 		where domain=$1;
 	`
-	rows, err := DB.Query(statement, domain)
+	rows, err := svc.DB.Query(statement, domain)
 	if err != nil {
 		logger.Errorf("cannot get moderators: %v", err)
 		return nil, util.ErrorInternal
 	}
 	defer rows.Close()
 
-	moderators := []moderator{}
+	var moderators []moderator
 	for rows.Next() {
 		m := moderator{}
 		if err = rows.Scan(&m.Email, &m.AddDate); err != nil {
@@ -46,7 +47,7 @@ func isDomainModerator(domain string, email string) (bool, error) {
 			where domain=$1 and email=$2
 		);
 	`
-	row := DB.QueryRow(statement, domain, email)
+	row := svc.DB.QueryRow(statement, domain, email)
 
 	var exists bool
 	if err := row.Scan(&exists); err != nil {

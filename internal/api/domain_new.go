@@ -1,6 +1,7 @@
 package api
 
 import (
+	"gitlab.com/comentario/comentario/internal/svc"
 	"gitlab.com/comentario/comentario/internal/util"
 	"net/http"
 	"strings"
@@ -17,7 +18,7 @@ func domainNew(ownerHex string, name string, domain string) error {
 	}
 
 	statement := `insert into domains(ownerHex, name, domain, creationDate) values($1, $2, $3, $4);`
-	_, err := DB.Exec(statement, ownerHex, name, domain, time.Now().UTC())
+	_, err := svc.DB.Exec(statement, ownerHex, name, domain, time.Now().UTC())
 	if err != nil {
 		// TODO: Make sure this is really the error.
 		return util.ErrorDomainAlreadyExists

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"gitlab.com/comentario/comentario/internal/svc"
 	"time"
 )
 
@@ -11,7 +12,7 @@ func DomainExportCleanupBegin() error {
 				delete from exports
 				where creationDate < $1;
 			`
-			_, err := DB.Exec(statement, time.Now().UTC().AddDate(0, 0, -7))
+			_, err := svc.DB.Exec(statement, time.Now().UTC().AddDate(0, 0, -7))
 			if err != nil {
 				logger.Errorf("error cleaning up export rows: %v", err)
 				return

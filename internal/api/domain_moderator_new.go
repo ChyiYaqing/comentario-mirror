@@ -1,6 +1,7 @@
 package api
 
 import (
+	"gitlab.com/comentario/comentario/internal/svc"
 	"gitlab.com/comentario/comentario/internal/util"
 	"net/http"
 	"time"
@@ -17,7 +18,7 @@ func domainModeratorNew(domain string, email string) error {
 	}
 
 	statement := `insert into moderators(domain, email, addDate) values($1, $2, $3);`
-	_, err := DB.Exec(statement, domain, email, time.Now().UTC())
+	_, err := svc.DB.Exec(statement, domain, email, time.Now().UTC())
 	if err != nil {
 		logger.Errorf("cannot insert new moderator: %v", err)
 		return util.ErrorInternal

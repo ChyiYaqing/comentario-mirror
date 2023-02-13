@@ -2,6 +2,7 @@ package api
 
 import (
 	"gitlab.com/comentario/comentario/internal/mail"
+	"gitlab.com/comentario/comentario/internal/svc"
 	"gitlab.com/comentario/comentario/internal/util"
 	"net/http"
 	"time"
@@ -40,7 +41,7 @@ func commentNew(commenterHex string, domain string, path string, parentHex strin
 		insert into comments(commentHex, domain, path, commenterHex, parentHex, markdown, html, creationDate, state)
 			values($1, $2, $3, $4, $5, $6, $7, $8, $9);
 	`
-	_, err = DB.Exec(statement, commentHex, domain, path, commenterHex, parentHex, markdown, html, creationDate, state)
+	_, err = svc.DB.Exec(statement, commentHex, domain, path, commenterHex, parentHex, markdown, html, creationDate, state)
 	if err != nil {
 		logger.Errorf("cannot insert comment: %v", err)
 		return "", util.ErrorInternal

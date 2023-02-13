@@ -1,6 +1,9 @@
 package api
 
-import "gitlab.com/comentario/comentario/internal/util"
+import (
+	"gitlab.com/comentario/comentario/internal/svc"
+	"gitlab.com/comentario/comentario/internal/util"
+)
 
 var domainsRowColumns = `
 	domains.domain,
@@ -58,7 +61,7 @@ func domainGet(dmn string) (domain, error) {
 		FROM domains
 		WHERE domain = $1;
 	`
-	row := DB.QueryRow(statement, dmn)
+	row := svc.DB.QueryRow(statement, dmn)
 
 	var err error
 	d := domain{}

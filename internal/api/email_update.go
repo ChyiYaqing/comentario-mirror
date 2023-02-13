@@ -1,6 +1,7 @@
 package api
 
 import (
+	"gitlab.com/comentario/comentario/internal/svc"
 	"gitlab.com/comentario/comentario/internal/util"
 	"net/http"
 )
@@ -11,7 +12,7 @@ func emailUpdate(e email) error {
 		set sendReplyNotifications = $3, sendModeratorNotifications = $4
 		where email = $1 and unsubscribeSecretHex = $2;
 	`
-	_, err := DB.Exec(statement, e.Email, e.UnsubscribeSecretHex, e.SendReplyNotifications, e.SendModeratorNotifications)
+	_, err := svc.DB.Exec(statement, e.Email, e.UnsubscribeSecretHex, e.SendReplyNotifications, e.SendModeratorNotifications)
 	if err != nil {
 		logger.Errorf("error updating email: %v", err)
 		return util.ErrorInternal

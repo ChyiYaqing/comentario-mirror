@@ -1,6 +1,7 @@
 package api
 
 import (
+	"gitlab.com/comentario/comentario/internal/svc"
 	"gitlab.com/comentario/comentario/internal/util"
 	"net/http"
 )
@@ -15,14 +16,14 @@ func domainList(ownerHex string) ([]domain, error) {
 		FROM domains
 		WHERE ownerHex=$1;
 	`
-	rows, err := DB.Query(statement, ownerHex)
+	rows, err := svc.DB.Query(statement, ownerHex)
 	if err != nil {
 		logger.Errorf("cannot query domains: %v", err)
 		return nil, util.ErrorInternal
 	}
 	defer rows.Close()
 
-	domains := []domain{}
+	var domains []domain
 	for rows.Next() {
 		var d domain
 		if err = domainsRowScan(rows, &d); err != nil {

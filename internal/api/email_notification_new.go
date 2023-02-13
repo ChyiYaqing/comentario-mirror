@@ -2,6 +2,7 @@ package api
 
 import (
 	"gitlab.com/comentario/comentario/internal/mail"
+	"gitlab.com/comentario/comentario/internal/svc"
 )
 
 func emailNotificationModerator(d domain, path string, title string, commenterHex string, commentHex string, html string, state string) {
@@ -50,7 +51,7 @@ func emailNotificationModerator(d domain, path string, title string, commenterHe
 		}
 
 		statement := `select name from commenters where email = $1;`
-		row := DB.QueryRow(statement, m.Email)
+		row := svc.DB.QueryRow(statement, m.Email)
 		var name string
 		if err := row.Scan(&name); err != nil {
 			// The moderator has probably not created a commenter account.
@@ -77,7 +78,7 @@ func emailNotificationReply(d domain, path string, title string, commenterHex st
 	}
 
 	statement := `select commenterHex from comments where commentHex = $1;`
-	row := DB.QueryRow(statement, parentHex)
+	row := svc.DB.QueryRow(statement, parentHex)
 
 	var parentCommenterHex string
 	err := row.Scan(&parentCommenterHex)

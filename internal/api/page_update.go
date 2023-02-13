@@ -1,6 +1,7 @@
 package api
 
 import (
+	"gitlab.com/comentario/comentario/internal/svc"
 	"gitlab.com/comentario/comentario/internal/util"
 	"net/http"
 )
@@ -17,7 +18,7 @@ func pageUpdate(p page) error {
 		on conflict (domain, path) do
 			update set isLocked = $3, stickyCommentHex = $4;
 	`
-	_, err := DB.Exec(statement, p.Domain, p.Path, p.IsLocked, p.StickyCommentHex)
+	_, err := svc.DB.Exec(statement, p.Domain, p.Path, p.IsLocked, p.StickyCommentHex)
 	if err != nil {
 		logger.Errorf("error setting page attributes: %v", err)
 		return util.ErrorInternal

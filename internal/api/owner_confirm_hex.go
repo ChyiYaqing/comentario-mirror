@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"gitlab.com/comentario/comentario/internal/svc"
 	"gitlab.com/comentario/comentario/internal/util"
 	"net/http"
 	"os"
@@ -20,7 +21,7 @@ func ownerConfirmHex(confirmHex string) error {
 			where confirmHex=$1
 		);
 	`
-	res, err := DB.Exec(statement, confirmHex)
+	res, err := svc.DB.Exec(statement, confirmHex)
 	if err != nil {
 		logger.Errorf("cannot mark user's confirmedEmail as true: %v\n", err)
 		return util.ErrorInternal
@@ -40,7 +41,7 @@ func ownerConfirmHex(confirmHex string) error {
 		delete from ownerConfirmHexes
 		where confirmHex=$1;
 	`
-	_, err = DB.Exec(statement, confirmHex)
+	_, err = svc.DB.Exec(statement, confirmHex)
 	if err != nil {
 		logger.Warningf("cannot remove confirmation token: %v\n", err)
 		// Don't return an error because this is not critical.

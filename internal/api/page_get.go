@@ -2,6 +2,7 @@ package api
 
 import (
 	"database/sql"
+	"gitlab.com/comentario/comentario/internal/svc"
 	"gitlab.com/comentario/comentario/internal/util"
 )
 
@@ -16,7 +17,7 @@ func pageGet(domain string, path string) (page, error) {
 		from pages
 		where domain=$1 and path=$2;
 	`
-	row := DB.QueryRow(statement, domain, path)
+	row := svc.DB.QueryRow(statement, domain, path)
 
 	p := page{Domain: domain, Path: path}
 	if err := row.Scan(&p.IsLocked, &p.CommentCount, &p.StickyCommentHex, &p.Title); err != nil {

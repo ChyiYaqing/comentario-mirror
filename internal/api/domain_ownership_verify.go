@@ -1,6 +1,9 @@
 package api
 
-import "gitlab.com/comentario/comentario/internal/util"
+import (
+	"gitlab.com/comentario/comentario/internal/svc"
+	"gitlab.com/comentario/comentario/internal/util"
+)
 
 func domainOwnershipVerify(ownerHex string, domain string) (bool, error) {
 	if ownerHex == "" || domain == "" {
@@ -8,7 +11,7 @@ func domainOwnershipVerify(ownerHex string, domain string) (bool, error) {
 	}
 
 	statement := `select EXISTS (select 1 from domains where ownerHex=$1 and domain=$2);`
-	row := DB.QueryRow(statement, ownerHex, domain)
+	row := svc.DB.QueryRow(statement, ownerHex, domain)
 
 	var exists bool
 	if err := row.Scan(&exists); err != nil {

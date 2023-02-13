@@ -1,6 +1,7 @@
 package api
 
 import (
+	"gitlab.com/comentario/comentario/internal/svc"
 	"gitlab.com/comentario/comentario/internal/util"
 	"net/http"
 )
@@ -12,7 +13,7 @@ func commentApprove(commentHex string) error {
 
 	statement := `update comments set state = 'approved' where commentHex = $1;`
 
-	_, err := DB.Exec(statement, commentHex)
+	_, err := svc.DB.Exec(statement, commentHex)
 	if err != nil {
 		logger.Errorf("cannot approve comment: %v", err)
 		return util.ErrorInternal

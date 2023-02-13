@@ -1,6 +1,7 @@
 package api
 
 import (
+	"gitlab.com/comentario/comentario/internal/svc"
 	"gitlab.com/comentario/comentario/internal/util"
 	"net/http"
 )
@@ -13,7 +14,7 @@ func commentEdit(commentHex string, markdown string) (string, error) {
 	html := markdownToHtml(markdown)
 
 	statement := `update comments set markdown = $2, html = $3 where commentHex=$1;`
-	_, err := DB.Exec(statement, commentHex, markdown, html)
+	_, err := svc.DB.Exec(statement, commentHex, markdown, html)
 
 	if err != nil {
 		// TODO: make sure this is the error is actually nonexistent commentHex

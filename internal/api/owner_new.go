@@ -2,6 +2,7 @@ package api
 
 import (
 	"gitlab.com/comentario/comentario/internal/mail"
+	"gitlab.com/comentario/comentario/internal/svc"
 	"gitlab.com/comentario/comentario/internal/util"
 	"golang.org/x/crypto/bcrypt"
 	"net/http"
@@ -39,7 +40,7 @@ func ownerNew(email string, name string, password string) (string, error) {
 	}
 
 	statement := `insert into owners(ownerHex, email, name, passwordHash, joinDate, confirmedEmail) values($1, $2, $3, $4, $5, $6);`
-	_, err = DB.Exec(statement, ownerHex, email, name, string(passwordHash), time.Now().UTC(), !mail.SMTPConfigured)
+	_, err = svc.DB.Exec(statement, ownerHex, email, name, string(passwordHash), time.Now().UTC(), !mail.SMTPConfigured)
 	if err != nil {
 		// TODO: Make sure `err` is actually about conflicting UNIQUE, and not some
 		// other error. If it is something else, we should probably return `errorInternal`.
@@ -58,7 +59,7 @@ func ownerNew(email string, name string, password string) (string, error) {
 			ownerConfirmHexes (confirmHex, ownerHex, sendDate)
 			values            ($1,         $2,       $3      );
 		`
-		_, err = DB.Exec(statement, confirmHex, ownerHex, time.Now().UTC())
+		_, err = svc.DB.Exec(statement, confirmHex, ownerHex, time.Now().UTC())
 		if err != nil {
 			logger.Errorf("cannot insert confirmHex: %v\n", err)
 			return "", util.ErrorInternal

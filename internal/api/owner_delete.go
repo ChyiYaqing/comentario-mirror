@@ -1,6 +1,7 @@
 package api
 
 import (
+	"gitlab.com/comentario/comentario/internal/svc"
 	"gitlab.com/comentario/comentario/internal/util"
 	"net/http"
 )
@@ -23,20 +24,20 @@ func ownerDelete(ownerHex string, deleteDomains bool) error {
 	}
 
 	statement := `delete from owners where ownerHex = $1;`
-	_, err = DB.Exec(statement, ownerHex)
+	_, err = svc.DB.Exec(statement, ownerHex)
 	if err != nil {
 		return util.ErrorNoSuchOwner
 	}
 
 	statement = `delete from ownersessions where ownerHex = $1;`
-	_, err = DB.Exec(statement, ownerHex)
+	_, err = svc.DB.Exec(statement, ownerHex)
 	if err != nil {
 		logger.Errorf("cannot delete from ownersessions: %v", err)
 		return util.ErrorInternal
 	}
 
 	statement = `delete from resethexes where hex = $1;`
-	_, err = DB.Exec(statement, ownerHex)
+	_, err = svc.DB.Exec(statement, ownerHex)
 	if err != nil {
 		logger.Errorf("cannot delete from resethexes: %v", err)
 		return util.ErrorInternal

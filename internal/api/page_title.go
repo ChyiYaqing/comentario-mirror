@@ -1,6 +1,9 @@
 package api
 
-import "gitlab.com/comentario/comentario/internal/util"
+import (
+	"gitlab.com/comentario/comentario/internal/svc"
+	"gitlab.com/comentario/comentario/internal/util"
+)
 
 func pageTitleUpdate(domain string, path string) (string, error) {
 	title, err := util.HTMLTitleGet("http://" + domain + path)
@@ -14,7 +17,7 @@ func pageTitleUpdate(domain string, path string) (string, error) {
 	}
 
 	statement := `update pages set title = $3 where domain = $1 and path = $2;`
-	_, err = DB.Exec(statement, domain, path, title)
+	_, err = svc.DB.Exec(statement, domain, path, title)
 	if err != nil {
 		logger.Errorf("cannot update pages table with title: %v", err)
 		return "", err

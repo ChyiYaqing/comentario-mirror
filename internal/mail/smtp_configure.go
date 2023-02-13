@@ -8,7 +8,9 @@ import (
 	"os"
 )
 
+// logger represents a package-wide logger instance
 var logger = logging.MustGetLogger("mail")
+
 var SMTPConfigured bool
 var smtpAuth smtp.Auth
 

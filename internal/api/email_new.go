@@ -1,6 +1,7 @@
 package api
 
 import (
+	"gitlab.com/comentario/comentario/internal/svc"
 	"gitlab.com/comentario/comentario/internal/util"
 	"time"
 )
@@ -12,7 +13,7 @@ func EmailNew(email string) error {
 	}
 
 	statement := `insert into emails(email, unsubscribeSecretHex, lastEmailNotificationDate) values ($1,    $2,                   $3                       ) on conflict do nothing;`
-	_, err = DB.Exec(statement, email, unsubscribeSecretHex, time.Now().UTC())
+	_, err = svc.DB.Exec(statement, email, unsubscribeSecretHex, time.Now().UTC())
 	if err != nil {
 		logger.Errorf("cannot insert email into emails: %v", err)
 		return util.ErrorInternal

@@ -31,7 +31,7 @@ func fileDetemplate(f string) ([]byte, error) {
 	x = strings.Replace(x, "[[[.Origin]]]", os.Getenv("ORIGIN"), -1)
 	x = strings.Replace(x, "[[[.CdnPrefix]]]", os.Getenv("CDN_PREFIX"), -1)
 	x = strings.Replace(x, "[[[.Footer]]]", footer, -1)
-	x = strings.Replace(x, "[[[.Version]]]", config.Version, -1)
+	x = strings.Replace(x, "[[[.Version]]]", config.AppVersion, -1)
 
 	return []byte(x), nil
 }

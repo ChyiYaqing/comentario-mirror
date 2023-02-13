@@ -1,6 +1,9 @@
 package api
 
-import "gitlab.com/comentario/comentario/internal/util"
+import (
+	"gitlab.com/comentario/comentario/internal/svc"
+	"gitlab.com/comentario/comentario/internal/util"
+)
 
 var commentsRowColumns = `
 	comments.commentHex,
@@ -38,7 +41,7 @@ func commentGetByCommentHex(commentHex string) (comment, error) {
 		FROM comments
 		WHERE comments.commentHex = $1;
 	`
-	row := DB.QueryRow(statement, commentHex)
+	row := svc.DB.QueryRow(statement, commentHex)
 
 	var c comment
 	if err := commentsRowScan(row, &c); err != nil {

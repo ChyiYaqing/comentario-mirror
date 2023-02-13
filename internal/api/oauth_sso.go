@@ -1,6 +1,7 @@
 package api
 
 import (
+	"gitlab.com/comentario/comentario/internal/svc"
 	"gitlab.com/comentario/comentario/internal/util"
 	"time"
 )
@@ -26,7 +27,7 @@ func ssoTokenNew(domain string, commenterToken string) (string, error) {
 		ssoTokens (token, domain, commenterToken, creationDate)
 		values    ($1,    $2,     $3,             $4          );
 	`
-	_, err = DB.Exec(statement, token, domain, commenterToken, time.Now().UTC())
+	_, err = svc.DB.Exec(statement, token, domain, commenterToken, time.Now().UTC())
 	if err != nil {
 		logger.Errorf("error inserting SSO token: %v", err)
 		return "", util.ErrorInternal
@@ -36,12 +37,8 @@ func ssoTokenNew(domain string, commenterToken string) (string, error) {
 }
 
 func ssoTokenExtract(token string) (string, string, error) {
-	statement := `
-		select domain, commenterToken
-		from ssoTokens
-		where token = $1;
-	`
-	row := DB.QueryRow(statement, token)
+	statement := "select domain, commenterToken from ssoTokens where token = $1;"
+	row := svc.DB.QueryRow(statement, token)
 
 	var domain string
 	var commenterToken string
@@ -53,7 +50,7 @@ func ssoTokenExtract(token string) (string, string, error) {
 		delete from ssoTokens
 		where token = $1;
 	`
-	if _, err := DB.Exec(statement, token); err != nil {
+	if _, err := svc.DB.Exec(statement, token); err != nil {
 		logger.Errorf("cannot delete SSO token after usage: %v", err)
 		return "", "", util.ErrorInternal
 	}

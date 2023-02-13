@@ -1,6 +1,7 @@
 package api
 
 import (
+	"gitlab.com/comentario/comentario/internal/svc"
 	"gitlab.com/comentario/comentario/internal/util"
 	"net/http"
 )
@@ -30,7 +31,7 @@ func domainUpdate(d domain) error {
 		where domain=$1;
 	`
 
-	_, err := DB.Exec(statement,
+	_, err := svc.DB.Exec(statement,
 		d.Domain,
 		d.Name,
 		d.State,

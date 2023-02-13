@@ -1,70 +1,87 @@
 package main
 
+//go:generate rm -rf internal/api/models internal/api/restapi/operations
+//go:generate swagger generate server --exclude-main --name Comentario --target internal/api --spec ./swagger/swagger.yml
+
 import (
 	"fmt"
+	"github.com/go-openapi/loads"
+	"github.com/jessevdk/go-flags"
 	"github.com/op/go-logging"
-	"gitlab.com/comentario/comentario/internal/api"
+	"gitlab.com/comentario/comentario/internal/api/restapi"
+	"gitlab.com/comentario/comentario/internal/api/restapi/operations"
 	"gitlab.com/comentario/comentario/internal/config"
-	"gitlab.com/comentario/comentario/internal/mail"
 	"gitlab.com/comentario/comentario/internal/util"
 	"os"
-	"os/signal"
-	"syscall"
-	"time"
 )
 
+// logger represents a package-wide logger instance
 var logger = logging.MustGetLogger("main")
 
+// Variables set during build
+var (
+	version = "(?)"
+	date    = "(?)"
+)
+
 func main() {
-	exitIfError(util.LoggerCreate())
-	exitIfError(versionPrint())
-	exitIfError(config.ConfigParse())
-	exitIfError(api.DBConnect(10, time.Second))
-	exitIfError(api.Migrate())
-	exitIfError(mail.SMTPConfigure())
-	exitIfError(mail.SMTPTemplatesLoad())
-	exitIfError(api.OAuthConfigure())
-	exitIfError(api.MarkdownRendererCreate())
-	exitIfError(sigintCleanupSetup())
-	exitIfError(config.VersionCheckStart())
-	exitIfError(api.DomainExportCleanupBegin())
-	exitIfError(api.ViewsCleanupBegin())
-	exitIfError(api.SSOTokenCleanupBegin())
-	exitIfError(api.RoutesServe())
-}
-
-func exitIfError(err error) {
+	// Load the embedded Swagger file
+	swaggerSpec, err := loads.Analyzed(restapi.SwaggerJSON, "")
 	if err != nil {
-		fmt.Printf("fatal error: %v\n", err)
-		os.Exit(1)
+		logger.Fatal(err)
 	}
-}
 
-func versionPrint() error {
-	logger.Infof("starting Comentario %s", config.Version)
-	return nil
-}
+	// Create new service API
+	apiInstance := operations.NewComentarioAPI(swaggerSpec)
+	server := restapi.NewServer(apiInstance)
+	defer server.Shutdown()
 
-func sigintCleanup() int {
-	if api.DB != nil {
-		err := api.DB.Close()
-		if err == nil {
-			logger.Errorf("cannot close database connection: %v", err)
-			return 1
+	// Configure command-line options
+	parser := flags.NewParser(server, flags.Default)
+	parser.ShortDescription = util.ApplicationName
+	parser.LongDescription = swaggerSpec.Spec().Info.Description
+	server.ConfigureFlags()
+	for _, optsGroup := range apiInstance.CommandLineOptionsGroups {
+		_, err := parser.AddGroup(optsGroup.ShortDescription, optsGroup.LongDescription, optsGroup.Options)
+		if err != nil {
+			logger.Fatal(err)
 		}
 	}
-	return 0
-}
 
-func sigintCleanupSetup() error {
-	logger.Infof("setting up SIGINT cleanup")
+	// Parse the command line
+	if _, err := parser.Parse(); err != nil {
+		code := 1
+		if fe, ok := err.(*flags.Error); ok {
+			if fe.Type == flags.ErrHelp {
+				code = 0
+			}
+		}
+		os.Exit(code)
+	}
 
-	c := make(chan os.Signal)
-	signal.Notify(c, os.Interrupt, syscall.SIGINT)
-	go func() {
-		<-c
-		os.Exit(sigintCleanup())
-	}()
+	// Configure variables
+	config.AppVersion = version
+	config.BuildDate = date
+	fmt.Printf("Comentario server, version %s, built %s\n", config.AppVersion, config.BuildDate)
 
-	return nil
+	// Configure logging
+	var logLevel logging.Level
+	switch len(config.CLIFlags.Verbose) {
+	case 0:
+		logLevel = logging.WARNING
+	case 1:
+		logLevel = logging.INFO
+	default:
+		logLevel = logging.DEBUG
+	}
+	logging.SetFormatter(logging.MustStringFormatter(`%{level:-5s} %{module} %{message}`))
+	logging.SetLevel(logLevel, "")
+
+	// Configure the API
+	server.ConfigureAPI()
+
+	// serve API
+	if err := server.Serve(); err != nil {
+		logger.Fatalf("Serve() failed: %v", err)
+	}
 }

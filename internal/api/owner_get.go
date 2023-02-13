@@ -1,6 +1,9 @@
 package api
 
-import "gitlab.com/comentario/comentario/internal/util"
+import (
+	"gitlab.com/comentario/comentario/internal/svc"
+	"gitlab.com/comentario/comentario/internal/util"
+)
 
 var ownersRowColumns = `
 	owners.ownerHex,
@@ -30,7 +33,7 @@ func ownerGetByEmail(email string) (owner, error) {
 		FROM owners
 		WHERE email=$1;
 	`
-	row := DB.QueryRow(statement, email)
+	row := svc.DB.QueryRow(statement, email)
 
 	var o owner
 	if err := ownersRowScan(row, &o); err != nil {
@@ -54,7 +57,7 @@ func ownerGetByOwnerToken(ownerToken string) (owner, error) {
 			WHERE ownerSessions.ownerToken = $1
 		);
 	`
-	row := DB.QueryRow(statement, ownerToken)
+	row := svc.DB.QueryRow(statement, ownerToken)
 
 	var o owner
 	if err := ownersRowScan(row, &o); err != nil {

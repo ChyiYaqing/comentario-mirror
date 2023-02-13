@@ -1,6 +1,7 @@
 package api
 
 import (
+	"gitlab.com/comentario/comentario/internal/svc"
 	"gitlab.com/comentario/comentario/internal/util"
 	"golang.org/x/crypto/bcrypt"
 	"net/http"
@@ -13,7 +14,7 @@ func ownerLogin(email string, password string) (string, error) {
 	}
 
 	statement := `select ownerHex, confirmedEmail, passwordHash from owners where email=$1;`
-	row := DB.QueryRow(statement, email)
+	row := svc.DB.QueryRow(statement, email)
 
 	var ownerHex string
 	var confirmedEmail bool
@@ -38,7 +39,7 @@ func ownerLogin(email string, password string) (string, error) {
 	}
 
 	statement = `insert into ownerSessions(ownerToken, ownerHex, loginDate) values($1, $2, $3);`
-	_, err = DB.Exec(statement, ownerToken, ownerHex, time.Now().UTC())
+	_, err = svc.DB.Exec(statement, ownerToken, ownerHex, time.Now().UTC())
 	if err != nil {
 		logger.Errorf("cannot insert ownerSession: %v\n", err)
 		return "", util.ErrorInternal

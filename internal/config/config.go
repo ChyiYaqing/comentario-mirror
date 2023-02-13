@@ -1,15 +1,64 @@
 package config
 
 import (
+	"fmt"
 	"github.com/op/go-logging"
 	"gitlab.com/comentario/comentario/internal/util"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 )
 
+var (
+	AppVersion string // Application version set during bootstrapping
+	BuildDate  string // Application build date set during bootstrapping
+)
+
+// logger represents a package-wide logger instance
 var logger = logging.MustGetLogger("config")
+
+var (
+
+	// CLIFlags stores command-line flags
+	CLIFlags = struct {
+		Verbose          []bool `short:"v" long:"verbose"            description:"Verbose logging"`
+		BaseURL          string `long:"base-url"                     description:"Server's own base URL"         default:"http://localhost:8080" env:"BASE_URL"`
+		CDNURL           string `long:"cdn-url"                      description:"Static file CDN URL"           default:""           env:"CDN_URL"`
+		DBHost           string `long:"db-host"                      description:"PostgreSQL host"               default:"localhost"  env:"POSTGRES_HOST"`
+		DBPort           int    `long:"db-port"                      description:"PostgreSQL port"               default:"5432"       env:"POSTGRES_PORT"`
+		DBUsername       string `long:"db-username"                  description:"PostgreSQL username"           default:"postgres"   env:"POSTGRES_USERNAME"`
+		DBPassword       string `long:"db-password"                  description:"PostgreSQL password"           default:"postgres"   env:"POSTGRES_PASSWORD"`
+		DBName           string `long:"db-name"                      description:"PostgreSQL database name"      default:"comentario" env:"POSTGRES_DATABASE"`
+		DBIdleConns      int    `long:"db-idle-conns"                description:"Max. # of idle DB connections" default:"50"         env:"DB_MAX_IDLE_CONNS"`
+		DBMigrationsPath string `short:"m" long:"db-migrations-path" description:"Path to DB migration files"    default:"./db"       env:"DB_MIGRATIONS_PATH"`
+		EnableSwaggerUI  bool   `long:"enable-swagger-ui"            description:"Enable Swagger UI at /api/docs"`
+		StaticPath       string `short:"s" long:"static-path"        description:"Path to static files"          default:"."          env:"STATIC_PATH"`
+	}{}
+
+	// Derived values
+
+	BaseURL *url.URL // The parsed base URL
+	CDNURL  *url.URL // The parsed CDN URL
+)
+
+// CLIParsed is a callback that signals the config the CLI flags have been parsed
+func CLIParsed() error {
+	// Parse the base URL
+	var err error
+	if BaseURL, err = url.Parse(CLIFlags.BaseURL); err != nil {
+		return fmt.Errorf("failed to parse the base URL: %v", err)
+	}
+
+	// Check the CDN URL: if it's empty, use the base URL instead
+	if CLIFlags.CDNURL == "" {
+		CDNURL = BaseURL
+	} else if CDNURL, err = url.Parse(CLIFlags.CDNURL); err != nil {
+		return fmt.Errorf("failed to parse the CDN URL: %v", err)
+	}
+	return nil
+}
 
 func ConfigParse() error {
 	binPath, err := filepath.Abs(filepath.Dir(os.Args[0]))

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"gitlab.com/comentario/comentario/internal/svc"
 	"gitlab.com/comentario/comentario/internal/util"
 	"net/http"
 	"time"
@@ -14,7 +15,7 @@ func commenterTokenNew() (string, error) {
 	}
 
 	statement := `insert into commenterSessions(commenterToken, creationDate) values($1, $2);`
-	_, err = DB.Exec(statement, commenterToken, time.Now().UTC())
+	_, err = svc.DB.Exec(statement, commenterToken, time.Now().UTC())
 	if err != nil {
 		logger.Errorf("cannot insert new commenterToken: %v", err)
 		return "", util.ErrorInternal

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"gitlab.com/comentario/comentario/internal/svc"
 	"gitlab.com/comentario/comentario/internal/util"
 	"net/http"
 )
@@ -17,7 +18,7 @@ func domainStatistics(domain string) ([]int64, error) {
 		group by gen.date
 		order by gen.date;
 	`
-	rows, err := DB.Query(statement, domain)
+	rows, err := svc.DB.Query(statement, domain)
 	if err != nil {
 		logger.Errorf("cannot get daily views: %v", err)
 		return []int64{}, util.ErrorInternal

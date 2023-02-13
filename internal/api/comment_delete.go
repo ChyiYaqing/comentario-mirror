@@ -1,6 +1,7 @@
 package api
 
 import (
+	"gitlab.com/comentario/comentario/internal/svc"
 	"gitlab.com/comentario/comentario/internal/util"
 	"net/http"
 	"time"
@@ -22,7 +23,7 @@ func commentDelete(commentHex string, deleterHex string) error {
 			deletionDate = $3
 		where commentHex = $1;
 	`
-	_, err := DB.Exec(statement, commentHex, deleterHex, time.Now().UTC())
+	_, err := svc.DB.Exec(statement, commentHex, deleterHex, time.Now().UTC())
 
 	if err != nil {
 		// TODO: make sure this is the error is actually nonexistent commentHex

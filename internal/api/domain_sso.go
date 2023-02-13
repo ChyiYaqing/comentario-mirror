@@ -1,6 +1,7 @@
 package api
 
 import (
+	"gitlab.com/comentario/comentario/internal/svc"
 	"gitlab.com/comentario/comentario/internal/util"
 	"net/http"
 )
@@ -17,7 +18,7 @@ func domainSsoSecretNew(domain string) (string, error) {
 	}
 
 	statement := `update domains set ssoSecret = $2 where domain = $1;`
-	_, err = DB.Exec(statement, domain, ssoSecret)
+	_, err = svc.DB.Exec(statement, domain, ssoSecret)
 	if err != nil {
 		logger.Errorf("cannot update ssoSecret: %v", err)
 		return "", util.ErrorInternal

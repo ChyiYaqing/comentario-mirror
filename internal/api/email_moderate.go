@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"gitlab.com/comentario/comentario/internal/svc"
 	"gitlab.com/comentario/comentario/internal/util"
 	"net/http"
 )
@@ -16,7 +17,7 @@ func emailModerateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	statement := `select domain, deleted from comments where commentHex = $1;`
-	row := DB.QueryRow(statement, commentHex)
+	row := svc.DB.QueryRow(statement, commentHex)
 
 	var domain string
 	var deleted bool
@@ -54,7 +55,7 @@ func emailModerateHandler(w http.ResponseWriter, r *http.Request) {
 	// let's deal with that later. For now, it suffices to match the
 	// deleter/approver with any account owned by the same email.
 	statement = `select commenterHex from commenters where email = $1;`
-	row = DB.QueryRow(statement, e.Email)
+	row = svc.DB.QueryRow(statement, e.Email)
 
 	var commenterHex string
 	if err = row.Scan(&commenterHex); err != nil {

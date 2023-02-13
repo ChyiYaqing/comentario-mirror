@@ -1,6 +1,9 @@
 package api
 
-import "gitlab.com/comentario/comentario/internal/util"
+import (
+	"gitlab.com/comentario/comentario/internal/svc"
+	"gitlab.com/comentario/comentario/internal/util"
+)
 
 func commentOwnershipVerify(commenterHex string, commentHex string) (bool, error) {
 	if commenterHex == "" || commentHex == "" {
@@ -8,7 +11,7 @@ func commentOwnershipVerify(commenterHex string, commentHex string) (bool, error
 	}
 
 	statement := `select EXISTS(select 1 from comments where commenterHex=$1 and commentHex=$2);`
-	row := DB.QueryRow(statement, commenterHex, commentHex)
+	row := svc.DB.QueryRow(statement, commenterHex, commentHex)
 
 	var exists bool
 	if err := row.Scan(&exists); err != nil {

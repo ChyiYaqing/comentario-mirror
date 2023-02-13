@@ -15,14 +15,15 @@ Usage: $0 [options] [[--] backend_args]
 Options:
   -B  skip build
   -D  skip (re)starting database
+  -G  skip OpenAPI code generation
   -h  show usage info and exit
 EOF
     exit 0
 }
 
 # Parse the command line
-declare -i do_build=1 do_db=1
-args=$(getopt -o BDh -- "$@")
+declare -i do_build=1 do_db=1 do_gen=1
+args=$(getopt -o BDGh -- "$@")
 [[ $? -ne 0 ]] && usage
 eval set -- $args
 for i; do
@@ -33,6 +34,10 @@ for i; do
             ;;
         -D)
             do_db=0
+            shift
+            ;;
+        -G)
+            do_gen=0
             shift
             ;;
         -h)
@@ -52,9 +57,10 @@ mkdir -p "$build_dir"
 rm -rf "$build_dir/db" "$build_dir/templates"
 
 # Build the backend
+((do_gen))   && go generate
 ((do_build)) &&
     rm -f "$build_dir/comentario" &&
-    CGO_ENABLED=0 go build -a -o "$build_dir/comentario" -ldflags "-X main.version=$(git describe --tags)"
+    CGO_ENABLED=0 go build -a -o "$build_dir/comentario" -ldflags "-X main.version=$(git describe --tags) -X main.date=$(date --iso-8601=seconds)"
 
 # (Re)start the database
 if ((do_db)); then
@@ -78,4 +84,8 @@ env \
     'COMENTARIO_GITLAB_SECRET=b' \
     'COMENTARIO_GOOGLE_KEY=a' \
     'COMENTARIO_GOOGLE_SECRET=b' \
-    "$build_dir/comentario"
+    "$build_dir/comentario" \
+        -vv \
+        --port=8080 \
+        --db-migrations-path="$build_dir/db" \
+        --static-path="$build_dir"

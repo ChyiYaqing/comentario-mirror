@@ -2,6 +2,7 @@ package api
 
 import (
 	"gitlab.com/comentario/comentario/internal/mail"
+	"gitlab.com/comentario/comentario/internal/svc"
 	"gitlab.com/comentario/comentario/internal/util"
 	"net/http"
 	"time"
@@ -60,7 +61,7 @@ func forgot(email string, entity string) error {
 	var statement string
 
 	statement = `insert into resetHexes(resetHex, hex, entity, sendDate) values($1, $2, $3, $4);`
-	_, err = DB.Exec(statement, resetHex, hex, entity, time.Now().UTC())
+	_, err = svc.DB.Exec(statement, resetHex, hex, entity, time.Now().UTC())
 	if err != nil {
 		logger.Errorf("cannot insert resetHex: %v", err)
 		return util.ErrorInternal

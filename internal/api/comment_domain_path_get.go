@@ -1,6 +1,7 @@
 package api
 
 import (
+	"gitlab.com/comentario/comentario/internal/svc"
 	"gitlab.com/comentario/comentario/internal/util"
 )
 
@@ -10,7 +11,7 @@ func commentDomainPathGet(commentHex string) (string, string, error) {
 	}
 
 	statement := `select domain, path from comments where commentHex = $1;`
-	row := DB.QueryRow(statement, commentHex)
+	row := svc.DB.QueryRow(statement, commentHex)
 
 	var domain string
 	var path string

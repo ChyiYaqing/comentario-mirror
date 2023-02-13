@@ -1,6 +1,7 @@
 package api
 
 import (
+	"gitlab.com/comentario/comentario/internal/svc"
 	"gitlab.com/comentario/comentario/internal/util"
 	"net/http"
 )
@@ -20,7 +21,7 @@ func commenterUpdate(commenterHex string, email string, name string, link string
 	}
 
 	statement := `update commenters set email = $3, name = $4, link = $5, photo = $6 where commenterHex = $1 and provider = $2;`
-	_, err := DB.Exec(statement, commenterHex, provider, email, name, link, photo)
+	_, err := svc.DB.Exec(statement, commenterHex, provider, email, name, link, photo)
 	if err != nil {
 		logger.Errorf("cannot update commenter: %v", err)
 		return util.ErrorInternal

@@ -19,7 +19,7 @@ func VersionCheckStart() error {
 			time.Sleep(5 * time.Minute)
 
 			data := url.Values{
-				"version": {Version},
+				"version": {AppVersion},
 			}
 
 			var body []byte

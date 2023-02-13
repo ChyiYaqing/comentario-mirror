@@ -1,6 +1,7 @@
 package api
 
 import (
+	"gitlab.com/comentario/comentario/internal/svc"
 	"gitlab.com/comentario/comentario/internal/util"
 	"net/http"
 	"time"
@@ -12,7 +13,7 @@ func commentVote(commenterHex string, commentHex string, direction int) error {
 	}
 
 	statement := `select commenterHex from comments where commentHex = $1;`
-	row := DB.QueryRow(statement, commentHex)
+	row := svc.DB.QueryRow(statement, commentHex)
 
 	var authorHex string
 	if err := row.Scan(&authorHex); err != nil {
@@ -29,7 +30,7 @@ func commentVote(commenterHex string, commentHex string, direction int) error {
 		on conflict (commentHex, commenterHex) do
 			update set direction = $3;
 	`
-	_, err := DB.Exec(statement, commentHex, commenterHex, direction, time.Now().UTC())
+	_, err := svc.DB.Exec(statement, commentHex, commenterHex, direction, time.Now().UTC())
 	if err != nil {
 		logger.Errorf("error inserting/updating votes: %v", err)
 		return util.ErrorInternal

@@ -2,6 +2,7 @@ package api
 
 import (
 	"database/sql"
+	"gitlab.com/comentario/comentario/internal/svc"
 	"gitlab.com/comentario/comentario/internal/util"
 	"net/http"
 )
@@ -44,9 +45,9 @@ func commentList(commenterHex string, domain string, path string, includeUnappro
 	var err error
 
 	if !includeUnapproved && commenterHex != "anonymous" {
-		rows, err = DB.Query(statement, domain, path, commenterHex)
+		rows, err = svc.DB.Query(statement, domain, path, commenterHex)
 	} else {
-		rows, err = DB.Query(statement, domain, path)
+		rows, err = svc.DB.Query(statement, domain, path)
 	}
 
 	if err != nil {
@@ -58,7 +59,7 @@ func commentList(commenterHex string, domain string, path string, includeUnappro
 	commenters := make(map[string]commenter)
 	commenters["anonymous"] = commenter{CommenterHex: "anonymous", Email: "undefined", Name: "Anonymous", Link: "undefined", Photo: "undefined", Provider: "undefined"}
 
-	comments := []comment{}
+	var comments []comment
 	for rows.Next() {
 		c := comment{}
 		if err = rows.Scan(
@@ -76,7 +77,7 @@ func commentList(commenterHex string, domain string, path string, includeUnappro
 
 		if commenterHex != "anonymous" {
 			statement = `select direction from votes where commentHex=$1 and commenterHex=$2;`
-			row := DB.QueryRow(statement, c.CommentHex, commenterHex)
+			row := svc.DB.QueryRow(statement, c.CommentHex, commenterHex)
 
 			if err = row.Scan(&c.Direction); err != nil {
 				// TODO: is the only error here that there is no such entry?

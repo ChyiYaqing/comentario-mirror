@@ -1,6 +1,9 @@
 package api
 
-import "gitlab.com/comentario/comentario/internal/util"
+import (
+	"gitlab.com/comentario/comentario/internal/svc"
+	"gitlab.com/comentario/comentario/internal/util"
+)
 
 func commenterSessionUpdate(commenterToken string, commenterHex string) error {
 	if commenterToken == "" || commenterHex == "" {
@@ -8,7 +11,7 @@ func commenterSessionUpdate(commenterToken string, commenterHex string) error {
 	}
 
 	statement := `update commenterSessions set commenterHex = $2 where commenterToken = $1;`
-	_, err := DB.Exec(statement, commenterToken, commenterHex)
+	_, err := svc.DB.Exec(statement, commenterToken, commenterHex)
 	if err != nil {
 		logger.Errorf("error updating commenterHex: %v", err)
 		return util.ErrorInternal

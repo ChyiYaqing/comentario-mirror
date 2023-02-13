@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"gitlab.com/comentario/comentario/internal/svc"
 	"net/http"
 	"time"
 )
@@ -14,7 +15,7 @@ func domainExportDownloadHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	statement := `select domain, binData, creationDate from exports where exportHex = $1;`
-	row := DB.QueryRow(statement, exportHex)
+	row := svc.DB.QueryRow(statement, exportHex)
 
 	var domain string
 	var binData []byte

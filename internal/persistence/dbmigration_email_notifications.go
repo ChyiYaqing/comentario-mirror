@@ -1,18 +1,18 @@
-package api
+package persistence
 
 import (
 	"gitlab.com/comentario/comentario/internal/util"
+	"time"
 )
 
-func migrateEmails() error {
-	statement := `
+func migrateEmails(db *Database) error {
+	rows, err := db.Query(`
 		select commenters.email from commenters
 		union
 		select owners.email from owners
 		union
 		select moderators.email from moderators;
-	`
-	rows, err := DB.Query(statement)
+	`)
 	if err != nil {
 		logger.Errorf("cannot get comments: %v", err)
 		return util.ErrorDatabaseMigration
@@ -26,7 +26,14 @@ func migrateEmails() error {
 			return util.ErrorDatabaseMigration
 		}
 
-		if err = EmailNew(email); err != nil {
+		unsubscribeSecretHex, err := util.RandomHex(32)
+		if err != nil {
+			return util.ErrorDatabaseMigration
+		}
+
+		statement := `insert into emails(email, unsubscribeSecretHex, lastEmailNotificationDate) values ($1,    $2,                   $3                       ) on conflict do nothing;`
+		_, err = db.Exec(statement, email, unsubscribeSecretHex, time.Now().UTC())
+		if err != nil {
 			logger.Errorf("cannot insert email during migration: %v", err)
 			return util.ErrorDatabaseMigration
 		}

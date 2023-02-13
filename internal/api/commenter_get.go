@@ -1,6 +1,9 @@
 package api
 
-import "gitlab.com/comentario/comentario/internal/util"
+import (
+	"gitlab.com/comentario/comentario/internal/svc"
+	"gitlab.com/comentario/comentario/internal/util"
+)
 
 var commentersRowColumns = `
 	commenters.commenterHex,
@@ -34,7 +37,7 @@ func commenterGetByHex(commenterHex string) (commenter, error) {
 		FROM commenters
 		WHERE commenterHex = $1;
 	`
-	row := DB.QueryRow(statement, commenterHex)
+	row := svc.DB.QueryRow(statement, commenterHex)
 
 	var c commenter
 	if err := commentersRowScan(row, &c); err != nil {
@@ -55,7 +58,7 @@ func commenterGetByEmail(provider string, email string) (commenter, error) {
 		FROM commenters
 		WHERE email = $1 AND provider = $2;
 	`
-	row := DB.QueryRow(statement, email, provider)
+	row := svc.DB.QueryRow(statement, email, provider)
 
 	var c commenter
 	if err := commentersRowScan(row, &c); err != nil {
@@ -77,7 +80,7 @@ func commenterGetByCommenterToken(commenterToken string) (commenter, error) {
 		JOIN commenters ON commenterSessions.commenterHex = commenters.commenterHex
 		WHERE commenterToken = $1;
 	`
-	row := DB.QueryRow(statement, commenterToken)
+	row := svc.DB.QueryRow(statement, commenterToken)
 
 	var c commenter
 	if err := commentersRowScan(row, &c); err != nil {

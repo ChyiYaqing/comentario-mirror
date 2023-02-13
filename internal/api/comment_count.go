@@ -2,6 +2,7 @@ package api
 
 import (
 	"github.com/lib/pq"
+	"gitlab.com/comentario/comentario/internal/svc"
 	"gitlab.com/comentario/comentario/internal/util"
 	"net/http"
 )
@@ -18,7 +19,7 @@ func commentCount(domain string, paths []string) (map[string]int, error) {
 	}
 
 	statement := `select path, commentCount from pages where domain = $1 and path = any($2);`
-	rows, err := DB.Query(statement, domain, pq.Array(paths))
+	rows, err := svc.DB.Query(statement, domain, pq.Array(paths))
 	if err != nil {
 		logger.Errorf("cannot get comments: %v", err)
 		return nil, util.ErrorInternal

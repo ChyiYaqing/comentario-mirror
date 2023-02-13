@@ -1,6 +1,7 @@
 package api
 
 import (
+	"gitlab.com/comentario/comentario/internal/svc"
 	"gitlab.com/comentario/comentario/internal/util"
 	"net/http"
 )
@@ -11,7 +12,7 @@ func domainModeratorDelete(domain string, email string) error {
 	}
 
 	statement := `delete from moderators where domain=$1 and email=$2;`
-	_, err := DB.Exec(statement, domain, email)
+	_, err := svc.DB.Exec(statement, domain, email)
 	if err != nil {
 		logger.Errorf("cannot delete moderator: %v", err)
 		return util.ErrorInternal

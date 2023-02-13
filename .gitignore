@@ -1,6 +1,19 @@
+# Build output
 /build/
-devel.env
-/.idea/
+
+# Generated code
+/frontend/app/api/
+/internal/api/models/*.go
+/internal/api/restapi/operations/
+/internal/api/restapi/doc.go
+/internal/api/restapi/embedded_spec.go
+/internal/api/restapi/server.go
+
+# Front-end dependencies
 /node_modules/
-.dir-locals.el
+
+# IDE
+/.idea/
+
+# Locally kept files
 ~*
