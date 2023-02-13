@@ -2,7 +2,7 @@ package mail
 
 import (
 	"fmt"
-	"gitlab.com/commento/commento/api/internal/util"
+	"gitlab.com/comentario/comentario/internal/util"
 	"os"
 	"text/template"
 )

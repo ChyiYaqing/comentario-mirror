@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
-	"gitlab.com/commento/commento/api/internal/util"
+	"gitlab.com/comentario/comentario/internal/util"
 	"io"
 	"net/http"
 )

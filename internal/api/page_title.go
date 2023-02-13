@@ -1,6 +1,6 @@
 package api
 
-import "gitlab.com/commento/commento/api/internal/util"
+import "gitlab.com/comentario/comentario/internal/util"
 
 func pageTitleUpdate(domain string, path string) (string, error) {
 	title, err := util.HTMLTitleGet("http://" + domain + path)

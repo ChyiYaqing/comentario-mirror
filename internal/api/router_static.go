@@ -2,8 +2,8 @@ package api
 
 import (
 	"github.com/gorilla/mux"
-	"gitlab.com/commento/commento/api/internal/config"
-	"gitlab.com/commento/commento/api/internal/util"
+	"gitlab.com/comentario/comentario/internal/config"
+	"gitlab.com/comentario/comentario/internal/util"
 	"mime"
 	"net/http"
 	"os"

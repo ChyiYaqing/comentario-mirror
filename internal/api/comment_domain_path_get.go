@@ -1,7 +1,7 @@
 package api
 
 import (
-	"gitlab.com/commento/commento/api/internal/util"
+	"gitlab.com/comentario/comentario/internal/util"
 )
 
 func commentDomainPathGet(commentHex string) (string, string, error) {

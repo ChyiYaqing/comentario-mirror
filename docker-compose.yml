@@ -1,31 +1,6 @@
 version: '3'
 
 services:
-  server:
-    image: comentario
-    build:
-      context: .
-      args:
-        RELEASE: prod
-    environment:
-      COMENTARIO_ORIGIN: http://localhost:8080
-      COMENTARIO_PORT: 8080
-      COMENTARIO_POSTGRES: postgres://postgres:postgres@db:5432/comentario?sslmode=disable
-
-      # Dummy data for testing
-      COMENTARIO_GITHUB_KEY: a
-      COMENTARIO_GITHUB_SECRET: b
-      COMENTARIO_GITLAB_KEY: a
-      COMENTARIO_GITLAB_SECRET: b
-      COMENTARIO_GOOGLE_KEY: a
-      COMENTARIO_GOOGLE_SECRET: b
-    ports:
-      - "8080:8080"
-    depends_on:
-      - db
-    networks:
-      - comentario_network
-
   db:
     image: postgres:15-alpine
     environment:
@@ -34,8 +9,6 @@ services:
       POSTGRES_PASSWORD: postgres
     ports:
       - "5432:5432"
-    networks:
-      - comentario_network
     volumes:
       # Transient data volume
       - type: tmpfs
@@ -49,6 +22,3 @@ services:
       - '8000:80'
     volumes:
       - $PWD/etc/comment-test:/usr/share/nginx/html:ro
-
-networks:
-  comentario_network:

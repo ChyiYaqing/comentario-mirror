@@ -2,7 +2,7 @@ package api
 
 import (
 	"database/sql"
-	"gitlab.com/commento/commento/api/internal/util"
+	"gitlab.com/comentario/comentario/internal/util"
 )
 
 func pageGet(domain string, path string) (page, error) {

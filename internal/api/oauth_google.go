@@ -1,7 +1,7 @@
 package api
 
 import (
-	"gitlab.com/commento/commento/api/internal/util"
+	"gitlab.com/comentario/comentario/internal/util"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"os"

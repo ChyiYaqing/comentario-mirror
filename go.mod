@@ -1,4 +1,4 @@
-module gitlab.com/commento/commento/api
+module gitlab.com/comentario/comentario
 
 go 1.20
 

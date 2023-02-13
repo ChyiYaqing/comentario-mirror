@@ -1,8 +1,8 @@
 package api
 
 import (
-	"gitlab.com/commento/commento/api/internal/mail"
-	"gitlab.com/commento/commento/api/internal/util"
+	"gitlab.com/comentario/comentario/internal/mail"
+	"gitlab.com/comentario/comentario/internal/util"
 	"golang.org/x/crypto/bcrypt"
 	"net/http"
 	"os"

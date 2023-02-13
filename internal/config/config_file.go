@@ -2,7 +2,7 @@ package config
 
 import (
 	"bufio"
-	"gitlab.com/commento/commento/api/internal/util"
+	"gitlab.com/comentario/comentario/internal/util"
 	"os"
 	"strings"
 )

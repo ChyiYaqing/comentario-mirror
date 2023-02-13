@@ -3,7 +3,7 @@ package mail
 import (
 	"bytes"
 	"fmt"
-	"gitlab.com/commento/commento/api/internal/util"
+	"gitlab.com/comentario/comentario/internal/util"
 	ht "html/template"
 	"net/smtp"
 	"os"

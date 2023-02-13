@@ -1,7 +1,7 @@
 package api
 
 import (
-	"gitlab.com/commento/commento/api/internal/mail"
+	"gitlab.com/comentario/comentario/internal/mail"
 )
 
 func emailNotificationModerator(d domain, path string, title string, commenterHex string, commentHex string, html string, state string) {

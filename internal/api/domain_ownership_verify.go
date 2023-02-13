@@ -1,6 +1,6 @@
 package api
 
-import "gitlab.com/commento/commento/api/internal/util"
+import "gitlab.com/comentario/comentario/internal/util"
 
 func domainOwnershipVerify(ownerHex string, domain string) (bool, error) {
 	if ownerHex == "" || domain == "" {

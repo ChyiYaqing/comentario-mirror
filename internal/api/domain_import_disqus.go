@@ -4,7 +4,7 @@ import (
 	"compress/gzip"
 	"encoding/xml"
 	"github.com/lunny/html2md"
-	"gitlab.com/commento/commento/api/internal/util"
+	"gitlab.com/comentario/comentario/internal/util"
 	"io"
 	"net/http"
 	"time"

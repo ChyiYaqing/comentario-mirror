@@ -2,7 +2,7 @@ package api
 
 import (
 	"github.com/lib/pq"
-	"gitlab.com/commento/commento/api/internal/util"
+	"gitlab.com/comentario/comentario/internal/util"
 	"net/http"
 )
 

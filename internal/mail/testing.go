@@ -2,7 +2,7 @@ package mail
 
 import (
 	"github.com/op/go-logging"
-	"gitlab.com/commento/commento/api/internal/util"
+	"gitlab.com/comentario/comentario/internal/util"
 	"testing"
 )
 

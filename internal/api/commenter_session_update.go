@@ -1,6 +1,6 @@
 package api
 
-import "gitlab.com/commento/commento/api/internal/util"
+import "gitlab.com/comentario/comentario/internal/util"
 
 func commenterSessionUpdate(commenterToken string, commenterHex string) error {
 	if commenterToken == "" || commenterHex == "" {
