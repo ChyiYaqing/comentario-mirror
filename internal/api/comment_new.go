@@ -1,6 +1,8 @@
 package api
 
 import (
+	"github.com/go-openapi/strfmt"
+	"gitlab.com/comentario/comentario/internal/api/models"
 	"gitlab.com/comentario/comentario/internal/mail"
 	"gitlab.com/comentario/comentario/internal/svc"
 	"gitlab.com/comentario/comentario/internal/util"
@@ -10,7 +12,7 @@ import (
 
 // Take `creationDate` as a param because comment import (from Disqus, for
 // example) will require a custom time.
-func commentNew(commenterHex string, domain string, path string, parentHex string, markdown string, state string, creationDate time.Time) (string, error) {
+func commentNew(commenterHex string, domain string, path string, parentHex string, markdown string, state models.CommentState, creationDate strfmt.DateTime) (string, error) {
 	// path is allowed to be empty
 	if commenterHex == "" || domain == "" || parentHex == "" || markdown == "" || state == "" {
 		return "", util.ErrorMissingField
@@ -103,20 +105,20 @@ func commentNewHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	var state string
+	var state models.CommentState
 	if isModerator {
-		state = "approved"
+		state = models.CommentStateApproved
 	} else if d.RequireModeration {
-		state = "unapproved"
+		state = models.CommentStateUnapproved
 	} else if commenterHex == "anonymous" && d.ModerateAllAnonymous {
-		state = "unapproved"
+		state = models.CommentStateUnapproved
 	} else if d.AutoSpamFilter && isSpam(*x.Domain, getIP(r), getUserAgent(r), commenterName, commenterEmail, commenterLink, *x.Markdown) {
-		state = "flagged"
+		state = models.CommentStateFlagged
 	} else {
-		state = "approved"
+		state = models.CommentStateApproved
 	}
 
-	commentHex, err := commentNew(commenterHex, domain, path, *x.ParentHex, *x.Markdown, state, time.Now().UTC())
+	commentHex, err := commentNew(commenterHex, domain, path, *x.ParentHex, *x.Markdown, state, strfmt.DateTime(time.Now().UTC()))
 	if err != nil {
 		BodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return

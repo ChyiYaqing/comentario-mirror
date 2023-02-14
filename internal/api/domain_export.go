@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"gitlab.com/comentario/comentario/internal/api/models"
 	"gitlab.com/comentario/comentario/internal/mail"
 	"gitlab.com/comentario/comentario/internal/svc"
 	"gitlab.com/comentario/comentario/internal/util"
@@ -17,7 +18,7 @@ func domainExportBeginError(email string, toName string, domain string, _ error)
 }
 
 func domainExportBegin(email string, toName string, domain string) {
-	e := commentoExportV1{Version: 1, Comments: []comment{}, Commenters: []commenter{}}
+	e := commentoExportV1{Version: 1, Comments: []models.Comment{}, Commenters: []commenter{}}
 
 	statement := `
 		select commentHex, domain, path, commenterHex, markdown, parentHex, score, state, creationDate
@@ -33,8 +34,8 @@ func domainExportBegin(email string, toName string, domain string) {
 	defer rows1.Close()
 
 	for rows1.Next() {
-		c := comment{}
-		if err = rows1.Scan(&c.CommentHex, &c.Domain, &c.Path, &c.CommenterHex, &c.Markdown, &c.ParentHex, &c.Score, &c.State, &c.CreationDate); err != nil {
+		c := models.Comment{}
+		if err = rows1.Scan(&c.CommentHex, &c.Domain, &c.URL, &c.CommenterHex, &c.Markdown, &c.ParentHex, &c.Score, &c.State, &c.CreationDate); err != nil {
 			logger.Errorf("cannot scan comment while exporting %s: %v", domain, err)
 			domainExportBeginError(email, toName, domain, util.ErrorInternal)
 			return

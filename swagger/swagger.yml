@@ -32,8 +32,11 @@ definitions:
         type: string
       parentHex:
         type: string
+      domain:
+        type: string
       creationDate:
         type: string
+        format: date-time
       state:
         $ref: "#/definitions/commentState"
       deleted:
@@ -45,6 +48,8 @@ definitions:
       markdown:
         type: string
       html:
+        type: string
+      url:
         type: string
 
   commenter:

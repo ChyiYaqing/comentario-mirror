@@ -1,11 +1,12 @@
 package api
 
 import (
+	"gitlab.com/comentario/comentario/internal/api/models"
 	"gitlab.com/comentario/comentario/internal/mail"
 	"gitlab.com/comentario/comentario/internal/svc"
 )
 
-func emailNotificationModerator(d domain, path string, title string, commenterHex string, commentHex string, html string, state string) {
+func emailNotificationModerator(d domain, path string, title string, commenterHex string, commentHex string, html string, state models.CommentState) {
 	if d.EmailNotificationPolicy == "none" {
 		return
 	}
@@ -66,7 +67,7 @@ func emailNotificationModerator(d domain, path string, title string, commenterHe
 	}
 }
 
-func emailNotificationReply(d domain, path string, title string, commenterHex string, commentHex string, html string, parentHex string, state string) {
+func emailNotificationReply(d domain, path string, title string, commenterHex string, commentHex string, html string, parentHex string, state models.CommentState) {
 	// No reply notifications for root comments.
 	if parentHex == "root" {
 		return
@@ -128,7 +129,7 @@ func emailNotificationReply(d domain, path string, title string, commenterHex st
 	_ = mail.SMTPEmailNotification(pc.Email, pc.Name, "reply", d.Domain, path, commentHex, commenterName, title, html, epc.UnsubscribeSecretHex)
 }
 
-func emailNotificationNew(d domain, path string, commenterHex string, commentHex string, html string, parentHex string, state string) {
+func emailNotificationNew(d domain, path string, commenterHex string, commentHex string, html string, parentHex string, state models.CommentState) {
 	p, err := pageGet(d.Domain, path)
 	if err != nil {
 		logger.Errorf("cannot get page to send email notification: %v", err)

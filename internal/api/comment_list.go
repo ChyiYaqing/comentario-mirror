@@ -2,12 +2,13 @@ package api
 
 import (
 	"database/sql"
+	"gitlab.com/comentario/comentario/internal/api/models"
 	"gitlab.com/comentario/comentario/internal/svc"
 	"gitlab.com/comentario/comentario/internal/util"
 	"net/http"
 )
 
-func commentList(commenterHex string, domain string, path string, includeUnapproved bool) ([]comment, map[string]commenter, error) {
+func commentList(commenterHex string, domain string, path string, includeUnapproved bool) ([]models.Comment, map[string]commenter, error) {
 	// path can be empty
 	if commenterHex == "" || domain == "" {
 		return nil, nil, util.ErrorMissingField
@@ -59,14 +60,14 @@ func commentList(commenterHex string, domain string, path string, includeUnappro
 	commenters := make(map[string]commenter)
 	commenters["anonymous"] = commenter{CommenterHex: "anonymous", Email: "undefined", Name: "Anonymous", Link: "undefined", Photo: "undefined", Provider: "undefined"}
 
-	var comments []comment
+	var comments []models.Comment
 	for rows.Next() {
-		c := comment{}
+		c := models.Comment{}
 		if err = rows.Scan(
 			&c.CommentHex,
 			&c.CommenterHex,
 			&c.Markdown,
-			&c.Html,
+			&c.HTML,
 			&c.ParentHex,
 			&c.Score,
 			&c.State,

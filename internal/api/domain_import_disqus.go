@@ -3,6 +3,7 @@ package api
 import (
 	"compress/gzip"
 	"encoding/xml"
+	"github.com/go-openapi/strfmt"
 	"github.com/lunny/html2md"
 	"gitlab.com/comentario/comentario/internal/util"
 	"io"
@@ -156,7 +157,7 @@ func domainImportDisqus(domain string, url string) (int, error) {
 			parentHex,
 			html2md.Convert(post.Message),
 			"approved",
-			post.CreationDate)
+			strfmt.DateTime(post.CreationDate))
 		if err != nil {
 			return numImported, err
 		}

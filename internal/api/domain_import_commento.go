@@ -4,15 +4,16 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
+	"gitlab.com/comentario/comentario/internal/api/models"
 	"gitlab.com/comentario/comentario/internal/util"
 	"io"
 	"net/http"
 )
 
 type commentoExportV1 struct {
-	Version    int         `json:"version"`
-	Comments   []comment   `json:"comments"`
-	Commenters []commenter `json:"commenters"`
+	Version    int              `json:"version"`
+	Comments   []models.Comment `json:"comments"`
+	Commenters []commenter      `json:"commenters"`
 }
 
 func domainImportCommento(domain string, url string) (int, error) {
@@ -85,16 +86,16 @@ func domainImportCommento(domain string, url string) (int, error) {
 	}
 
 	// Create a map of (parent hex, comments)
-	comments := make(map[string][]comment)
+	comments := make(map[models.HexID][]models.Comment)
 	for _, comment := range data.Comments {
-		parentHex := comment.ParentHex
+		parentHex := models.HexID(comment.ParentHex)
 		comments[parentHex] = append(comments[parentHex], comment)
 	}
 
 	// Import comments, creating a map of comment hex (old hex, new hex)
-	commentHex := map[string]string{"root": "root"}
+	commentHex := map[models.HexID]string{"root": "root"}
 	numImported := 0
-	keys := []string{"root"}
+	keys := []models.HexID{"root"}
 	for i := 0; i < len(keys); i++ {
 		for _, comment := range comments[keys[i]] {
 			cHex, ok := commenterHex[comment.CommenterHex]
@@ -102,7 +103,7 @@ func domainImportCommento(domain string, url string) (int, error) {
 				logger.Errorf("cannot get commenter: %v", err)
 				return numImported, util.ErrorInternal
 			}
-			parentHex, ok := commentHex[comment.ParentHex]
+			parentHex, ok := commentHex[models.HexID(comment.ParentHex)]
 			if !ok {
 				logger.Errorf("cannot get parent comment: %v", err)
 				return numImported, util.ErrorInternal
@@ -111,7 +112,7 @@ func domainImportCommento(domain string, url string) (int, error) {
 			hex, err := commentNew(
 				cHex,
 				domain,
-				comment.Path,
+				comment.URL,
 				parentHex,
 				comment.Markdown,
 				comment.State,
