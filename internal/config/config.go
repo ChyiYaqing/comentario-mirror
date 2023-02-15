@@ -24,8 +24,8 @@ var (
 	// CLIFlags stores command-line flags
 	CLIFlags = struct {
 		Verbose          []bool `short:"v" long:"verbose"            description:"Verbose logging"`
-		BaseURL          string `long:"base-url"                     description:"Server's own base URL"         default:"http://localhost:8080" env:"BASE_URL"`
-		CDNURL           string `long:"cdn-url"                      description:"Static file CDN URL"           default:""           env:"CDN_URL"`
+		BaseURL          string `long:"base-url"                     description:"Server's own base URL"                             default:"http://localhost:8080/" env:"BASE_URL"`
+		CDNURL           string `long:"cdn-url"                      description:"Static file CDN URL. If omitted, base URL is used" default:""                       env:"CDN_URL"`
 		DBHost           string `long:"db-host"                      description:"PostgreSQL host"               default:"localhost"  env:"POSTGRES_HOST"`
 		DBPort           int    `long:"db-port"                      description:"PostgreSQL port"               default:"5432"       env:"POSTGRES_PORT"`
 		DBUsername       string `long:"db-username"                  description:"PostgreSQL username"           default:"postgres"   env:"POSTGRES_USERNAME"`
@@ -47,19 +47,47 @@ var (
 func CLIParsed() error {
 	// Parse the base URL
 	var err error
-	if BaseURL, err = url.Parse(CLIFlags.BaseURL); err != nil {
-		return fmt.Errorf("failed to parse the base URL: %v", err)
+	if BaseURL, err = util.ParseAbsoluteURL(CLIFlags.BaseURL); err != nil {
+		return fmt.Errorf("invalid Base URL: %v", err)
 	}
 
 	// Check the CDN URL: if it's empty, use the base URL instead
 	if CLIFlags.CDNURL == "" {
 		CDNURL = BaseURL
-	} else if CDNURL, err = url.Parse(CLIFlags.CDNURL); err != nil {
-		return fmt.Errorf("failed to parse the CDN URL: %v", err)
+
+	} else if CDNURL, err = util.ParseAbsoluteURL(CLIFlags.CDNURL); err != nil {
+		return fmt.Errorf("invalid CDN URL: %v", err)
 	}
 	return nil
 }
 
+// PathOfBaseURL returns whether the given path is under the Base URL's path, and the path part relative to the base
+// path (omitting the leading '/', if any)
+func PathOfBaseURL(path string) (bool, string) {
+	if strings.HasPrefix(path, BaseURL.Path) {
+		return true, strings.TrimPrefix(path[len(BaseURL.Path):], "/")
+	}
+	return false, ""
+}
+
+// URLFor returns the complete absolute URL for the given path, with optional query params
+func URLFor(path string, queryParams map[string]string) string {
+	u := url.URL{
+		Scheme: BaseURL.Scheme,
+		Host:   BaseURL.Host,
+		Path:   strings.TrimSuffix(BaseURL.Path, "/") + "/" + strings.TrimPrefix(path, "/"),
+	}
+	if queryParams != nil {
+		q := url.Values{}
+		for k, v := range queryParams {
+			q.Set(k, v)
+		}
+		u.RawQuery = q.Encode()
+	}
+	return u.String()
+}
+
+// deprecated
 func ConfigParse() error {
 	binPath, err := filepath.Abs(filepath.Dir(os.Args[0]))
 	if err != nil {

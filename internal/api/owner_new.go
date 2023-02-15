@@ -1,6 +1,7 @@
 package api
 
 import (
+	"github.com/go-openapi/strfmt"
 	"gitlab.com/comentario/comentario/internal/mail"
 	"gitlab.com/comentario/comentario/internal/svc"
 	"gitlab.com/comentario/comentario/internal/util"
@@ -10,7 +11,7 @@ import (
 	"time"
 )
 
-func ownerNew(email string, name string, password string) (string, error) {
+func ownerNew(email strfmt.Email, name string, password string) (string, error) {
 	if email == "" || name == "" || password == "" {
 		return "", util.ErrorMissingField
 	}
@@ -65,7 +66,7 @@ func ownerNew(email string, name string, password string) (string, error) {
 			return "", util.ErrorInternal
 		}
 
-		if err = mail.SMTPOwnerConfirmHex(email, name, confirmHex); err != nil {
+		if err = mail.SMTPOwnerConfirmHex(string(email), name, confirmHex); err != nil {
 			return "", err
 		}
 	}
@@ -86,13 +87,13 @@ func ownerNewHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if _, err := ownerNew(*x.Email, *x.Name, *x.Password); err != nil {
+	if _, err := ownerNew(strfmt.Email(*x.Email), *x.Name, *x.Password); err != nil {
 		BodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}
 
 	// Errors in creating a commenter account should not hold this up.
-	_, _ = commenterNew(*x.Email, *x.Name, "undefined", "undefined", "commento", *x.Password)
+	_, _ = commenterNew(strfmt.Email(*x.Email), *x.Name, "undefined", "undefined", "commento", *x.Password)
 
 	BodyMarshalChecked(w, response{"success": true, "confirmEmail": mail.SMTPConfigured})
 }

@@ -1,12 +1,13 @@
 package api
 
 import (
+	"github.com/go-openapi/strfmt"
 	"gitlab.com/comentario/comentario/internal/svc"
 	"gitlab.com/comentario/comentario/internal/util"
 	"time"
 )
 
-func EmailNew(email string) error {
+func EmailNew(email strfmt.Email) error {
 	unsubscribeSecretHex, err := util.RandomHex(32)
 	if err != nil {
 		return util.ErrorInternal

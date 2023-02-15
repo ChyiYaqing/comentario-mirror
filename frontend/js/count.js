@@ -7,7 +7,7 @@
         const xmlDoc = new XMLHttpRequest();
 
         xmlDoc.open('POST', url, true);
-        xmlDoc.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
+        xmlDoc.setRequestHeader('Content-type', 'application/json');
         xmlDoc.onload = function () {
             callback(JSON.parse(xmlDoc.response));
         };

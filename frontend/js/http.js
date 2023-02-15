@@ -11,10 +11,9 @@
         $.ajax({
             url: url,
             type: 'POST',
+            contentType: 'application/json',
             data: JSON.stringify(json),
-            success: function (data) {
-                callback(JSON.parse(data));
-            },
+            success: callback,
         });
     };
 

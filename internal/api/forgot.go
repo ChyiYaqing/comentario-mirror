@@ -1,6 +1,8 @@
 package api
 
 import (
+	"github.com/go-openapi/strfmt"
+	"gitlab.com/comentario/comentario/internal/api/models"
 	"gitlab.com/comentario/comentario/internal/mail"
 	"gitlab.com/comentario/comentario/internal/svc"
 	"gitlab.com/comentario/comentario/internal/util"
@@ -8,7 +10,7 @@ import (
 	"time"
 )
 
-func forgot(email string, entity string) error {
+func forgot(email strfmt.Email, entity string) error {
 	if email == "" {
 		return util.ErrorMissingField
 	}
@@ -21,7 +23,7 @@ func forgot(email string, entity string) error {
 		return util.ErrorSmtpNotConfigured
 	}
 
-	var hex string
+	var hex models.HexID
 	var name string
 	if entity == "owner" {
 		o, err := ownerGetByEmail(email)
@@ -49,7 +51,7 @@ func forgot(email string, entity string) error {
 				return util.ErrorInternal
 			}
 		}
-		hex = c.CommenterHex
+		hex = models.HexID(c.CommenterHex)
 		name = c.Name
 	}
 
@@ -67,7 +69,7 @@ func forgot(email string, entity string) error {
 		return util.ErrorInternal
 	}
 
-	err = mail.SMTPResetHex(email, name, resetHex)
+	err = mail.SMTPResetHex(string(email), name, resetHex)
 	if err != nil {
 		return err
 	}
@@ -87,7 +89,7 @@ func forgotHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := forgot(*x.Email, *x.Entity); err != nil {
+	if err := forgot(strfmt.Email(*x.Email), *x.Entity); err != nil {
 		BodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}

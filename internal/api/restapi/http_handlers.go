@@ -2,6 +2,7 @@ package restapi
 
 import (
 	"fmt"
+	"github.com/gorilla/handlers"
 	"github.com/justinas/alice"
 	"gitlab.com/comentario/comentario/internal/config"
 	"gitlab.com/comentario/comentario/internal/util"
@@ -43,6 +44,14 @@ func (w *notFoundBypassWriter) Write(p []byte) (int, error) {
 	return w.ResponseWriter.Write(p)
 }
 
+// corsHandler returns a middleware that adds CORS headers to responses
+func corsHandler(next http.Handler) http.Handler {
+	return handlers.CORS(
+		handlers.AllowedOrigins([]string{"*"}),
+		handlers.AllowedHeaders([]string{"X-Requested-With"}),
+		handlers.AllowedMethods([]string{"GET", "POST"}))(next)
+}
+
 // fallbackHandler returns a middleware that is called in case all other handlers failed
 func fallbackHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -63,12 +72,13 @@ func fallbackHandler() http.Handler {
 func makeAPIHandler(apiHandler http.Handler) alice.Constructor {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// Sanity check
-			if p := r.URL.Path; p[0] == '/' {
+			// Verify the URL is a correct one
+			if ok, p := config.PathOfBaseURL(r.URL.Path); ok {
 				// If it's an API call. Also check whether the Swagger UI is enabled (because it's also served by the API)
-				isAPIPath := strings.HasPrefix(p[1:], util.APIPath)
-				isSwaggerPath := p == "/swagger.json" || strings.HasPrefix(p[1:], util.SwaggerUIPath)
+				isAPIPath := strings.HasPrefix(p, util.APIPath)
+				isSwaggerPath := p == "swagger.json" || strings.HasPrefix(p, util.SwaggerUIPath)
 				if !isSwaggerPath && isAPIPath || isSwaggerPath && config.CLIFlags.EnableSwaggerUI {
+					r.URL.Path = "/" + p
 					apiHandler.ServeHTTP(w, r)
 					return
 				}
@@ -83,10 +93,10 @@ func makeAPIHandler(apiHandler http.Handler) alice.Constructor {
 // rootRedirectHandler returns a middleware that redirects to login from the root path ("/")
 func rootRedirectHandler(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// If it's 'GET /', redirect to login
-		if r.Method == "GET" && r.URL.Path == "/" {
-			logger.Debug("Redirecting to /login")
-			http.Redirect(w, r, "/login", 301)
+		// If it's 'GET <root>', redirect to login
+		if ok, p := config.PathOfBaseURL(r.URL.Path); ok && p == "" && r.Method == "GET" {
+			logger.Debug("Redirecting to login")
+			http.Redirect(w, r, config.URLFor("login", nil), 301)
 			return
 		}
 
@@ -113,8 +123,8 @@ func serveFileWithPlaceholders(filePath string, w http.ResponseWriter) {
 	if strings.Contains(s, "[[[.") {
 		b = []byte(
 			strings.Replace(strings.Replace(strings.Replace(strings.Replace(s,
-				"[[[.Origin]]]", config.BaseURL.String(), -1),
-				"[[[.CdnPrefix]]]", config.CDNURL.String(), -1),
+				"[[[.Origin]]]", strings.TrimSuffix(config.BaseURL.String(), "/"), -1),
+				"[[[.CdnPrefix]]]", strings.TrimSuffix(config.CDNURL.String(), "/"), -1),
 				"[[[.Footer]]]", "TODO footer", -1),
 				"[[[.Version]]]", config.AppVersion, -1))
 	}
@@ -145,12 +155,10 @@ func staticHandler(next http.Handler) http.Handler {
 
 	// Make a middleware handler
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == "GET" {
-			p := r.URL.Path
-
+		if ok, p := config.PathOfBaseURL(r.URL.Path); ok && r.Method == "GET" {
 			// Check if it's an HTML page
 			if util.UIHTMLPaths[p] {
-				serveFileWithPlaceholders(fmt.Sprintf("/html%s.html", p), w)
+				serveFileWithPlaceholders(fmt.Sprintf("/html/%s.html", p), w)
 				return
 			}
 
@@ -162,12 +170,13 @@ func staticHandler(next http.Handler) http.Handler {
 
 			// Check if it's a static file. Do not allow directory browsing (ie. paths ending with a '/')
 			if util.UIStaticPaths[p] && !strings.HasSuffix(p, "/") {
-				logger.Debugf("Serving static file %s", p)
+				logger.Debugf("Serving static file /%s", p)
 
 				// Make a "fake" (bypassing) response writer
 				bypassWriter := &notFoundBypassWriter{ResponseWriter: w}
 
 				// Try to serve the requested static content
+				r.URL.Path = "/" + p
 				fileHandler.ServeHTTP(bypassWriter, r)
 
 				// If the content was found, we're done

@@ -1,13 +1,15 @@
 package api
 
 import (
+	"github.com/go-openapi/strfmt"
+	"gitlab.com/comentario/comentario/internal/api/models"
 	"gitlab.com/comentario/comentario/internal/svc"
 	"gitlab.com/comentario/comentario/internal/util"
 	"net/http"
 	"time"
 )
 
-func domainModeratorNew(domain string, email string) error {
+func domainModeratorNew(domain string, email strfmt.Email) error {
 	if domain == "" || email == "" {
 		return util.ErrorMissingField
 	}
@@ -40,7 +42,7 @@ func domainModeratorNewHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	o, err := ownerGetByOwnerToken(*x.OwnerToken)
+	o, err := OwnerGetByOwnerToken(models.HexID(*x.OwnerToken))
 	if err != nil {
 		BodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
@@ -58,7 +60,7 @@ func domainModeratorNewHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = domainModeratorNew(domain, *x.Email); err != nil {
+	if err = domainModeratorNew(domain, strfmt.Email(*x.Email)); err != nil {
 		BodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}

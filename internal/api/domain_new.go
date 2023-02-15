@@ -1,6 +1,7 @@
 package api
 
 import (
+	"gitlab.com/comentario/comentario/internal/api/models"
 	"gitlab.com/comentario/comentario/internal/svc"
 	"gitlab.com/comentario/comentario/internal/util"
 	"net/http"
@@ -8,7 +9,7 @@ import (
 	"time"
 )
 
-func domainNew(ownerHex string, name string, domain string) error {
+func domainNew(ownerHex models.HexID, name string, domain string) error {
 	if ownerHex == "" || name == "" || domain == "" {
 		return util.ErrorMissingField
 	}
@@ -40,7 +41,7 @@ func domainNewHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	o, err := ownerGetByOwnerToken(*x.OwnerToken)
+	o, err := OwnerGetByOwnerToken(models.HexID(*x.OwnerToken))
 	if err != nil {
 		BodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return

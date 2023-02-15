@@ -1,6 +1,7 @@
 package api
 
 import (
+	"gitlab.com/comentario/comentario/internal/api/models"
 	"gitlab.com/comentario/comentario/internal/svc"
 	"gitlab.com/comentario/comentario/internal/util"
 	"net/http"
@@ -39,7 +40,7 @@ func domainSsoSecretNewHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	o, err := ownerGetByOwnerToken(*x.OwnerToken)
+	o, err := OwnerGetByOwnerToken(models.HexID(*x.OwnerToken))
 	if err != nil {
 		BodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return

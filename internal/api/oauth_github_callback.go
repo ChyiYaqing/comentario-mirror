@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/go-openapi/strfmt"
 	"gitlab.com/comentario/comentario/internal/util"
 	"io"
 	"net/http"
@@ -18,7 +19,7 @@ func githubGetPrimaryEmail(accessToken string) (string, error) {
 		return "", util.ErrorCannotReadResponse
 	}
 
-	user := []map[string]interface{}{}
+	var user []map[string]interface{}
 	if err := json.Unmarshal(contents, &user); err != nil {
 		logger.Errorf("error unmarshaling github user: %v", err)
 		return "", util.ErrorInternal
@@ -100,7 +101,7 @@ func githubCallbackHandler(w http.ResponseWriter, r *http.Request) {
 		photo = user["avatar_url"].(string)
 	}
 
-	c, err := commenterGetByEmail("github", email)
+	c, err := commenterGetByEmail("github", strfmt.Email(email))
 	if err != nil && err != util.ErrorNoSuchCommenter {
 		_, _ = fmt.Fprintf(w, "Error: %s", err.Error())
 		return
@@ -109,7 +110,7 @@ func githubCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	var commenterHex string
 
 	if err == util.ErrorNoSuchCommenter {
-		commenterHex, err = commenterNew(email, name, link, photo, "github", "")
+		commenterHex, err = commenterNew(strfmt.Email(email), name, link, photo, "github", "")
 		if err != nil {
 			_, _ = fmt.Fprintf(w, "Error: %s", err.Error())
 			return

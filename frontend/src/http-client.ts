@@ -46,7 +46,7 @@ export class HttpClient {
                 const req = new XMLHttpRequest();
                 req.open(method, this.getEndpointUrl(path), true);
                 if (body) {
-                    req.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
+                    req.setRequestHeader('Content-type', 'application/json');
                 }
 
                 // Resolve or reject the promise on load, based on the return status

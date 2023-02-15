@@ -1,6 +1,8 @@
 package api
 
 import (
+	"github.com/go-openapi/strfmt"
+	"gitlab.com/comentario/comentario/internal/api/models"
 	"gitlab.com/comentario/comentario/internal/svc"
 	"gitlab.com/comentario/comentario/internal/util"
 )
@@ -13,7 +15,7 @@ var ownersRowColumns = `
 	owners.joinDate
 `
 
-func ownersRowScan(s sqlScanner, o *owner) error {
+func ownersRowScan(s sqlScanner, o *models.Owner) error {
 	return s.Scan(
 		&o.OwnerHex,
 		&o.Email,
@@ -23,9 +25,9 @@ func ownersRowScan(s sqlScanner, o *owner) error {
 	)
 }
 
-func ownerGetByEmail(email string) (owner, error) {
+func ownerGetByEmail(email strfmt.Email) (*models.Owner, error) {
 	if email == "" {
-		return owner{}, util.ErrorMissingField
+		return nil, util.ErrorMissingField
 	}
 
 	statement := `
@@ -35,18 +37,18 @@ func ownerGetByEmail(email string) (owner, error) {
 	`
 	row := svc.DB.QueryRow(statement, email)
 
-	var o owner
+	var o models.Owner
 	if err := ownersRowScan(row, &o); err != nil {
 		// TODO: Make sure this is actually no such email.
-		return owner{}, util.ErrorNoSuchEmail
+		return nil, util.ErrorNoSuchEmail
 	}
 
-	return o, nil
+	return &o, nil
 }
 
-func ownerGetByOwnerToken(ownerToken string) (owner, error) {
+func OwnerGetByOwnerToken(ownerToken models.HexID) (*models.Owner, error) {
 	if ownerToken == "" {
-		return owner{}, util.ErrorMissingField
+		return nil, util.ErrorMissingField
 	}
 
 	statement := `
@@ -59,11 +61,11 @@ func ownerGetByOwnerToken(ownerToken string) (owner, error) {
 	`
 	row := svc.DB.QueryRow(statement, ownerToken)
 
-	var o owner
+	var o models.Owner
 	if err := ownersRowScan(row, &o); err != nil {
 		logger.Errorf("cannot scan owner: %v\n", err)
-		return owner{}, util.ErrorInternal
+		return nil, util.ErrorInternal
 	}
 
-	return o, nil
+	return &o, nil
 }

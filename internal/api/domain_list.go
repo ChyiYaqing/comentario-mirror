@@ -1,12 +1,13 @@
 package api
 
 import (
+	"gitlab.com/comentario/comentario/internal/api/models"
 	"gitlab.com/comentario/comentario/internal/svc"
 	"gitlab.com/comentario/comentario/internal/util"
 	"net/http"
 )
 
-func domainList(ownerHex string) ([]domain, error) {
+func domainList(ownerHex models.HexID) ([]domain, error) {
 	if ownerHex == "" {
 		return []domain{}, util.ErrorMissingField
 	}
@@ -53,7 +54,7 @@ func domainListHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	o, err := ownerGetByOwnerToken(*x.OwnerToken)
+	o, err := OwnerGetByOwnerToken(models.HexID(*x.OwnerToken))
 	if err != nil {
 		BodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return

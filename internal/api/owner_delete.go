@@ -1,12 +1,13 @@
 package api
 
 import (
+	"gitlab.com/comentario/comentario/internal/api/models"
 	"gitlab.com/comentario/comentario/internal/svc"
 	"gitlab.com/comentario/comentario/internal/util"
 	"net/http"
 )
 
-func ownerDelete(ownerHex string, deleteDomains bool) error {
+func ownerDelete(ownerHex models.HexID, deleteDomains bool) error {
 	domains, err := domainList(ownerHex)
 	if err != nil {
 		return err
@@ -57,7 +58,7 @@ func ownerDeleteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	o, err := ownerGetByOwnerToken(*x.OwnerToken)
+	o, err := OwnerGetByOwnerToken(models.HexID(*x.OwnerToken))
 	if err != nil {
 		BodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"github.com/go-openapi/strfmt"
 	"gitlab.com/comentario/comentario/internal/mail"
 	"gitlab.com/comentario/comentario/internal/svc"
 	"gitlab.com/comentario/comentario/internal/util"
@@ -10,7 +11,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-func commenterNew(email string, name string, link string, photo string, provider string, password string) (string, error) {
+func commenterNew(email strfmt.Email, name string, link string, photo string, provider string, password string) (string, error) {
 	if email == "" || name == "" || link == "" || photo == "" || provider == "" {
 		return "", util.ErrorMissingField
 	}
@@ -79,7 +80,7 @@ func commenterNewHandler(w http.ResponseWriter, r *http.Request) {
 		*x.Website = "undefined"
 	}
 
-	if _, err := commenterNew(*x.Email, *x.Name, *x.Website, "undefined", "commento", *x.Password); err != nil {
+	if _, err := commenterNew(strfmt.Email(*x.Email), *x.Name, *x.Website, "undefined", "commento", *x.Password); err != nil {
 		BodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return
 	}

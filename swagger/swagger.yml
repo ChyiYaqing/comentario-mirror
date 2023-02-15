@@ -112,6 +112,23 @@ definitions:
     maxLength: 64
     pattern: '[0-9a-f]{64}'
 
+  owner:
+    description: Instance owner
+    type: object
+    properties:
+      ownerHex:
+        $ref: "#/definitions/hexId"
+      email:
+        type: string
+        format: email
+      name:
+        type: string
+      confirmedEmail:
+        type: boolean
+      joinDate:
+        type: string
+        format: date-time
+
   page:
     description: Page hosting comments
     type: object
@@ -791,12 +808,34 @@ paths:
   /owner/self:
     post:
       operationId: OwnerSelf
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required:
+              - ownerToken
+            properties:
+              ownerToken:
+                $ref: "#/definitions/hexId"
       # TODO add real parameters and responses
       responses:
         200:
           description: Success or failure response (see 'success' property)
           schema:
-            $ref: "#/definitions/apiResponseBase"
+            type: object
+            properties:
+              success:
+                type: boolean
+                x-omitempty: false
+              message:
+                type: string
+              loggedIn:
+                type: boolean
+                x-omitempty: false
+              owner:
+                $ref: "#/definitions/owner"
 
   /owner/delete:
     post:

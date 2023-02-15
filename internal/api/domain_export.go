@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"github.com/go-openapi/strfmt"
 	"gitlab.com/comentario/comentario/internal/api/models"
 	"gitlab.com/comentario/comentario/internal/mail"
 	"gitlab.com/comentario/comentario/internal/svc"
@@ -10,14 +11,14 @@ import (
 	"time"
 )
 
-func domainExportBeginError(email string, toName string, domain string, _ error) {
+func domainExportBeginError(email strfmt.Email, toName string, domain string, _ error) {
 	// we're not using err at the moment because it's all errorInternal
-	if err2 := mail.SMTPDomainExportError(email, toName, domain); err2 != nil {
+	if err2 := mail.SMTPDomainExportError(string(email), toName, domain); err2 != nil {
 		logger.Errorf("cannot send domain export error email for %s: %v", domain, err2)
 	}
 }
 
-func domainExportBegin(email string, toName string, domain string) {
+func domainExportBegin(email strfmt.Email, toName string, domain string) {
 	e := commentoExportV1{Version: 1, Comments: []models.Comment{}, Commenters: []commenter{}}
 
 	statement := `
@@ -101,7 +102,7 @@ func domainExportBegin(email string, toName string, domain string) {
 		return
 	}
 
-	err = mail.SMTPDomainExport(email, toName, domain, exportHex)
+	err = mail.SMTPDomainExport(string(email), toName, domain, exportHex)
 	if err != nil {
 		logger.Errorf("error sending data export email for %s: %v", domain, err)
 		return
@@ -125,7 +126,7 @@ func domainExportBeginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	o, err := ownerGetByOwnerToken(*x.OwnerToken)
+	o, err := OwnerGetByOwnerToken(models.HexID(*x.OwnerToken))
 	if err != nil {
 		BodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
+	"github.com/go-openapi/strfmt"
 	"gitlab.com/comentario/comentario/internal/api/models"
 	"gitlab.com/comentario/comentario/internal/util"
 	"io"
@@ -61,7 +62,7 @@ func domainImportCommento(domain string, url string) (int, error) {
 	// commenterHex (old hex, new hex)
 	commenterHex := map[string]string{"anonymous": "anonymous"}
 	for _, commenter := range data.Commenters {
-		c, err := commenterGetByEmail("commento", commenter.Email)
+		c, err := commenterGetByEmail("commento", strfmt.Email(commenter.Email))
 		if err != nil && err != util.ErrorNoSuchCommenter {
 			logger.Errorf("cannot get commenter by email: %v", err)
 			return 0, util.ErrorInternal
@@ -78,7 +79,7 @@ func domainImportCommento(domain string, url string) (int, error) {
 			return 0, util.ErrorInternal
 		}
 
-		commenterHex[commenter.CommenterHex], err = commenterNew(commenter.Email,
+		commenterHex[commenter.CommenterHex], err = commenterNew(strfmt.Email(commenter.Email),
 			commenter.Name, commenter.Link, commenter.Photo, "commento", randomPassword)
 		if err != nil {
 			return 0, err
@@ -142,7 +143,7 @@ func domainImportCommentoHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	o, err := ownerGetByOwnerToken(*x.OwnerToken)
+	o, err := OwnerGetByOwnerToken(models.HexID(*x.OwnerToken))
 	if err != nil {
 		BodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return

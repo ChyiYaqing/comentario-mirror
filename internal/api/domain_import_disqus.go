@@ -5,6 +5,7 @@ import (
 	"encoding/xml"
 	"github.com/go-openapi/strfmt"
 	"github.com/lunny/html2md"
+	"gitlab.com/comentario/comentario/internal/api/models"
 	"gitlab.com/comentario/comentario/internal/util"
 	"io"
 	"net/http"
@@ -94,13 +95,13 @@ func domainImportDisqus(domain string, url string) (int, error) {
 
 	// Map Disqus emails to commenterHex (if not available, create a new one
 	// with a random password that can be reset later).
-	commenterHex := map[string]string{}
+	commenterHex := map[strfmt.Email]string{}
 	for _, post := range x.Posts {
 		if post.IsDeleted || post.IsSpam {
 			continue
 		}
 
-		email := post.Author.Username + "@disqus.com"
+		email := strfmt.Email(post.Author.Username + "@disqus.com")
 
 		if _, ok := commenterHex[email]; ok {
 			continue
@@ -140,7 +141,7 @@ func domainImportDisqus(domain string, url string) (int, error) {
 
 		cHex := "anonymous"
 		if !post.Author.IsAnonymous {
-			cHex = commenterHex[post.Author.Username+"@disqus.com"]
+			cHex = commenterHex[strfmt.Email(post.Author.Username+"@disqus.com")]
 		}
 
 		parentHex := "root"
@@ -182,7 +183,7 @@ func domainImportDisqusHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	o, err := ownerGetByOwnerToken(*x.OwnerToken)
+	o, err := OwnerGetByOwnerToken(models.HexID(*x.OwnerToken))
 	if err != nil {
 		BodyMarshalChecked(w, response{"success": false, "message": err.Error()})
 		return

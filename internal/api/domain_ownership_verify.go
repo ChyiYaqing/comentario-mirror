@@ -1,11 +1,12 @@
 package api
 
 import (
+	"gitlab.com/comentario/comentario/internal/api/models"
 	"gitlab.com/comentario/comentario/internal/svc"
 	"gitlab.com/comentario/comentario/internal/util"
 )
 
-func domainOwnershipVerify(ownerHex string, domain string) (bool, error) {
+func domainOwnershipVerify(ownerHex models.HexID, domain string) (bool, error) {
 	if ownerHex == "" || domain == "" {
 		return false, util.ErrorMissingField
 	}

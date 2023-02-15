@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/go-openapi/strfmt"
 	"gitlab.com/comentario/comentario/internal/util"
 	"io"
 	"net/http"
@@ -70,7 +71,7 @@ func gitlabCallbackHandler(w http.ResponseWriter, r *http.Request) {
 		photo = user["avatar_url"].(string)
 	}
 
-	c, err := commenterGetByEmail("gitlab", email)
+	c, err := commenterGetByEmail("gitlab", strfmt.Email(email))
 	if err != nil && err != util.ErrorNoSuchCommenter {
 		_, _ = fmt.Fprintf(w, "Error: %s", err.Error())
 		return
@@ -79,7 +80,7 @@ func gitlabCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	var commenterHex string
 
 	if err == util.ErrorNoSuchCommenter {
-		commenterHex, err = commenterNew(email, name, link, photo, "gitlab", "")
+		commenterHex, err = commenterNew(strfmt.Email(email), name, link, photo, "gitlab", "")
 		if err != nil {
 			_, _ = fmt.Fprintf(w, "Error: %s", err.Error())
 			return

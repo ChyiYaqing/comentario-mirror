@@ -1,6 +1,7 @@
 package api
 
 import (
+	"github.com/go-openapi/strfmt"
 	"gitlab.com/comentario/comentario/internal/svc"
 	"gitlab.com/comentario/comentario/internal/util"
 )
@@ -48,7 +49,7 @@ func commenterGetByHex(commenterHex string) (commenter, error) {
 	return c, nil
 }
 
-func commenterGetByEmail(provider string, email string) (commenter, error) {
+func commenterGetByEmail(provider string, email strfmt.Email) (commenter, error) {
 	if provider == "" || email == "" {
 		return commenter{}, util.ErrorMissingField
 	}

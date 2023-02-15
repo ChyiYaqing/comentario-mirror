@@ -119,3 +119,85 @@ func TestIsValidHostname(t *testing.T) {
 		})
 	}
 }
+
+func TestIsValidHostPort(t *testing.T) {
+	tests := []struct {
+		name      string
+		s         string
+		wantValid bool
+		wantHost  string
+		wantPort  string
+	}{
+		{"empty string                                ", "", false, "", ""},
+		{"only port                                   ", ":80", false, "", ""},
+		{"no port, single .                           ", ".", false, "", ""},
+		{"with port, single .                         ", ".:3128", false, "", ""},
+		{"no port, single -                           ", "-", false, "", ""},
+		{"with port, single -                         ", "-:3128", false, "", ""},
+		{"no port, single part starting with -        ", "-example", false, "", ""},
+		{"with port, single part starting with -      ", "-example:3128", false, "", ""},
+		{"no port, single part containing _           ", "ex_ample", false, "", ""},
+		{"with port, single part containing _         ", "ex_ample:3128", false, "", ""},
+		{"no port, single part, alpha                 ", "example", false, "", ""},
+		{"with port, single part, alpha               ", "example:3128", false, "", ""},
+		{"no port, single part, alphanumeric 1        ", "examp1e2", false, "", ""},
+		{"with port, single part, alphanumeric 1      ", "examp1e2:3128", false, "", ""},
+		{"no port, single part, alphanumeric 2        ", "2examp1e", false, "", ""},
+		{"with port, single part, alphanumeric 2      ", "2examp1e:3128", false, "", ""},
+		{"no port, single part 63 chars long          ", "4785tchn2w4g890hn-4t598-u2hxm08-u24htg0m82ug028u5gjkndsrfigjnsf", false, "", ""},
+		{"with port, single part 63 chars long        ", "4785tchn2w4g890hn-4t598-u2hxm08-u24htg0m82ug028u5gjkndsrfigjnsf:3128", false, "", ""},
+		{"no port, single part too long               ", "4785tchn2w4g890hn-4t598-u2hxm08-u24htg0m82ug028u5gjikndsrfigjnsf", false, "", ""},
+		{"with port, single part too long             ", "4785tchn2w4g890hn-4t598-u2hxm08-u24htg0m82ug028u5gjikndsrfigjnsf:3128", false, "", ""},
+		{"no port, two parts 1                        ", "e.ax", true, "e.ax", ""},
+		{"with port, two parts 1                      ", "e.ax:3128", true, "e.ax", "3128"},
+		{"with empty port, two parts 1                ", "e.ax:", false, "", ""},
+		{"no port, two parts 2                        ", "ex.ample", true, "ex.ample", ""},
+		{"with port, two parts 2                      ", "ex.ample:3128", true, "ex.ample", "3128"},
+		{"with empty port, two parts 2                ", "ex.ample:", false, "", ""},
+		{"with zero port, two parts 2                 ", "ex.ample:0", false, "", ""},
+		{"with big port, two parts 2                  ", "ex.ample:65536", false, "", ""},
+		{"no port, two parts, second starting with -  ", "ex.-ample", false, "", ""},
+		{"with port, two parts, second starting with -", "ex.-ample:3128", false, "", ""},
+		{"no port, two parts, one 63 chars long       ", "ex.mplehasdifjhakdhfakjhdfgkajlfhgamplehasdifjhakdhfakjhdfgkajlfhg", true, "ex.mplehasdifjhakdhfakjhdfgkajlfhgamplehasdifjhakdhfakjhdfgkajlfhg", ""},
+		{"with port, two parts, one 63 chars long     ", "ex.mplehasdifjhakdhfakjhdfgkajlfhgamplehasdifjhakdhfakjhdfgkajlfhg:3128", true, "ex.mplehasdifjhakdhfakjhdfgkajlfhgamplehasdifjhakdhfakjhdfgkajlfhg", "3128"},
+		{"no port, two parts, one too long            ", "ex.amplehasdifjhakdhfakjhdfgkajlfhgamplehasdifjhakdhfakjhdfgkajlfhg", false, "", ""},
+		{"with port, two parts, one too long          ", "ex.amplehasdifjhakdhfakjhdfgkajlfhgamplehasdifjhakdhfakjhdfgkajlfhg:3128", false, "", ""},
+		{"no port, many parts                         ", "ex.a.m.p.l.e.h.a.s.d.i.f.j.h.a.k.d.h.f.a.k.j.h.d.fgk.ajl.fhgam.pl.eh.a.sdi.fjh.akdh.fa.kj.h.dfgkajlfhg.nl", true, "ex.a.m.p.l.e.h.a.s.d.i.f.j.h.a.k.d.h.f.a.k.j.h.d.fgk.ajl.fhgam.pl.eh.a.sdi.fjh.akdh.fa.kj.h.dfgkajlfhg.nl", ""},
+		{"with port, many parts                       ", "ex.a.m.p.l.e.h.a.s.d.i.f.j.h.a.k.d.h.f.a.k.j.h.d.fgk.ajl.fhgam.pl.eh.a.sdi.fjh.akdh.fa.kj.h.dfgkajlfhg.nl:3128", true, "ex.a.m.p.l.e.h.a.s.d.i.f.j.h.a.k.d.h.f.a.k.j.h.d.fgk.ajl.fhgam.pl.eh.a.sdi.fjh.akdh.fa.kj.h.dfgkajlfhg.nl", "3128"},
+		{"no port, many parts                         ", "ex.a.m.p.l.e.h.a.s.d.i.f.j.h.a.k.d.h.f.a.k.j.h.d.fgk.ajl.fhgam.pl.eh.a.sdi.fjh.akdh.fa.kj.h.dfgkajlfhg.nl", true, "ex.a.m.p.l.e.h.a.s.d.i.f.j.h.a.k.d.h.f.a.k.j.h.d.fgk.ajl.fhgam.pl.eh.a.sdi.fjh.akdh.fa.kj.h.dfgkajlfhg.nl", ""},
+		{"with port, many parts                       ", "ex.a.m.p.l.e.h.a.s.d.i.f.j.h.a.k.d.h.f.a.k.j.h.d.fgk.ajl.fhgam.pl.eh.a.sdi.fjh.akdh.fa.kj.h.dfgkajlfhg.nl:3128", true, "ex.a.m.p.l.e.h.a.s.d.i.f.j.h.a.k.d.h.f.a.k.j.h.d.fgk.ajl.fhgam.pl.eh.a.sdi.fjh.akdh.fa.kj.h.dfgkajlfhg.nl", "3128"},
+		{"no port, comentario.app                     ", "comentario.app", true, "comentario.app", ""},
+		{"with port, comentario.app                   ", "comentario.app:3128", true, "comentario.app", "3128"},
+	}
+	for _, tt := range tests {
+		t.Run(strings.TrimSpace(tt.name), func(t *testing.T) {
+			if gotValid, gotHost, gotPort := IsValidHostPort(tt.s); gotValid != tt.wantValid || gotHost != tt.wantHost || gotPort != tt.wantPort {
+				t.Errorf("IsValidHostPort() = (%v, %v, %v), want (%v, %v, %v)", gotValid, gotHost, gotPort, tt.wantValid, tt.wantHost, tt.wantPort)
+			}
+		})
+	}
+}
+
+func TestIsValidPort(t *testing.T) {
+	tests := []struct {
+		name string
+		str  string
+		want bool
+	}{
+		{"empty string   ", "", false},
+		{"alpha          ", "cc", false},
+		{"alphanumeric 1 ", "a12", false},
+		{"alphanumeric 2 ", "8f", false},
+		{"zero           ", "0", false},
+		{"too big number ", "65536", false},
+		{"small number OK", "1", true},
+		{"big number OK  ", "65535", true},
+	}
+	for _, tt := range tests {
+		t.Run(strings.TrimSpace(tt.name), func(t *testing.T) {
+			if got := IsValidPort(tt.str); got != tt.want {
+				t.Errorf("IsValidPort() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

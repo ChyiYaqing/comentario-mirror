@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/go-openapi/strfmt"
 	"gitlab.com/comentario/comentario/internal/util"
 	"io"
 	"net/http"
@@ -47,7 +48,7 @@ func googleCallbackHandler(w http.ResponseWriter, r *http.Request) {
 
 	email := user["email"].(string)
 
-	c, err := commenterGetByEmail("google", email)
+	c, err := commenterGetByEmail("google", strfmt.Email(email))
 	if err != nil && err != util.ErrorNoSuchCommenter {
 		_, _ = fmt.Fprintf(w, "Error: %s", err.Error())
 		return
@@ -68,7 +69,7 @@ func googleCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	var commenterHex string
 
 	if err == util.ErrorNoSuchCommenter {
-		commenterHex, err = commenterNew(email, name, link, photo, "google", "")
+		commenterHex, err = commenterNew(strfmt.Email(email), name, link, photo, "google", "")
 		if err != nil {
 			_, _ = fmt.Fprintf(w, "Error: %s", err.Error())
 			return

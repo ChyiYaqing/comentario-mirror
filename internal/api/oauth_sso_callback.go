@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/go-openapi/strfmt"
 	"gitlab.com/comentario/comentario/internal/util"
 	"net/http"
 )
@@ -89,7 +90,7 @@ func ssoCallbackHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	c, err := commenterGetByEmail("sso:"+domain, payload.Email)
+	c, err := commenterGetByEmail("sso:"+domain, strfmt.Email(payload.Email))
 	if err != nil && err != util.ErrorNoSuchCommenter {
 		_, _ = fmt.Fprintf(w, "Error: %s\n", err.Error())
 		return
@@ -98,7 +99,7 @@ func ssoCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	var commenterHex string
 
 	if err == util.ErrorNoSuchCommenter {
-		commenterHex, err = commenterNew(payload.Email, payload.Name, payload.Link, payload.Photo, "sso:"+domain, "")
+		commenterHex, err = commenterNew(strfmt.Email(payload.Email), payload.Name, payload.Link, payload.Photo, "sso:"+domain, "")
 		if err != nil {
 			_, _ = fmt.Fprintf(w, "Error: %s", err.Error())
 			return
