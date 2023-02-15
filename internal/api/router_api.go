@@ -6,18 +6,18 @@ import (
 
 // TODO remove
 func apiRouterInit(router *mux.Router) error {
-	router.HandleFunc("/api/owner/new", ownerNewHandler).Methods("POST")
+	// router.HandleFunc("/api/owner/new", ownerNewHandler).Methods("POST")
 	router.HandleFunc("/api/owner/confirm-hex", ownerConfirmHexHandler).Methods("GET")
-	router.HandleFunc("/api/owner/login", ownerLoginHandler).Methods("POST")
+	// router.HandleFunc("/api/owner/login", ownerLoginHandler).Methods("POST")
 	// router.HandleFunc("/api/owner/self", ownerSelfHandler).Methods("POST")
-	router.HandleFunc("/api/owner/delete", ownerDeleteHandler).Methods("POST")
+	// router.HandleFunc("/api/owner/delete", ownerDeleteHandler).Methods("POST")
 
 	router.HandleFunc("/api/domain/new", domainNewHandler).Methods("POST")
-	router.HandleFunc("/api/domain/delete", domainDeleteHandler).Methods("POST")
-	router.HandleFunc("/api/domain/clear", domainClearHandler).Methods("POST")
+	// router.HandleFunc("/api/domain/delete", domainDeleteHandler).Methods("POST")
+	// router.HandleFunc("/api/domain/clear", domainClearHandler).Methods("POST")
 	router.HandleFunc("/api/domain/sso/new", domainSsoSecretNewHandler).Methods("POST")
-	router.HandleFunc("/api/domain/list", domainListHandler).Methods("POST")
-	router.HandleFunc("/api/domain/update", domainUpdateHandler).Methods("POST")
+	// router.HandleFunc("/api/domain/list", domainListHandler).Methods("POST")
+	// router.HandleFunc("/api/domain/update", domainUpdateHandler).Methods("POST")
 	router.HandleFunc("/api/domain/moderator/new", domainModeratorNewHandler).Methods("POST")
 	router.HandleFunc("/api/domain/moderator/delete", domainModeratorDeleteHandler).Methods("POST")
 	router.HandleFunc("/api/domain/statistics", domainStatisticsHandler).Methods("POST")
@@ -27,7 +27,7 @@ func apiRouterInit(router *mux.Router) error {
 	router.HandleFunc("/api/domain/export/download", domainExportDownloadHandler).Methods("GET")
 
 	router.HandleFunc("/api/commenter/token/new", commenterTokenNewHandler).Methods("GET")
-	router.HandleFunc("/api/commenter/new", commenterNewHandler).Methods("POST")
+	// router.HandleFunc("/api/commenter/new", commenterNewHandler).Methods("POST")
 	router.HandleFunc("/api/commenter/login", commenterLoginHandler).Methods("POST")
 	router.HandleFunc("/api/commenter/self", commenterSelfHandler).Methods("POST")
 	router.HandleFunc("/api/commenter/update", commenterUpdateHandler).Methods("POST")
@@ -36,7 +36,7 @@ func apiRouterInit(router *mux.Router) error {
 	router.HandleFunc("/api/forgot", forgotHandler).Methods("POST")
 	router.HandleFunc("/api/reset", resetHandler).Methods("POST")
 
-	router.HandleFunc("/api/email/get", emailGetHandler).Methods("POST")
+	// router.HandleFunc("/api/email/get", emailGetHandler).Methods("POST")
 	router.HandleFunc("/api/email/update", emailUpdateHandler).Methods("POST")
 	router.HandleFunc("/api/email/moderate", emailModerateHandler).Methods("GET")
 

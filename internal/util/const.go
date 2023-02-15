@@ -1,5 +1,7 @@
 package util
 
+import "time"
+
 // Various constants and constant-like vars
 
 const (
@@ -11,6 +13,8 @@ const (
 )
 
 var (
+	WrongAuthDelay = 10 * time.Second // Delay to exercise on a wrong email, password etc.
+
 	// UIHTMLPaths stores a list of known UI paths, which map to HTML files
 	UIHTMLPaths = map[string]bool{
 		"confirm-email": true,

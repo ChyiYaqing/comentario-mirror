@@ -18,6 +18,12 @@ var (
 	reEmailAddress = regexp.MustCompile(`^[^<>()[\]\\.,;:\s@"%]+(\.[^<>()[\]\\.,;:\s@"%]+)*@`)                // Only the part up to the '@'
 )
 
+// Scanner is a database/sql abstraction interface that can be used with both *sql.Row and *sql.Rows
+type Scanner interface {
+	// Scan copies columns from the underlying query row(s) to the values pointed to by dest
+	Scan(dest ...any) error
+}
+
 // ParseAbsoluteURL parses and returns the passed string as an absolute URL
 func ParseAbsoluteURL(s string) (*url.URL, error) {
 	// Parse the base URL

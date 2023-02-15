@@ -35,6 +35,7 @@ var (
 		DBMigrationsPath string `short:"m" long:"db-migrations-path" description:"Path to DB migration files"    default:"./db"       env:"DB_MIGRATIONS_PATH"`
 		EnableSwaggerUI  bool   `long:"enable-swagger-ui"            description:"Enable Swagger UI at /api/docs"`
 		StaticPath       string `short:"s" long:"static-path"        description:"Path to static files"          default:"."          env:"STATIC_PATH"`
+		AllowNewOwners   bool   `long:"allow-new-owners"             description:"Allow new owner signups"                            env:"ALLOW_NEW_OWNERS"`
 	}{}
 
 	// Derived values

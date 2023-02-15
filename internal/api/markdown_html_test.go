@@ -6,8 +6,6 @@ import (
 )
 
 func TestMarkdownToHtmlBasics(t *testing.T) {
-	FailTestOnError(t, SetupTestEnv())
-
 	// basic markdown and expected html tests
 	tests := map[string]string{
 		"Foo": "<p>Foo</p>",

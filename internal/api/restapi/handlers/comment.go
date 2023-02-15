@@ -1,4 +1,4 @@
-package api
+package handlers
 
 import (
 	"fmt"
@@ -7,7 +7,7 @@ import (
 	"gitlab.com/comentario/comentario/internal/util"
 )
 
-var commentsRowColumns = `
+const commentsRowColumns = `
 	comments.commentHex,
 	comments.commenterHex,
 	comments.markdown,
@@ -19,7 +19,7 @@ var commentsRowColumns = `
 	comments.creationDate
 `
 
-func commentsRowScan(s sqlScanner, c *models.Comment) error {
+func commentsRowScan(s util.Scanner, c *models.Comment) error {
 	return s.Scan(
 		&c.CommentHex,
 		&c.CommenterHex,
@@ -33,9 +33,9 @@ func commentsRowScan(s sqlScanner, c *models.Comment) error {
 	)
 }
 
-func commentGetByCommentHex(commentHex string) (models.Comment, error) {
+func commentGetByCommentHex(commentHex string) (*models.Comment, error) {
 	if commentHex == "" {
-		return models.Comment{}, util.ErrorMissingField
+		return nil, util.ErrorMissingField
 	}
 
 	row := svc.DB.QueryRow(fmt.Sprintf(`select %s from comments where comments.commentHex = $1;`, commentsRowColumns), commentHex)
@@ -43,8 +43,8 @@ func commentGetByCommentHex(commentHex string) (models.Comment, error) {
 	var c models.Comment
 	if err := commentsRowScan(row, &c); err != nil {
 		// TODO: is this the only error?
-		return c, util.ErrorNoSuchComment
+		return nil, util.ErrorNoSuchComment
 	}
 
-	return c, nil
+	return &c, nil
 }

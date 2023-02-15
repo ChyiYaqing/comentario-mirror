@@ -3,6 +3,7 @@ package api
 import (
 	"database/sql"
 	"gitlab.com/comentario/comentario/internal/api/models"
+	"gitlab.com/comentario/comentario/internal/api/restapi/handlers"
 	"gitlab.com/comentario/comentario/internal/svc"
 	"gitlab.com/comentario/comentario/internal/util"
 	"net/http"
@@ -197,9 +198,9 @@ func commentListHandler(w http.ResponseWriter, r *http.Request) {
 			"attributes":            p,
 			"configuredOauths": map[string]bool{
 				"commento": d.CommentoProvider,
-				"google":   googleConfigured && d.GoogleProvider,
-				"github":   githubConfigured && d.GithubProvider,
-				"gitlab":   gitlabConfigured && d.GitlabProvider,
+				"google":   handlers.googleConfigured && d.GoogleProvider,
+				"github":   handlers.githubConfigured && d.GithubProvider,
+				"gitlab":   handlers.gitlabConfigured && d.GitlabProvider,
 				"sso":      d.SsoProvider,
 			},
 		})

@@ -88,6 +88,77 @@ definitions:
       - unapproved
       - flagged
 
+  domain:
+    description: Registered domain
+    type: object
+    properties:
+      domain:
+        type: string
+      ownerHex:
+        $ref: "#/definitions/hexId"
+      name:
+        type: string
+      creationDate:
+        type: string
+        format: date-time
+      state:
+        type: string
+      importedComments:
+        type: boolean
+        x-omitempty: false
+      autoSpamFilter:
+        type: boolean
+        x-omitempty: false
+      requireModeration:
+        type: boolean
+        x-omitempty: false
+      requireIdentification:
+        type: boolean
+        x-omitempty: false
+      moderateAllAnonymous:
+        type: boolean
+        x-omitempty: false
+      moderators:
+        type: array
+        items:
+          $ref: "#/definitions/domainModerator"
+      emailNotificationPolicy:
+        type: string
+      commentoProvider:
+        type: boolean
+        x-omitempty: false
+      googleProvider:
+        type: boolean
+        x-omitempty: false
+      githubProvider:
+        type: boolean
+        x-omitempty: false
+      gitlabProvider:
+        type: boolean
+        x-omitempty: false
+      ssoProvider:
+        type: boolean
+        x-omitempty: false
+      ssoSecret:
+        type: string
+      ssoUrl:
+        type: string
+        format: url
+      defaultSortPolicy:
+        $ref: "#/definitions/sortPolicy"
+
+  domainModerator:
+    description: Domain moderator
+    type: object
+    properties:
+      email:
+        type: string
+      domain:
+        type: string
+      addDate:
+        type: string
+        format: date-time
+
   email:
     type: object
     properties:
@@ -576,7 +647,20 @@ paths:
   /domain/clear:
     post:
       operationId: DomainClear
-      # TODO add real parameters and responses
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required:
+              - ownerToken
+              - domain
+            properties:
+              ownerToken:
+                $ref: "#/definitions/hexId"
+              domain:
+                type: string
       responses:
         200:
           description: Success or failure response (see 'success' property)
@@ -586,7 +670,20 @@ paths:
   /domain/delete:
     post:
       operationId: DomainDelete
-      # TODO add real parameters and responses
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required:
+              - ownerToken
+              - domain
+            properties:
+              ownerToken:
+                $ref: "#/definitions/hexId"
+              domain:
+                type: string
       responses:
         200:
           description: Success or failure response (see 'success' property)
@@ -636,12 +733,44 @@ paths:
   /domain/list:
     post:
       operationId: DomainList
-      # TODO add real parameters and responses
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required:
+              - ownerToken
+            properties:
+              ownerToken:
+                $ref: "#/definitions/hexId"
       responses:
         200:
           description: Success or failure response (see 'success' property)
           schema:
-            $ref: "#/definitions/apiResponseBase"
+            type: object
+            properties:
+              success:
+                type: boolean
+                x-omitempty: false
+              message:
+                type: string
+              domains:
+                type: array
+                items:
+                  $ref: "#/definitions/domain"
+              configuredOauths:
+                type: object
+                properties:
+                  google:
+                    type: boolean
+                    x-omitempty: false
+                  github:
+                    type: boolean
+                    x-omitempty: false
+                  gitlab:
+                    type: boolean
+                    x-omitempty: false
 
   /domain/moderator/delete:
     post:
@@ -696,7 +825,20 @@ paths:
   /domain/update:
     post:
       operationId: DomainUpdate
-      # TODO add real parameters and responses
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required:
+              - ownerToken
+              - domain
+            properties:
+              ownerToken:
+                $ref: "#/definitions/hexId"
+              domain:
+                $ref: "#/definitions/domain"
       responses:
         200:
           description: Success or failure response (see 'success' property)
@@ -710,12 +852,30 @@ paths:
   /email/get:
     post:
       operationId: EmailGet
-      # TODO add real parameters and responses
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required:
+              - unsubscribeSecretHex
+            properties:
+              unsubscribeSecretHex:
+                $ref: "#/definitions/hexId"
       responses:
         200:
           description: Success or failure response (see 'success' property)
           schema:
-            $ref: "#/definitions/apiResponseBase"
+            type: object
+            properties:
+              success:
+                type: boolean
+                x-omitempty: false
+              message:
+                type: string
+              email:
+                $ref: "#/definitions/email"
 
   /email/moderate:
     get:
@@ -798,12 +958,34 @@ paths:
   /owner/login:
     post:
       operationId: OwnerLogin
-      # TODO add real parameters and responses
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required:
+              - email
+              - password
+            properties:
+              email:
+                type: string
+                format: email
+              password:
+                type: string
       responses:
         200:
           description: Success or failure response (see 'success' property)
           schema:
-            $ref: "#/definitions/apiResponseBase"
+            type: object
+            properties:
+              success:
+                type: boolean
+                x-omitempty: false
+              message:
+                type: string
+              ownerToken:
+                $ref: "#/definitions/hexId"
 
   /owner/self:
     post:
@@ -819,7 +1001,6 @@ paths:
             properties:
               ownerToken:
                 $ref: "#/definitions/hexId"
-      # TODO add real parameters and responses
       responses:
         200:
           description: Success or failure response (see 'success' property)
@@ -840,7 +1021,17 @@ paths:
   /owner/delete:
     post:
       operationId: OwnerDelete
-      # TODO add real parameters and responses
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required:
+              - ownerToken
+            properties:
+              ownerToken:
+                $ref: "#/definitions/hexId"
       responses:
         200:
           description: Success or failure response (see 'success' property)
