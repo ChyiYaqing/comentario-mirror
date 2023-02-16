@@ -6,7 +6,6 @@ import (
 	"gitlab.com/comentario/comentario/internal/util"
 	"net/url"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 )
@@ -24,18 +23,19 @@ var (
 	// CLIFlags stores command-line flags
 	CLIFlags = struct {
 		Verbose          []bool `short:"v" long:"verbose"            description:"Verbose logging"`
-		BaseURL          string `long:"base-url"                     description:"Server's own base URL"                             default:"http://localhost:8080/" env:"BASE_URL"`
-		CDNURL           string `long:"cdn-url"                      description:"Static file CDN URL. If omitted, base URL is used" default:""                       env:"CDN_URL"`
-		DBHost           string `long:"db-host"                      description:"PostgreSQL host"               default:"localhost"  env:"POSTGRES_HOST"`
-		DBPort           int    `long:"db-port"                      description:"PostgreSQL port"               default:"5432"       env:"POSTGRES_PORT"`
-		DBUsername       string `long:"db-username"                  description:"PostgreSQL username"           default:"postgres"   env:"POSTGRES_USERNAME"`
-		DBPassword       string `long:"db-password"                  description:"PostgreSQL password"           default:"postgres"   env:"POSTGRES_PASSWORD"`
-		DBName           string `long:"db-name"                      description:"PostgreSQL database name"      default:"comentario" env:"POSTGRES_DATABASE"`
-		DBIdleConns      int    `long:"db-idle-conns"                description:"Max. # of idle DB connections" default:"50"         env:"DB_MAX_IDLE_CONNS"`
-		DBMigrationsPath string `short:"m" long:"db-migrations-path" description:"Path to DB migration files"    default:"./db"       env:"DB_MIGRATIONS_PATH"`
+		BaseURL          string `long:"base-url"                     description:"Server's own base URL"                      default:"http://localhost:8080/" env:"BASE_URL"`
+		CDNURL           string `long:"cdn-url"                      description:"Static file CDN URL (defaults to base URL)" default:""                       env:"CDN_URL"`
+		EmailFrom        string `long:"email-from"                   description:"'From' address in sent emails"              default:"noreply@localhost"      env:"EMAIL_FROM"`
+		DBHost           string `long:"db-host"                      description:"PostgreSQL host"                            default:"localhost"              env:"POSTGRES_HOST"`
+		DBPort           int    `long:"db-port"                      description:"PostgreSQL port"                            default:"5432"                   env:"POSTGRES_PORT"`
+		DBUsername       string `long:"db-username"                  description:"PostgreSQL username"                        default:"postgres"               env:"POSTGRES_USERNAME"`
+		DBPassword       string `long:"db-password"                  description:"PostgreSQL password"                        default:"postgres"               env:"POSTGRES_PASSWORD"`
+		DBName           string `long:"db-name"                      description:"PostgreSQL database name"                   default:"comentario"             env:"POSTGRES_DATABASE"`
+		DBIdleConns      int    `long:"db-idle-conns"                description:"Max. # of idle DB connections"              default:"50"                     env:"DB_MAX_IDLE_CONNS"`
+		DBMigrationsPath string `short:"m" long:"db-migrations-path" description:"Path to DB migration files"                 default:"./db"                   env:"DB_MIGRATIONS_PATH"`
 		EnableSwaggerUI  bool   `long:"enable-swagger-ui"            description:"Enable Swagger UI at /api/docs"`
-		StaticPath       string `short:"s" long:"static-path"        description:"Path to static files"          default:"."          env:"STATIC_PATH"`
-		AllowNewOwners   bool   `long:"allow-new-owners"             description:"Allow new owner signups"                            env:"ALLOW_NEW_OWNERS"`
+		StaticPath       string `short:"s" long:"static-path"        description:"Path to static files"                       default:"."                      env:"STATIC_PATH"`
+		AllowNewOwners   bool   `long:"allow-new-owners"             description:"Allow new owner signups"                                                     env:"ALLOW_NEW_OWNERS"`
 	}{}
 
 	// Derived values
@@ -90,12 +90,6 @@ func URLFor(path string, queryParams map[string]string) string {
 
 // deprecated
 func ConfigParse() error {
-	binPath, err := filepath.Abs(filepath.Dir(os.Args[0]))
-	if err != nil {
-		logger.Errorf("cannot load binary path: %v", err)
-		return err
-	}
-
 	defaults := map[string]string{
 		"CONFIG_FILE": "",
 
@@ -109,21 +103,13 @@ func ConfigParse() error {
 
 		"BIND_ADDRESS": "127.0.0.1",
 		"PORT":         "8080",
-		"ORIGIN":       "",
-
-		"CDN_PREFIX": "",
-
-		"FORBID_NEW_OWNERS": "false",
-
-		"STATIC": binPath,
 
 		"GZIP_STATIC": "false",
 
-		"SMTP_USERNAME":     "",
-		"SMTP_PASSWORD":     "",
-		"SMTP_HOST":         "",
-		"SMTP_PORT":         "",
-		"SMTP_FROM_ADDRESS": "",
+		"SMTP_USERNAME": "",
+		"SMTP_PASSWORD": "",
+		"SMTP_HOST":     "",
+		"SMTP_PORT":     "",
 
 		"AKISMET_KEY": "",
 

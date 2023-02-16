@@ -3,6 +3,7 @@ package mail
 import (
 	"bytes"
 	"github.com/op/go-logging"
+	"gitlab.com/comentario/comentario/internal/config"
 	"gitlab.com/comentario/comentario/internal/util"
 	"net/smtp"
 	"os"
@@ -25,10 +26,10 @@ func SMTPConfigure() error {
 		return nil
 	}
 
-	if os.Getenv("SMTP_FROM_ADDRESS") == "" {
-		logger.Errorf("COMENTARIO_SMTP_FROM_ADDRESS not set")
+	if config.CLIFlags.EmailFrom == "" {
+		logger.Errorf("Email From is not set")
 		SMTPConfigured = false
-		return util.ErrorMissingSmtpAddress
+		return util.ErrorMissingEmailFrom
 	}
 
 	logger.Infof("configuring smtp: %s", host)

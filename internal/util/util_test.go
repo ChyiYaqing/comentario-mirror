@@ -201,3 +201,30 @@ func TestIsValidPort(t *testing.T) {
 		})
 	}
 }
+
+func TestMarkdownToHTML(t *testing.T) {
+	tests := []struct {
+		name     string
+		markdown string
+		want     string
+	}{
+		{"Bare text   ", "Foo", "<p>Foo</p>"},
+		{"Paragraphs  ", "Foo\n\nBar", "<p>Foo</p>\n\n<p>Bar</p>"},
+		{"Script      ", "XSS: <script src='http://example.com/script.js'></script> Foo", "<p>XSS:  Foo</p>"},
+		{"Regular link", "Regular [Link](http://example.com)", "<p>Regular <a href=\"http://example.com\" rel=\"nofollow noopener\" target=\"_blank\">Link</a></p>"},
+		{"XSS link    ", "XSS [Link](data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pgo=)", "<p>XSS <tt>Link</tt></p>"},
+		{"Image       ", "![Images disallowed](http://example.com/image.jpg)", "<p></p>"},
+		{"Formatting  ", "**bold** *italics*", "<p><strong>bold</strong> <em>italics</em></p>"},
+		{"URL         ", "http://example.com/autolink", "<p><a href=\"http://example.com/autolink\" rel=\"nofollow noopener\" target=\"_blank\">http://example.com/autolink</a></p>"},
+		{"HTML        ", "<b>not bold</b>", "<p>not bold</p>"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Trim leading/trailing whitespace explicitly before comparing (because it doesn't matter in the resulting
+			// HTML)
+			if got := strings.TrimSpace(MarkdownToHTML(tt.markdown)); got != tt.want {
+				t.Errorf("MarkdownToHTML() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

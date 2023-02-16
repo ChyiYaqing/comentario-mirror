@@ -44,7 +44,7 @@ spec:
               value: '{{ .Values.comentario.smtpHost }}'
             - name: COMENTARIO_SMTP_PORT
               value: '{{ .Values.comentario.smtpPort }}'
-            - name: COMENTARIO_SMTP_FROM_ADDRESS
+            - name: EMAIL_FROM
               value: '{{ .Values.comentario.smtpFromAddress }}'
             - name: COMENTARIO_POSTGRES
               valueFrom:

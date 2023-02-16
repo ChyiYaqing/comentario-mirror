@@ -50,16 +50,3 @@ func BodyMarshalChecked(w http.ResponseWriter, x map[string]interface{}) {
 		logger.Warningf("failed to write success response ($#v): %v", x, err)
 	}
 }
-
-func getIP(r *http.Request) string {
-	ip := r.RemoteAddr
-	if r.Header.Get("X-Forwarded-For") != "" {
-		ip = r.Header.Get("X-Forwarded-For")
-	}
-
-	return ip
-}
-
-func getUserAgent(r *http.Request) string {
-	return r.Header.Get("User-Agent")
-}

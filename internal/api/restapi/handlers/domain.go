@@ -3,10 +3,13 @@ package handlers
 import (
 	"fmt"
 	"github.com/go-openapi/runtime/middleware"
+	"github.com/go-openapi/strfmt"
 	"gitlab.com/comentario/comentario/internal/api/models"
 	"gitlab.com/comentario/comentario/internal/api/restapi/operations"
 	"gitlab.com/comentario/comentario/internal/svc"
 	"gitlab.com/comentario/comentario/internal/util"
+	"strings"
+	"time"
 )
 
 var domainsRowColumns = `
@@ -94,6 +97,51 @@ func DomainList(params operations.DomainListParams) middleware.Responder {
 			Google: googleConfigured,
 		},
 		Domains: domains,
+		Success: true,
+	})
+}
+
+func DomainModeratorNew(params operations.DomainModeratorNewParams) middleware.Responder {
+	owner, err := ownerGetByOwnerToken(*params.Body.OwnerToken)
+	if err != nil {
+		return operations.NewDomainModeratorNewOK().WithPayload(&models.APIResponseBase{Message: err.Error()})
+	}
+
+	domainName := *params.Body.Domain
+	isOwner, err := domainOwnershipVerify(owner.OwnerHex, domainName)
+	if err != nil {
+		return operations.NewDomainModeratorNewOK().WithPayload(&models.APIResponseBase{Message: err.Error()})
+	}
+	if !isOwner {
+		return operations.NewDomainModeratorNewOK().WithPayload(&models.APIResponseBase{Message: util.ErrorNotAuthorised.Error()})
+	}
+
+	if err = domainModeratorNew(domainName, *params.Body.Email); err != nil {
+		return operations.NewDomainModeratorNewOK().WithPayload(&models.APIResponseBase{Message: err.Error()})
+	}
+
+	// Succeeded
+	return operations.NewDomainModeratorNewOK().WithPayload(&models.APIResponseBase{Success: true})
+}
+
+func DomainNew(params operations.DomainNewParams) middleware.Responder {
+	owner, err := ownerGetByOwnerToken(*params.Body.OwnerToken)
+	if err != nil {
+		return operations.NewDomainNewOK().WithPayload(&operations.DomainNewOKBody{Message: err.Error()})
+	}
+
+	domainName := *params.Body.Domain
+	if err = domainNew(owner.OwnerHex, *params.Body.Name, domainName); err != nil {
+		return operations.NewDomainNewOK().WithPayload(&operations.DomainNewOKBody{Message: err.Error()})
+	}
+
+	if err = domainModeratorNew(domainName, owner.Email); err != nil {
+		return operations.NewDomainNewOK().WithPayload(&operations.DomainNewOKBody{Message: err.Error()})
+	}
+
+	// Succeeded
+	return operations.NewDomainNewOK().WithPayload(&operations.DomainNewOKBody{
+		Domain:  domainName,
 		Success: true,
 	})
 }
@@ -257,6 +305,48 @@ func domainModeratorList(domain string) ([]*models.DomainModerator, error) {
 	return moderators, nil
 }
 
+func domainModeratorNew(domain string, email strfmt.Email) error {
+	if domain == "" || email == "" {
+		return util.ErrorMissingField
+	}
+
+	if err := EmailNew(email); err != nil {
+		logger.Errorf("cannot create email when creating moderator: %v", err)
+		return util.ErrorInternal
+	}
+
+	statement := `insert into moderators(domain, email, addDate) values($1, $2, $3);`
+	_, err := svc.DB.Exec(statement, domain, email, time.Now().UTC())
+	if err != nil {
+		logger.Errorf("cannot insert new moderator: %v", err)
+		return util.ErrorInternal
+	}
+
+	return nil
+}
+
+func domainNew(ownerHex models.HexID, name string, domain string) error {
+	if ownerHex == "" || name == "" || domain == "" {
+		return util.ErrorMissingField
+	}
+
+	if strings.Contains(domain, "/") {
+		return util.ErrorInvalidDomain
+	}
+
+	_, err := svc.DB.Exec(
+		"insert into domains(ownerHex, name, domain, creationDate) values($1, $2, $3, $4);",
+		ownerHex,
+		name,
+		domain,
+		time.Now().UTC())
+	if err != nil {
+		// TODO: Make sure this is really the error.
+		return util.ErrorDomainAlreadyExists
+	}
+	return nil
+}
+
 func domainOwnershipVerify(ownerHex models.HexID, domain string) (bool, error) {
 	if ownerHex == "" || domain == "" {
 		return false, util.ErrorMissingField
@@ -345,7 +435,19 @@ func domainUpdate(d *models.Domain) error {
 	return nil
 }
 
-func isDomainModerator(domain string, email string) (bool, error) {
+func domainViewRecord(domain string, commenterHex models.HexID) {
+	_, err := svc.DB.Exec(
+		"insert into views(domain, commenterHex, viewDate) values ($1, $2, $3);",
+		domain,
+		commenterHex,
+		time.Now().UTC(),
+	)
+	if err != nil {
+		logger.Warningf("cannot insert views: %v", err)
+	}
+}
+
+func isDomainModerator(domain string, email strfmt.Email) (bool, error) {
 	row := svc.DB.QueryRow(
 		"select EXISTS(select 1 from moderators where domain=$1 and email=$2);",
 		domain,

@@ -58,42 +58,20 @@ func configureAPI(api *operations.ComentarioAPI) http.Handler {
 	}
 
 	// Comment
-	api.CommentApproveHandler = operations.CommentApproveHandlerFunc(func(params operations.CommentApproveParams) middleware.Responder {
-		return middleware.NotImplemented("operation operations.CommentApprove has not yet been implemented")
-	})
-	api.CommentCountHandler = operations.CommentCountHandlerFunc(func(params operations.CommentCountParams) middleware.Responder {
-		return middleware.NotImplemented("operation operations.CommentCount has not yet been implemented")
-	})
-	api.CommentDeleteHandler = operations.CommentDeleteHandlerFunc(func(params operations.CommentDeleteParams) middleware.Responder {
-		return middleware.NotImplemented("operation operations.CommentDelete has not yet been implemented")
-	})
-	api.CommentEditHandler = operations.CommentEditHandlerFunc(func(params operations.CommentEditParams) middleware.Responder {
-		return middleware.NotImplemented("operation operations.CommentEdit has not yet been implemented")
-	})
-	api.CommentListHandler = operations.CommentListHandlerFunc(func(params operations.CommentListParams) middleware.Responder {
-		return middleware.NotImplemented("operation operations.CommentList has not yet been implemented")
-	})
-	api.CommentNewHandler = operations.CommentNewHandlerFunc(func(params operations.CommentNewParams) middleware.Responder {
-		return middleware.NotImplemented("operation operations.CommentNew has not yet been implemented")
-	})
-	api.CommentVoteHandler = operations.CommentVoteHandlerFunc(func(params operations.CommentVoteParams) middleware.Responder {
-		return middleware.NotImplemented("operation operations.CommentVote has not yet been implemented")
-	})
+	api.CommentApproveHandler = operations.CommentApproveHandlerFunc(handlers.CommentApprove)
+	api.CommentCountHandler = operations.CommentCountHandlerFunc(handlers.CommentCount)
+	api.CommentDeleteHandler = operations.CommentDeleteHandlerFunc(handlers.CommentDelete)
+	api.CommentEditHandler = operations.CommentEditHandlerFunc(handlers.CommentEdit)
+	api.CommentListHandler = operations.CommentListHandlerFunc(handlers.CommentList)
+	api.CommentNewHandler = operations.CommentNewHandlerFunc(handlers.CommentNew)
+	api.CommentVoteHandler = operations.CommentVoteHandlerFunc(handlers.CommentVote)
 	// Commenter
 	api.CommenterLoginHandler = operations.CommenterLoginHandlerFunc(handlers.CommenterLogin)
 	api.CommenterNewHandler = operations.CommenterNewHandlerFunc(handlers.CommenterNew)
-	api.CommenterPhotoHandler = operations.CommenterPhotoHandlerFunc(func(params operations.CommenterPhotoParams) middleware.Responder {
-		return middleware.NotImplemented("operation operations.CommenterPhoto has not yet been implemented")
-	})
-	api.CommenterSelfHandler = operations.CommenterSelfHandlerFunc(func(params operations.CommenterSelfParams) middleware.Responder {
-		return middleware.NotImplemented("operation operations.CommenterSelf has not yet been implemented")
-	})
-	api.CommenterTokenNewHandler = operations.CommenterTokenNewHandlerFunc(func(params operations.CommenterTokenNewParams) middleware.Responder {
-		return middleware.NotImplemented("operation operations.CommenterTokenNew has not yet been implemented")
-	})
-	api.CommenterUpdateHandler = operations.CommenterUpdateHandlerFunc(func(params operations.CommenterUpdateParams) middleware.Responder {
-		return middleware.NotImplemented("operation operations.CommenterUpdate has not yet been implemented")
-	})
+	api.CommenterPhotoHandler = operations.CommenterPhotoHandlerFunc(handlers.CommenterPhoto)
+	api.CommenterSelfHandler = operations.CommenterSelfHandlerFunc(handlers.CommenterSelf)
+	api.CommenterTokenNewHandler = operations.CommenterTokenNewHandlerFunc(handlers.CommenterTokenNew)
+	api.CommenterUpdateHandler = operations.CommenterUpdateHandlerFunc(handlers.CommenterUpdate)
 	// Domain
 	api.DomainClearHandler = operations.DomainClearHandlerFunc(handlers.DomainClear)
 	api.DomainDeleteHandler = operations.DomainDeleteHandlerFunc(handlers.DomainDelete)
@@ -113,12 +91,8 @@ func configureAPI(api *operations.ComentarioAPI) http.Handler {
 	api.DomainModeratorDeleteHandler = operations.DomainModeratorDeleteHandlerFunc(func(params operations.DomainModeratorDeleteParams) middleware.Responder {
 		return middleware.NotImplemented("operation operations.DomainModeratorDelete has not yet been implemented")
 	})
-	api.DomainModeratorNewHandler = operations.DomainModeratorNewHandlerFunc(func(params operations.DomainModeratorNewParams) middleware.Responder {
-		return middleware.NotImplemented("operation operations.DomainModeratorNew has not yet been implemented")
-	})
-	api.DomainNewHandler = operations.DomainNewHandlerFunc(func(params operations.DomainNewParams) middleware.Responder {
-		return middleware.NotImplemented("operation operations.DomainNew has not yet been implemented")
-	})
+	api.DomainModeratorNewHandler = operations.DomainModeratorNewHandlerFunc(handlers.DomainModeratorNew)
+	api.DomainNewHandler = operations.DomainNewHandlerFunc(handlers.DomainNew)
 	api.DomainSsoNewHandler = operations.DomainSsoNewHandlerFunc(func(params operations.DomainSsoNewParams) middleware.Responder {
 		return middleware.NotImplemented("operation operations.DomainSsoNew has not yet been implemented")
 	})
@@ -134,9 +108,7 @@ func configureAPI(api *operations.ComentarioAPI) http.Handler {
 	api.EmailUpdateHandler = operations.EmailUpdateHandlerFunc(func(params operations.EmailUpdateParams) middleware.Responder {
 		return middleware.NotImplemented("operation operations.EmailUpdate has not yet been implemented")
 	})
-	api.ForgotHandler = operations.ForgotHandlerFunc(func(params operations.ForgotParams) middleware.Responder {
-		return middleware.NotImplemented("operation operations.Forgot has not yet been implemented")
-	})
+	// OAuth
 	api.OauthGithubCallbackHandler = operations.OauthGithubCallbackHandlerFunc(func(params operations.OauthGithubCallbackParams) middleware.Responder {
 		return middleware.NotImplemented("operation operations.OauthGithubCallback has not yet been implemented")
 	})
@@ -168,12 +140,10 @@ func configureAPI(api *operations.ComentarioAPI) http.Handler {
 	api.OwnerNewHandler = operations.OwnerNewHandlerFunc(handlers.OwnerNew)
 	api.OwnerSelfHandler = operations.OwnerSelfHandlerFunc(handlers.OwnerSelf)
 	// Page
-	api.PageUpdateHandler = operations.PageUpdateHandlerFunc(func(params operations.PageUpdateParams) middleware.Responder {
-		return middleware.NotImplemented("operation operations.PageUpdate has not yet been implemented")
-	})
-	api.ResetHandler = operations.ResetHandlerFunc(func(params operations.ResetParams) middleware.Responder {
-		return middleware.NotImplemented("operation operations.Reset has not yet been implemented")
-	})
+	api.PageUpdateHandler = operations.PageUpdateHandlerFunc(handlers.PageUpdate)
+	// Auth
+	api.ForgotPasswordHandler = operations.ForgotPasswordHandlerFunc(handlers.ForgotPassword)
+	api.ResetPasswordHandler = operations.ResetPasswordHandlerFunc(handlers.ResetPassword)
 
 	// Shutdown functions
 	api.PreServerShutdown = func() {}
@@ -211,7 +181,6 @@ func configureServer(_ *http.Server, scheme, _ string) {
 	exitIfError(mail.SMTPConfigure())
 	exitIfError(mail.SMTPTemplatesLoad())
 	exitIfError(handlers.OAuthConfigure())
-	exitIfError(api.MarkdownRendererCreate())
 	exitIfError(config.VersionCheckStart())
 	exitIfError(api.DomainExportCleanupBegin())
 	exitIfError(api.ViewsCleanupBegin())

@@ -29,7 +29,7 @@ definitions:
       commentHex:
         $ref: "#/definitions/hexId"
       commenterHex:
-        type: string
+        $ref: "#/definitions/hexId"
       parentHex:
         type: string
       domain:
@@ -102,7 +102,7 @@ definitions:
         type: string
         format: date-time
       state:
-        type: string
+        $ref: "#/definitions/domainState"
       importedComments:
         type: boolean
         x-omitempty: false
@@ -123,7 +123,7 @@ definitions:
         items:
           $ref: "#/definitions/domainModerator"
       emailNotificationPolicy:
-        type: string
+        $ref: "#/definitions/emailNotificationPolicy"
       commentoProvider:
         type: boolean
         x-omitempty: false
@@ -153,11 +153,19 @@ definitions:
     properties:
       email:
         type: string
+        format: email
       domain:
         type: string
       addDate:
         type: string
         format: date-time
+
+  domainState:
+    description: Domain state
+    type: string
+    enum:
+      - unfrozen
+      - frozen
 
   email:
     type: object
@@ -175,6 +183,20 @@ definitions:
       sendModeratorNotifications:
         type: boolean
         x-omitempty: false
+
+  entity:
+    description: Entity for resetting the password
+    type: string
+    enum:
+      - owner
+      - commenter
+
+  emailNotificationPolicy:
+    description: Email notification policy
+    type: string
+    enum:
+      - none
+      - pending-moderation
 
   hexId:
     description: ID consisting of 64 hex digits
@@ -226,6 +248,25 @@ definitions:
       - creationdate-asc
 
 paths:
+  /_:
+    options:
+      operationId: Generic
+      summary: Fake endpoint to provide generic errors
+      responses:
+        404:
+          description: Resource not found
+          schema:
+            type: object
+            properties:
+              details:
+                type: string
+        500:
+          description: Internal server error
+          schema:
+            type: object
+            properties:
+              details:
+                type: string
 
   #---------------------------------------------------------------------------------------------------------------------
   # Auth
@@ -233,8 +274,22 @@ paths:
 
   /forgot:
     post:
-      operationId: Forgot
-      # TODO add real parameters and responses
+      operationId: ForgotPassword
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required:
+              - email
+              - entity
+            properties:
+              email:
+                type: string
+                format: email
+              entity:
+                $ref: "#/definitions/entity"
       responses:
         200:
           description: Success or failure response (see 'success' property)
@@ -243,13 +298,34 @@ paths:
 
   /reset:
     post:
-      operationId: Reset
-      # TODO add real parameters and responses
+      operationId: ResetPassword
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required:
+              - resetHex
+              - password
+            properties:
+              resetHex:
+                $ref: "#/definitions/hexId"
+              password:
+                type: string
       responses:
         200:
           description: Success or failure response (see 'success' property)
           schema:
-            $ref: "#/definitions/apiResponseBase"
+            type: object
+            properties:
+              success:
+                type: boolean
+                x-omitempty: false
+              message:
+                type: string
+              entity:
+                $ref: "#/definitions/entity"
 
   #---------------------------------------------------------------------------------------------------------------------
   # Comments
@@ -380,7 +456,6 @@ paths:
             required:
               - commenterToken
               - domain
-              - path
             properties:
               commenterToken:
                 $ref: "#/definitions/commenterToken"
@@ -434,7 +509,6 @@ paths:
             required:
               - commenterToken
               - domain
-              - path
               - parentHex
               - markdown
             properties:
@@ -445,7 +519,7 @@ paths:
               path:
                 type: string
               parentHex:
-                type: string
+                $ref: "#/definitions/hexId"
               markdown:
                 type: string
       responses:
@@ -500,9 +574,9 @@ paths:
   # Commenters
   #---------------------------------------------------------------------------------------------------------------------
 
-  /commenter/self:
+  /commenter/login:
     post:
-      operationId: CommenterSelf
+      operationId: CommenterLogin
       parameters:
         - in: body
           name: body
@@ -510,10 +584,14 @@ paths:
           schema:
             type: object
             required:
-              - commenterToken
+              - email
+              - password
             properties:
-              commenterToken:
-                $ref: "#/definitions/commenterToken"
+              email:
+                type: string
+                format: email
+              password:
+                type: string
       responses:
         200:
           description: Success or failure response (see 'success' property)
@@ -525,6 +603,8 @@ paths:
                 x-omitempty: false
               message:
                 type: string
+              commenterToken:
+                $ref: "#/definitions/commenterToken"
               commenter:
                 $ref: "#/definitions/commenter"
               email:
@@ -567,9 +647,27 @@ paths:
               confirmEmail:
                 type: boolean
 
-  /commenter/login:
+  /commenter/photo:
+    get:
+      operationId: CommenterPhoto
+      produces:
+        - image/jpeg
+        - image/gif
+        - image/png
+      parameters:
+        - name: commenterHex
+          in: query
+          type: string
+          required: true
+      responses:
+        200:
+          description: Success or failure response (see 'success' property)
+          schema:
+            type: file
+
+  /commenter/self:
     post:
-      operationId: CommenterLogin
+      operationId: CommenterSelf
       parameters:
         - in: body
           name: body
@@ -577,14 +675,10 @@ paths:
           schema:
             type: object
             required:
-              - email
-              - password
+              - commenterToken
             properties:
-              email:
-                type: string
-                format: email
-              password:
-                type: string
+              commenterToken:
+                $ref: "#/definitions/commenterToken"
       responses:
         200:
           description: Success or failure response (see 'success' property)
@@ -596,22 +690,10 @@ paths:
                 x-omitempty: false
               message:
                 type: string
-              commenterToken:
-                $ref: "#/definitions/commenterToken"
               commenter:
                 $ref: "#/definitions/commenter"
               email:
                 $ref: "#/definitions/email"
-
-  /commenter/photo:
-    get:
-      operationId:  CommenterPhoto
-      # TODO add real parameters and responses
-      responses:
-        200:
-          description: Success or failure response (see 'success' property)
-          schema:
-            $ref: "#/definitions/apiResponseBase"
 
   /commenter/token/new:
     get:
@@ -633,7 +715,28 @@ paths:
   /commenter/update:
     post:
       operationId: CommenterUpdate
-      # TODO add real parameters and responses
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required:
+              - commenterToken
+              - name
+              - email
+            properties:
+              commenterToken:
+                $ref: "#/definitions/commenterToken"
+              name:
+                type: string
+              email:
+                type: string
+                format: email
+              link:
+                type: string
+              photo:
+                type: string
       responses:
         200:
           description: Success or failure response (see 'success' property)
@@ -785,7 +888,24 @@ paths:
   /domain/moderator/new:
     post:
       operationId: DomainModeratorNew
-      # TODO add real parameters and responses
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required:
+              - ownerToken
+              - domain
+              - email
+            properties:
+              ownerToken:
+                $ref: "#/definitions/hexId"
+              domain:
+                type: string
+              email:
+                type: string
+                format: email
       responses:
         200:
           description: Success or failure response (see 'success' property)
@@ -795,12 +915,36 @@ paths:
   /domain/new:
     post:
       operationId: DomainNew
-      # TODO add real parameters and responses
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required:
+              - ownerToken
+              - name
+              - domain
+            properties:
+              ownerToken:
+                $ref: "#/definitions/hexId"
+              name:
+                type: string
+              domain:
+                type: string
       responses:
         200:
           description: Success or failure response (see 'success' property)
           schema:
-            $ref: "#/definitions/apiResponseBase"
+            type: object
+            properties:
+              success:
+                type: boolean
+                x-omitempty: false
+              message:
+                type: string
+              domain:
+                type: string
 
   /domain/sso/new:
     post:
@@ -1054,7 +1198,6 @@ paths:
             required:
               - commenterToken
               - domain
-              - path
               - attributes
             properties:
               commenterToken:

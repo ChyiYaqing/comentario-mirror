@@ -2,6 +2,7 @@ package mail
 
 import (
 	"bytes"
+	"gitlab.com/comentario/comentario/internal/config"
 	"gitlab.com/comentario/comentario/internal/util"
 	"net/smtp"
 	"os"
@@ -15,7 +16,7 @@ type domainExportPlugs struct {
 
 func SMTPDomainExport(to string, toName string, _ string, exportHex string) error {
 	var header bytes.Buffer
-	if err := headerTemplate.Execute(&header, &headerPlugs{FromAddress: os.Getenv("SMTP_FROM_ADDRESS"), ToAddress: to, ToName: toName, Subject: "Comentario Data Export"}); err != nil {
+	if err := headerTemplate.Execute(&header, &headerPlugs{FromAddress: config.CLIFlags.EmailFrom, ToAddress: to, ToName: toName, Subject: "Comentario Data Export"}); err != nil {
 		return err
 	}
 
@@ -24,7 +25,7 @@ func SMTPDomainExport(to string, toName string, _ string, exportHex string) erro
 		return err
 	}
 
-	err := smtp.SendMail(os.Getenv("SMTP_HOST")+":"+os.Getenv("SMTP_PORT"), smtpAuth, os.Getenv("SMTP_FROM_ADDRESS"), []string{to}, concat(header, body))
+	err := smtp.SendMail(os.Getenv("SMTP_HOST")+":"+os.Getenv("SMTP_PORT"), smtpAuth, config.CLIFlags.EmailFrom, []string{to}, concat(header, body))
 	if err != nil {
 		logger.Errorf("cannot send data export email: %v", err)
 		return util.ErrorCannotSendEmail
