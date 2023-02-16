@@ -260,6 +260,13 @@ paths:
             properties:
               details:
                 type: string
+        401:
+          description: Unauthorized
+          schema:
+            type: object
+            properties:
+              details:
+                type: string
         404:
           description: Resource not found
           schema:
@@ -1191,7 +1198,17 @@ paths:
   /email/update:
     post:
       operationId: EmailUpdate
-      # TODO add real parameters and responses
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required:
+              - email
+            properties:
+              email:
+                $ref: "#/definitions/email"
       responses:
         200:
           description: Success or failure response (see 'success' property)
@@ -1375,20 +1392,18 @@ paths:
   # OAuth
   #---------------------------------------------------------------------------------------------------------------------
 
-  /oauth/google/redirect:
+  /oauth/github/callback:
     get:
-      operationId: OauthGoogleRedirect
-      # TODO add real parameters and responses
-      responses:
-        200:
-          description: Success or failure response (see 'success' property)
-          schema:
-            $ref: "#/definitions/apiResponseBase"
-
-  /oauth/google/callback:
-    get:
-      operationId: OauthGoogleCallback
-      # TODO add real parameters and responses
+      operationId: OauthGithubCallback
+      parameters:
+        - in: query
+          name: state
+          required: true
+          type: string
+        - in: query
+          name: code
+          required: true
+          type: string
       responses:
         200:
           description: Success or failure response (see 'success' property)
@@ -1398,17 +1413,30 @@ paths:
   /oauth/github/redirect:
     get:
       operationId: OauthGithubRedirect
-      # TODO add real parameters and responses
+      parameters:
+        - in: query
+          name: commenterToken
+          required: true
+          type: string
       responses:
-        200:
-          description: Success or failure response (see 'success' property)
-          schema:
-            $ref: "#/definitions/apiResponseBase"
+        302:
+          description: Redirect to authentication provider
+          headers:
+            Location:
+              type: string
 
-  /oauth/github/callback:
+  /oauth/gitlab/callback:
     get:
-      operationId: OauthGithubCallback
-      # TODO add real parameters and responses
+      operationId: OauthGitlabCallback
+      parameters:
+        - in: query
+          name: state
+          required: true
+          type: string
+        - in: query
+          name: code
+          required: true
+          type: string
       responses:
         200:
           description: Success or failure response (see 'success' property)
@@ -1418,22 +1446,50 @@ paths:
   /oauth/gitlab/redirect:
     get:
       operationId: OauthGitlabRedirect
-      # TODO add real parameters and responses
+      parameters:
+        - in: query
+          name: commenterToken
+          required: true
+          type: string
+      responses:
+        302:
+          description: Redirect to authentication provider
+          headers:
+            Location:
+              type: string
+
+  /oauth/google/callback:
+    get:
+      operationId: OauthGoogleCallback
+      parameters:
+        - in: query
+          name: state
+          required: true
+          type: string
+        - in: query
+          name: code
+          required: true
+          type: string
       responses:
         200:
           description: Success or failure response (see 'success' property)
           schema:
             $ref: "#/definitions/apiResponseBase"
 
-  /oauth/gitlab/callback:
+  /oauth/google/redirect:
     get:
-      operationId: OauthGitlabCallback
-      # TODO add real parameters and responses
+      operationId: OauthGoogleRedirect
+      parameters:
+        - in: query
+          name: commenterToken
+          required: true
+          type: string
       responses:
-        200:
-          description: Success or failure response (see 'success' property)
-          schema:
-            $ref: "#/definitions/apiResponseBase"
+        302:
+          description: Redirect to authentication provider
+          headers:
+            Location:
+              type: string
 
   /oauth/sso/redirect:
     get:

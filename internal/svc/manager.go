@@ -35,6 +35,11 @@ func (m *manager) Initialise() {
 	if DB, err = persistence.InitDB(); err != nil {
 		logger.Fatalf("Failed to connect to database: %v", err)
 	}
+
+	// Start the cleanup service
+	if err = TheCleanupService.Init(); err != nil {
+		logger.Fatalf("Failed to initialise cleanup service: %v", err)
+	}
 }
 
 func (m *manager) Shutdown() {

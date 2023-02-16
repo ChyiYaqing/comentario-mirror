@@ -7,12 +7,10 @@ import (
 	"fmt"
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/runtime"
-	"github.com/go-openapi/runtime/middleware"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
 	"github.com/justinas/alice"
 	"github.com/op/go-logging"
-	"gitlab.com/comentario/comentario/internal/api"
 	"gitlab.com/comentario/comentario/internal/api/restapi/handlers"
 	"gitlab.com/comentario/comentario/internal/api/restapi/operations"
 	"gitlab.com/comentario/comentario/internal/config"
@@ -89,34 +87,16 @@ func configureAPI(api *operations.ComentarioAPI) http.Handler {
 	// Email
 	api.EmailGetHandler = operations.EmailGetHandlerFunc(handlers.EmailGet)
 	api.EmailModerateHandler = operations.EmailModerateHandlerFunc(handlers.EmailModerate)
-	api.EmailUpdateHandler = operations.EmailUpdateHandlerFunc(func(params operations.EmailUpdateParams) middleware.Responder {
-		return middleware.NotImplemented("operation operations.EmailUpdate has not yet been implemented")
-	})
+	api.EmailUpdateHandler = operations.EmailUpdateHandlerFunc(handlers.EmailUpdate)
 	// OAuth
-	api.OauthGithubCallbackHandler = operations.OauthGithubCallbackHandlerFunc(func(params operations.OauthGithubCallbackParams) middleware.Responder {
-		return middleware.NotImplemented("operation operations.OauthGithubCallback has not yet been implemented")
-	})
-	api.OauthGithubRedirectHandler = operations.OauthGithubRedirectHandlerFunc(func(params operations.OauthGithubRedirectParams) middleware.Responder {
-		return middleware.NotImplemented("operation operations.OauthGithubRedirect has not yet been implemented")
-	})
-	api.OauthGitlabCallbackHandler = operations.OauthGitlabCallbackHandlerFunc(func(params operations.OauthGitlabCallbackParams) middleware.Responder {
-		return middleware.NotImplemented("operation operations.OauthGitlabCallback has not yet been implemented")
-	})
-	api.OauthGitlabRedirectHandler = operations.OauthGitlabRedirectHandlerFunc(func(params operations.OauthGitlabRedirectParams) middleware.Responder {
-		return middleware.NotImplemented("operation operations.OauthGitlabRedirect has not yet been implemented")
-	})
-	api.OauthGoogleCallbackHandler = operations.OauthGoogleCallbackHandlerFunc(func(params operations.OauthGoogleCallbackParams) middleware.Responder {
-		return middleware.NotImplemented("operation operations.OauthGoogleCallback has not yet been implemented")
-	})
-	api.OauthGoogleRedirectHandler = operations.OauthGoogleRedirectHandlerFunc(func(params operations.OauthGoogleRedirectParams) middleware.Responder {
-		return middleware.NotImplemented("operation operations.OauthGoogleRedirect has not yet been implemented")
-	})
-	api.OauthSsoCallbackHandler = operations.OauthSsoCallbackHandlerFunc(func(params operations.OauthSsoCallbackParams) middleware.Responder {
-		return middleware.NotImplemented("operation operations.OauthSsoCallback has not yet been implemented")
-	})
-	api.OauthSsoRedirectHandler = operations.OauthSsoRedirectHandlerFunc(func(params operations.OauthSsoRedirectParams) middleware.Responder {
-		return middleware.NotImplemented("operation operations.OauthSsoRedirect has not yet been implemented")
-	})
+	api.OauthGithubCallbackHandler = operations.OauthGithubCallbackHandlerFunc(handlers.OauthGithubCallback)
+	api.OauthGithubRedirectHandler = operations.OauthGithubRedirectHandlerFunc(handlers.OauthGithubRedirect)
+	api.OauthGitlabCallbackHandler = operations.OauthGitlabCallbackHandlerFunc(handlers.OauthGitlabCallback)
+	api.OauthGitlabRedirectHandler = operations.OauthGitlabRedirectHandlerFunc(handlers.OauthGitlabRedirect)
+	api.OauthGoogleCallbackHandler = operations.OauthGoogleCallbackHandlerFunc(handlers.OauthGoogleCallback)
+	api.OauthGoogleRedirectHandler = operations.OauthGoogleRedirectHandlerFunc(handlers.OauthGoogleRedirect)
+	api.OauthSsoCallbackHandler = operations.OauthSsoCallbackHandlerFunc(handlers.OauthSsoCallback)
+	api.OauthSsoRedirectHandler = operations.OauthSsoRedirectHandlerFunc(handlers.OauthSsoRedirect)
 	// Owner
 	api.OwnerConfirmHexHandler = operations.OwnerConfirmHexHandlerFunc(handlers.OwnerConfirmHex)
 	api.OwnerDeleteHandler = operations.OwnerDeleteHandlerFunc(handlers.OwnerDelete)
@@ -166,9 +146,6 @@ func configureServer(_ *http.Server, scheme, _ string) {
 	exitIfError(mail.SMTPTemplatesLoad())
 	exitIfError(handlers.OAuthConfigure())
 	exitIfError(config.VersionCheckStart())
-	exitIfError(api.DomainExportCleanupBegin())
-	exitIfError(api.ViewsCleanupBegin())
-	exitIfError(api.SSOTokenCleanupBegin())
 	//TODO replaced with OpenAPI exitIfError(api.RoutesServe())
 
 }

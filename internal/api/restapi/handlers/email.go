@@ -86,7 +86,8 @@ func EmailModerate(params operations.EmailModerateParams) middleware.Responder {
 	}
 
 	// Succeeded
-	_, _ = fmt.Fprintf(w, "comment successfully %sd", action)
+	// TODO redirect to a proper page instead of letting the user see JSON response
+	return operations.NewEmailModerateOK().WithPayload(&models.APIResponseBase{Success: true})
 }
 
 func EmailNew(email strfmt.Email) error {
@@ -106,6 +107,15 @@ func EmailNew(email strfmt.Email) error {
 	}
 
 	return nil
+}
+
+func EmailUpdate(params operations.EmailUpdateParams) middleware.Responder {
+	if err := emailUpdate(params.Body.Email); err != nil {
+		return operations.NewEmailUpdateOK().WithPayload(&models.APIResponseBase{Message: err.Error()})
+	}
+
+	// Succeeded
+	return operations.NewEmailUpdateOK().WithPayload(&models.APIResponseBase{Success: true})
 }
 
 func emailGet(em strfmt.Email) (*models.Email, error) {
@@ -282,4 +292,19 @@ func emailsRowScan(s util.Scanner, e *models.Email) error {
 		&e.SendReplyNotifications,
 		&e.SendModeratorNotifications,
 	)
+}
+
+func emailUpdate(e *models.Email) error {
+	_, err := svc.DB.Exec(
+		"update emails set sendReplyNotifications = $3, sendModeratorNotifications = $4 where email = $1 and unsubscribeSecretHex = $2;",
+		e.Email,
+		e.UnsubscribeSecretHex,
+		e.SendReplyNotifications,
+		e.SendModeratorNotifications)
+	if err != nil {
+		logger.Errorf("error updating email: %v", err)
+		return util.ErrorInternal
+	}
+
+	return nil
 }

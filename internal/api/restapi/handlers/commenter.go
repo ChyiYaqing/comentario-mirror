@@ -335,6 +335,19 @@ func commentersRowScan(s util.Scanner, c *models.Commenter) error {
 	)
 }
 
+func commenterSessionUpdate(commenterToken models.HexID, commenterHex models.HexID) error {
+	if commenterToken == "" || commenterHex == "" {
+		return util.ErrorMissingField
+	}
+
+	if _, err := svc.DB.Exec("update commenterSessions set commenterHex = $2 where commenterToken = $1;", commenterToken, commenterHex); err != nil {
+		logger.Errorf("error updating commenterHex: %v", err)
+		return util.ErrorInternal
+	}
+
+	return nil
+}
+
 func commenterTokenNew() (models.CommenterToken, error) {
 	commenterToken, err := util.RandomHex(32)
 	if err != nil {
