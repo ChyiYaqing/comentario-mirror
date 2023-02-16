@@ -33,6 +33,62 @@ func EmailGet(params operations.EmailGetParams) middleware.Responder {
 	})
 }
 
+func EmailModerate(params operations.EmailModerateParams) middleware.Responder {
+	row := svc.DB.QueryRow("select domain, deleted from comments where commentHex = $1;", params.CommentHex)
+
+	var domain string
+	var deleted bool
+	if err := row.Scan(&domain, &deleted); err != nil {
+		// TODO: is this the only error?
+		return operations.NewGenericBadRequest().WithPayload(&operations.GenericBadRequestBody{Details: "No such comment found (perhaps it has been deleted?)"})
+	}
+	if deleted {
+		return operations.NewGenericBadRequest().WithPayload(&operations.GenericBadRequestBody{Details: "Comment has already been deleted"})
+	}
+
+	e, err := emailGetByUnsubscribeSecretHex(models.HexID(params.UnsubscribeSecretHex))
+	if err != nil {
+		return operations.NewGenericBadRequest().WithPayload(&operations.GenericBadRequestBody{Details: err.Error()})
+	}
+
+	isModerator, err := isDomainModerator(domain, e.Email)
+	if err != nil {
+		logger.Errorf("error checking if %s is a moderator: %v", e.Email, err)
+		return operations.NewGenericInternalServerError()
+	}
+
+	if !isModerator {
+		return operations.NewGenericBadRequest().WithPayload(&operations.GenericBadRequestBody{Details: "Not a moderator of that domain"})
+	}
+
+	// Do not use commenterGetByEmail here because we don't know which provider should be used. This was poor design on
+	// multiple fronts on my part, but let's deal with that later. For now, it suffices to match the deleter/approver
+	// with any account owned by the same email
+	row = svc.DB.QueryRow("select commenterHex from commenters where email = $1;", e.Email)
+
+	var commenterHex models.HexID
+	if err = row.Scan(&commenterHex); err != nil {
+		logger.Errorf("cannot retrieve commenterHex by email %q: %v", e.Email, err)
+		return operations.NewGenericInternalServerError()
+	}
+
+	switch params.Action {
+	case "approve":
+		err = commentApprove(models.HexID(params.CommentHex))
+	case "delete":
+		err = commentDelete(models.HexID(params.CommentHex), commenterHex)
+	default:
+		return operations.NewGenericBadRequest().WithPayload(&operations.GenericBadRequestBody{Details: util.ErrorInvalidAction.Error()})
+	}
+
+	if err != nil {
+		return operations.NewGenericBadRequest().WithPayload(&operations.GenericBadRequestBody{Details: err.Error()})
+	}
+
+	// Succeeded
+	_, _ = fmt.Fprintf(w, "comment successfully %sd", action)
+}
+
 func EmailNew(email strfmt.Email) error {
 	unsubscribeSecretHex, err := util.RandomHex(32)
 	if err != nil {

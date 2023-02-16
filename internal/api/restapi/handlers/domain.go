@@ -101,6 +101,29 @@ func DomainList(params operations.DomainListParams) middleware.Responder {
 	})
 }
 
+func DomainModeratorDelete(params operations.DomainModeratorDeleteParams) middleware.Responder {
+	owner, err := ownerGetByOwnerToken(*params.Body.OwnerToken)
+	if err != nil {
+		return operations.NewDomainModeratorDeleteOK().WithPayload(&models.APIResponseBase{Message: err.Error()})
+	}
+
+	domainName := *params.Body.Domain
+	authorised, err := domainOwnershipVerify(owner.OwnerHex, domainName)
+	if err != nil {
+		return operations.NewDomainModeratorDeleteOK().WithPayload(&models.APIResponseBase{Message: err.Error()})
+	}
+	if !authorised {
+		return operations.NewDomainModeratorDeleteOK().WithPayload(&models.APIResponseBase{Message: util.ErrorNotAuthorised.Error()})
+	}
+
+	if err = domainModeratorDelete(domainName, *params.Body.Email); err != nil {
+		return operations.NewDomainModeratorDeleteOK().WithPayload(&models.APIResponseBase{Message: err.Error()})
+	}
+
+	// Succeeded
+	return operations.NewDomainModeratorDeleteOK().WithPayload(&models.APIResponseBase{Success: true})
+}
+
 func DomainModeratorNew(params operations.DomainModeratorNewParams) middleware.Responder {
 	owner, err := ownerGetByOwnerToken(*params.Body.OwnerToken)
 	if err != nil {
@@ -146,6 +169,66 @@ func DomainNew(params operations.DomainNewParams) middleware.Responder {
 	})
 }
 
+func DomainSsoSecretNew(params operations.DomainSsoSecretNewParams) middleware.Responder {
+	owner, err := ownerGetByOwnerToken(*params.Body.OwnerToken)
+	if err != nil {
+		return operations.NewDomainSsoSecretNewOK().WithPayload(&operations.DomainSsoSecretNewOKBody{Message: err.Error()})
+	}
+
+	domainName := *params.Body.Domain
+	isOwner, err := domainOwnershipVerify(owner.OwnerHex, domainName)
+	if err != nil {
+		return operations.NewDomainSsoSecretNewOK().WithPayload(&operations.DomainSsoSecretNewOKBody{Message: err.Error()})
+	}
+	if !isOwner {
+		return operations.NewDomainSsoSecretNewOK().WithPayload(&operations.DomainSsoSecretNewOKBody{Message: util.ErrorNotAuthorised.Error()})
+	}
+
+	ssoSecret, err := domainSsoSecretNew(domainName)
+	if err != nil {
+		return operations.NewDomainSsoSecretNewOK().WithPayload(&operations.DomainSsoSecretNewOKBody{Message: err.Error()})
+	}
+
+	// Succeeded
+	return operations.NewDomainSsoSecretNewOK().WithPayload(&operations.DomainSsoSecretNewOKBody{
+		SsoSecret: ssoSecret,
+		Success:   true,
+	})
+}
+
+func DomainStatistics(params operations.DomainStatisticsParams) middleware.Responder {
+	owner, err := ownerGetByOwnerToken(*params.Body.OwnerToken)
+	if err != nil {
+		return operations.NewDomainStatisticsOK().WithPayload(&operations.DomainStatisticsOKBody{Message: err.Error()})
+	}
+
+	domainName := *params.Body.Domain
+	isOwner, err := domainOwnershipVerify(owner.OwnerHex, domainName)
+	if err != nil {
+		return operations.NewDomainStatisticsOK().WithPayload(&operations.DomainStatisticsOKBody{Message: err.Error()})
+	}
+	if !isOwner {
+		return operations.NewDomainStatisticsOK().WithPayload(&operations.DomainStatisticsOKBody{Message: util.ErrorNotAuthorised.Error()})
+	}
+
+	viewsLast30Days, err := domainStatistics(domainName)
+	if err != nil {
+		return operations.NewDomainStatisticsOK().WithPayload(&operations.DomainStatisticsOKBody{Message: err.Error()})
+	}
+
+	commentsLast30Days, err := commentStatistics(domainName)
+	if err != nil {
+		return operations.NewDomainStatisticsOK().WithPayload(&operations.DomainStatisticsOKBody{Message: err.Error()})
+	}
+
+	// Succeeded
+	return operations.NewDomainStatisticsOK().WithPayload(&operations.DomainStatisticsOKBody{
+		CommentsLast30Days: commentsLast30Days,
+		Success:            true,
+		ViewsLast30Days:    viewsLast30Days,
+	})
+}
+
 func DomainUpdate(params operations.DomainUpdateParams) middleware.Responder {
 	owner, err := ownerGetByOwnerToken(*params.Body.OwnerToken)
 	if err != nil {
@@ -166,6 +249,41 @@ func DomainUpdate(params operations.DomainUpdateParams) middleware.Responder {
 
 	// Succeeded
 	return operations.NewDomainUpdateOK().WithPayload(&models.APIResponseBase{Success: true})
+}
+
+func commentStatistics(domain string) ([]int64, error) {
+	statement := `
+		select COUNT(comments.creationDate)
+		from (
+			select to_char(date_trunc('day', (current_date - offs)), 'YYYY-MM-DD') as date
+			from generate_series(0, 30, 1) as offs
+		) gen 
+		    left outer join comments
+			on 
+				gen.date = to_char(date_trunc('day', comments.creationDate), 'YYYY-MM-DD') and
+				comments.domain=$1
+		group by gen.date
+		order by gen.date;
+	`
+	rows, err := svc.DB.Query(statement, domain)
+	if err != nil {
+		logger.Errorf("cannot get daily views: %v", err)
+		return nil, util.ErrorInternal
+	}
+
+	defer rows.Close()
+
+	var last30Days []int64
+	for rows.Next() {
+		var count int64
+		if err = rows.Scan(&count); err != nil {
+			logger.Errorf("cannot get daily comments for the last month: %v", err)
+			return nil, util.ErrorInternal
+		}
+		last30Days = append(last30Days, count)
+	}
+
+	return last30Days, nil
 }
 
 func domainClear(domain string) error {
@@ -280,6 +398,20 @@ func domainList(ownerHex models.HexID) ([]*models.Domain, error) {
 	return domains, rows.Err()
 }
 
+func domainModeratorDelete(domain string, email strfmt.Email) error {
+	if domain == "" || email == "" {
+		return util.ErrorMissingConfig
+	}
+
+	_, err := svc.DB.Exec("delete from moderators where domain=$1 and email=$2;", domain, email)
+	if err != nil {
+		logger.Errorf("cannot delete moderator: %v", err)
+		return util.ErrorInternal
+	}
+
+	return nil
+}
+
 func domainModeratorList(domain string) ([]*models.DomainModerator, error) {
 	statement := `
 		select email, addDate
@@ -385,6 +517,58 @@ func domainsRowScan(s util.Scanner, d *models.Domain) error {
 		&d.SsoURL,
 		&d.DefaultSortPolicy,
 	)
+}
+
+func domainSsoSecretNew(domain string) (models.HexID, error) {
+	if domain == "" {
+		return "", util.ErrorMissingField
+	}
+
+	ssoSecret, err := util.RandomHex(32)
+	if err != nil {
+		logger.Errorf("error generating SSO secret hex: %v", err)
+		return "", util.ErrorInternal
+	}
+
+	if _, err = svc.DB.Exec("update domains set ssoSecret = $2 where domain = $1;", domain, ssoSecret); err != nil {
+		logger.Errorf("cannot update ssoSecret: %v", err)
+		return "", util.ErrorInternal
+	}
+
+	return models.HexID(ssoSecret), nil
+}
+
+func domainStatistics(domain string) ([]int64, error) {
+	statement := `
+		select COUNT(views.viewDate)
+		from (
+			select to_char(date_trunc('day', (current_date - offs)), 'YYYY-MM-DD') as date
+			from generate_series(0, 30, 1) as offs
+		) gen left outer join views
+		on gen.date = to_char(date_trunc('day', views.viewDate), 'YYYY-MM-DD') and
+		   views.domain=$1
+		group by gen.date
+		order by gen.date;
+	`
+	rows, err := svc.DB.Query(statement, domain)
+	if err != nil {
+		logger.Errorf("cannot get daily views: %v", err)
+		return nil, util.ErrorInternal
+	}
+
+	defer rows.Close()
+
+	var last30Days []int64
+	for rows.Next() {
+		var count int64
+		if err = rows.Scan(&count); err != nil {
+			logger.Errorf("cannot get daily views for the last month: %v", err)
+			return nil, util.ErrorInternal
+		}
+		last30Days = append(last30Days, count)
+	}
+
+	return last30Days, nil
 }
 
 func domainUpdate(d *models.Domain) error {

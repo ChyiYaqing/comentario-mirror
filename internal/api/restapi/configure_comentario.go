@@ -75,36 +75,20 @@ func configureAPI(api *operations.ComentarioAPI) http.Handler {
 	// Domain
 	api.DomainClearHandler = operations.DomainClearHandlerFunc(handlers.DomainClear)
 	api.DomainDeleteHandler = operations.DomainDeleteHandlerFunc(handlers.DomainDelete)
-	api.DomainExportBeginHandler = operations.DomainExportBeginHandlerFunc(func(params operations.DomainExportBeginParams) middleware.Responder {
-		return middleware.NotImplemented("operation operations.DomainExportBegin has not yet been implemented")
-	})
-	api.DomainExportDownloadHandler = operations.DomainExportDownloadHandlerFunc(func(params operations.DomainExportDownloadParams) middleware.Responder {
-		return middleware.NotImplemented("operation operations.DomainExportDownload has not yet been implemented")
-	})
-	api.DomainImportCommentoHandler = operations.DomainImportCommentoHandlerFunc(func(params operations.DomainImportCommentoParams) middleware.Responder {
-		return middleware.NotImplemented("operation operations.DomainImportCommento has not yet been implemented")
-	})
-	api.DomainImportDisqusHandler = operations.DomainImportDisqusHandlerFunc(func(params operations.DomainImportDisqusParams) middleware.Responder {
-		return middleware.NotImplemented("operation operations.DomainImportDisqus has not yet been implemented")
-	})
+	api.DomainExportBeginHandler = operations.DomainExportBeginHandlerFunc(handlers.DomainExportBegin)
+	api.DomainExportDownloadHandler = operations.DomainExportDownloadHandlerFunc(handlers.DomainExportDownload)
+	api.DomainImportCommentoHandler = operations.DomainImportCommentoHandlerFunc(handlers.DomainImportCommento)
+	api.DomainImportDisqusHandler = operations.DomainImportDisqusHandlerFunc(handlers.DomainImportDisqus)
 	api.DomainListHandler = operations.DomainListHandlerFunc(handlers.DomainList)
-	api.DomainModeratorDeleteHandler = operations.DomainModeratorDeleteHandlerFunc(func(params operations.DomainModeratorDeleteParams) middleware.Responder {
-		return middleware.NotImplemented("operation operations.DomainModeratorDelete has not yet been implemented")
-	})
+	api.DomainModeratorDeleteHandler = operations.DomainModeratorDeleteHandlerFunc(handlers.DomainModeratorDelete)
 	api.DomainModeratorNewHandler = operations.DomainModeratorNewHandlerFunc(handlers.DomainModeratorNew)
 	api.DomainNewHandler = operations.DomainNewHandlerFunc(handlers.DomainNew)
-	api.DomainSsoNewHandler = operations.DomainSsoNewHandlerFunc(func(params operations.DomainSsoNewParams) middleware.Responder {
-		return middleware.NotImplemented("operation operations.DomainSsoNew has not yet been implemented")
-	})
-	api.DomainStatisticsHandler = operations.DomainStatisticsHandlerFunc(func(params operations.DomainStatisticsParams) middleware.Responder {
-		return middleware.NotImplemented("operation operations.DomainStatistics has not yet been implemented")
-	})
+	api.DomainSsoSecretNewHandler = operations.DomainSsoSecretNewHandlerFunc(handlers.DomainSsoSecretNew)
+	api.DomainStatisticsHandler = operations.DomainStatisticsHandlerFunc(handlers.DomainStatistics)
 	api.DomainUpdateHandler = operations.DomainUpdateHandlerFunc(handlers.DomainUpdate)
 	// Email
 	api.EmailGetHandler = operations.EmailGetHandlerFunc(handlers.EmailGet)
-	api.EmailModerateHandler = operations.EmailModerateHandlerFunc(func(params operations.EmailModerateParams) middleware.Responder {
-		return middleware.NotImplemented("operation operations.EmailModerate has not yet been implemented")
-	})
+	api.EmailModerateHandler = operations.EmailModerateHandlerFunc(handlers.EmailModerate)
 	api.EmailUpdateHandler = operations.EmailUpdateHandlerFunc(func(params operations.EmailUpdateParams) middleware.Responder {
 		return middleware.NotImplemented("operation operations.EmailUpdate has not yet been implemented")
 	})

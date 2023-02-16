@@ -253,6 +253,13 @@ paths:
       operationId: Generic
       summary: Fake endpoint to provide generic errors
       responses:
+        400:
+          description: Bad request
+          schema:
+            type: object
+            properties:
+              details:
+                type: string
         404:
           description: Resource not found
           schema:
@@ -796,7 +803,20 @@ paths:
   /domain/export/begin:
     post:
       operationId: DomainExportBegin
-      # TODO add real parameters and responses
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required:
+              - ownerToken
+              - domain
+            properties:
+              ownerToken:
+                $ref: "#/definitions/hexId"
+              domain:
+                type: string
       responses:
         200:
           description: Success or failure response (see 'success' property)
@@ -806,32 +826,89 @@ paths:
   /domain/export/download:
     get:
       operationId: DomainExportDownload
-      # TODO add real parameters and responses
+      produces:
+        - application/gzip
+      parameters:
+        - in: query
+          name: exportHex
+          type: string
+          required: true
       responses:
         200:
-          description: Success or failure response (see 'success' property)
+          description: Export file
           schema:
-            $ref: "#/definitions/apiResponseBase"
+            type: file
+          headers:
+            Content-Disposition:
+              type: string
 
   /domain/import/commento:
     post:
       operationId: DomainImportCommento
-      # TODO add real parameters and responses
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required:
+              - ownerToken
+              - domain
+              - url
+            properties:
+              ownerToken:
+                $ref: "#/definitions/hexId"
+              domain:
+                type: string
+              url:
+                type: string
       responses:
         200:
           description: Success or failure response (see 'success' property)
           schema:
-            $ref: "#/definitions/apiResponseBase"
+            type: object
+            properties:
+              success:
+                type: boolean
+                x-omitempty: false
+              message:
+                type: string
+              numImported:
+                type: integer
 
   /domain/import/disqus:
     post:
       operationId: DomainImportDisqus
-      # TODO add real parameters and responses
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required:
+              - ownerToken
+              - domain
+              - url
+            properties:
+              ownerToken:
+                $ref: "#/definitions/hexId"
+              domain:
+                type: string
+              url:
+                type: string
       responses:
         200:
           description: Success or failure response (see 'success' property)
           schema:
-            $ref: "#/definitions/apiResponseBase"
+            type: object
+            properties:
+              success:
+                type: boolean
+                x-omitempty: false
+              message:
+                type: string
+              numImported:
+                type: integer
 
   /domain/list:
     post:
@@ -878,7 +955,24 @@ paths:
   /domain/moderator/delete:
     post:
       operationId: DomainModeratorDelete
-      # TODO add real parameters and responses
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required:
+              - ownerToken
+              - domain
+              - email
+            properties:
+              ownerToken:
+                $ref: "#/definitions/hexId"
+              domain:
+                type: string
+              email:
+                type: string
+                format: email
       responses:
         200:
           description: Success or failure response (see 'success' property)
@@ -948,23 +1042,71 @@ paths:
 
   /domain/sso/new:
     post:
-      operationId: DomainSso/New
-      # TODO add real parameters and responses
+      operationId: DomainSsoSecretNew
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required:
+              - ownerToken
+              - domain
+            properties:
+              ownerToken:
+                $ref: "#/definitions/hexId"
+              domain:
+                type: string
       responses:
         200:
           description: Success or failure response (see 'success' property)
           schema:
-            $ref: "#/definitions/apiResponseBase"
+            type: object
+            properties:
+              success:
+                type: boolean
+                x-omitempty: false
+              message:
+                type: string
+              ssoSecret:
+                $ref: "#/definitions/hexId"
 
   /domain/statistics:
     post:
       operationId: DomainStatistics
-      # TODO add real parameters and responses
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required:
+              - ownerToken
+              - domain
+            properties:
+              ownerToken:
+                $ref: "#/definitions/hexId"
+              domain:
+                type: string
       responses:
         200:
           description: Success or failure response (see 'success' property)
           schema:
-            $ref: "#/definitions/apiResponseBase"
+            type: object
+            properties:
+              success:
+                type: boolean
+                x-omitempty: false
+              message:
+                type: string
+              viewsLast30Days:
+                type: array
+                items:
+                  type: integer
+              commentsLast30Days:
+                type: array
+                items:
+                  type: integer
 
   /domain/update:
     post:
@@ -1024,7 +1166,22 @@ paths:
   /email/moderate:
     get:
       operationId: EmailModerate
-      # TODO add real parameters and responses
+      parameters:
+        - name: unsubscribeSecretHex
+          in: query
+          required: true
+          type: string
+        - name: action
+          in: query
+          required: true
+          type: string
+          enum:
+            - approve
+            - delete
+        - name: commentHex
+          in: query
+          required: true
+          type: string
       responses:
         200:
           description: Success or failure response (see 'success' property)
