@@ -11,7 +11,7 @@ import (
 	"github.com/lunny/html2md"
 	"gitlab.com/comentario/comentario/internal/api/models"
 	"gitlab.com/comentario/comentario/internal/api/restapi/operations"
-	"gitlab.com/comentario/comentario/internal/mail"
+	"gitlab.com/comentario/comentario/internal/config"
 	"gitlab.com/comentario/comentario/internal/svc"
 	"gitlab.com/comentario/comentario/internal/util"
 	"io"
@@ -27,7 +27,7 @@ type commentoExportV1 struct {
 }
 
 func DomainExportBegin(params operations.DomainExportBeginParams) middleware.Responder {
-	if !mail.SMTPConfigured {
+	if !config.SMTPConfigured {
 		return operations.NewDomainExportBeginOK().WithPayload(&models.APIResponseBase{Message: util.ErrorSmtpNotConfigured.Error()})
 	}
 
@@ -45,7 +45,7 @@ func DomainExportBegin(params operations.DomainExportBeginParams) middleware.Res
 		return operations.NewDomainExportBeginOK().WithPayload(&models.APIResponseBase{Message: util.ErrorNotAuthorised.Error()})
 	}
 
-	go domainExportBegin(owner.Email, owner.Name, *params.Body.Domain)
+	go domainExportBegin(owner.Email, *params.Body.Domain)
 
 	// Succeeded
 	return operations.NewDomainExportBeginOK().WithPayload(&models.APIResponseBase{Success: true})
@@ -120,22 +120,24 @@ func DomainImportDisqus(params operations.DomainImportDisqusParams) middleware.R
 	})
 }
 
-func domainExportBeginError(email strfmt.Email, toName string, domain string, _ error) {
-	// we're not using err at the moment because it's all errorInternal
-	if err2 := mail.SMTPDomainExportError(string(email), toName, domain); err2 != nil {
-		logger.Errorf("cannot send domain export error email for %s: %v", domain, err2)
-	}
+// domainExportBeginError notifies the user by email about an export error
+func domainExportBeginError(email strfmt.Email, domain string, err error) {
+	_ = svc.TheEmailService.SendFromTemplate(
+		"",
+		string(email),
+		"Comentario Data Export Errored",
+		"domain-export-error.gohtml",
+		map[string]any{"Domain": domain, "Error": err.Error()})
 }
 
-func domainExportBegin(email strfmt.Email, toName string, domain string) {
+func domainExportBegin(email strfmt.Email, domain string) {
 	e := commentoExportV1{Version: 1, Comments: []models.Comment{}, Commenters: []models.Commenter{}}
-
 	rows1, err := svc.DB.Query(
 		"select commentHex, domain, path, commenterHex, markdown, parentHex, score, state, creationDate from comments where domain = $1;",
 		domain)
 	if err != nil {
 		logger.Errorf("cannot select comments while exporting %s: %v", domain, err)
-		domainExportBeginError(email, toName, domain, util.ErrorInternal)
+		domainExportBeginError(email, domain, util.ErrorInternal)
 		return
 	}
 	defer rows1.Close()
@@ -144,7 +146,7 @@ func domainExportBegin(email strfmt.Email, toName string, domain string) {
 		c := models.Comment{}
 		if err = rows1.Scan(&c.CommentHex, &c.Domain, &c.URL, &c.CommenterHex, &c.Markdown, &c.ParentHex, &c.Score, &c.State, &c.CreationDate); err != nil {
 			logger.Errorf("cannot scan comment while exporting %s: %v", domain, err)
-			domainExportBeginError(email, toName, domain, util.ErrorInternal)
+			domainExportBeginError(email, domain, util.ErrorInternal)
 			return
 		}
 
@@ -158,7 +160,7 @@ func domainExportBegin(email strfmt.Email, toName string, domain string) {
 		domain)
 	if err != nil {
 		logger.Errorf("cannot select commenters while exporting %s: %v", domain, err)
-		domainExportBeginError(email, toName, domain, util.ErrorInternal)
+		domainExportBeginError(email, domain, util.ErrorInternal)
 		return
 	}
 	defer rows2.Close()
@@ -167,7 +169,7 @@ func domainExportBegin(email strfmt.Email, toName string, domain string) {
 		c := models.Commenter{}
 		if err := rows2.Scan(&c.CommenterHex, &c.Email, &c.Name, &c.Link, &c.Photo, &c.Provider, &c.JoinDate); err != nil {
 			logger.Errorf("cannot scan commenter while exporting %s: %v", domain, err)
-			domainExportBeginError(email, toName, domain, util.ErrorInternal)
+			domainExportBeginError(email, domain, util.ErrorInternal)
 			return
 		}
 
@@ -177,21 +179,21 @@ func domainExportBegin(email strfmt.Email, toName string, domain string) {
 	je, err := json.Marshal(e)
 	if err != nil {
 		logger.Errorf("cannot marshall JSON while exporting %s: %v", domain, err)
-		domainExportBeginError(email, toName, domain, util.ErrorInternal)
+		domainExportBeginError(email, domain, util.ErrorInternal)
 		return
 	}
 
 	gje, err := util.GzipStatic(je)
 	if err != nil {
 		logger.Errorf("cannot gzip JSON while exporting %s: %v", domain, err)
-		domainExportBeginError(email, toName, domain, util.ErrorInternal)
+		domainExportBeginError(email, domain, util.ErrorInternal)
 		return
 	}
 
 	exportHex, err := util.RandomHex(32)
 	if err != nil {
 		logger.Errorf("cannot generate exportHex while exporting %s: %v", domain, err)
-		domainExportBeginError(email, toName, domain, util.ErrorInternal)
+		domainExportBeginError(email, domain, util.ErrorInternal)
 		return
 	}
 
@@ -203,15 +205,20 @@ func domainExportBegin(email strfmt.Email, toName string, domain string) {
 		time.Now().UTC())
 	if err != nil {
 		logger.Errorf("error inserting expiry binary data while exporting %s: %v", domain, err)
-		domainExportBeginError(email, toName, domain, util.ErrorInternal)
+		domainExportBeginError(email, domain, util.ErrorInternal)
 		return
 	}
 
-	err = mail.SMTPDomainExport(string(email), toName, domain, exportHex)
-	if err != nil {
-		logger.Errorf("error sending data export email for %s: %v", domain, err)
-		return
-	}
+	// Notify the user by email, ignoring any error
+	_ = svc.TheEmailService.SendFromTemplate(
+		"",
+		string(email),
+		"Comentario Data Export",
+		"domain-export.gohtml",
+		map[string]any{
+			"Domain": domain,
+			"URL":    config.URLForAPI("domain/export/download", map[string]string{"exportHex": exportHex}),
+		})
 }
 
 func domainImportCommento(domain string, url string) (int, error) {
@@ -284,16 +291,15 @@ func domainImportCommento(domain string, url string) (int, error) {
 	}
 
 	// Create a map of (parent hex, comments)
-	comments := make(map[models.HexID][]models.Comment)
+	comments := map[models.ParentHexID][]models.Comment{}
 	for _, comment := range data.Comments {
-		parentHex := models.HexID(comment.ParentHex)
-		comments[parentHex] = append(comments[parentHex], comment)
+		comments[comment.ParentHex] = append(comments[comment.ParentHex], comment)
 	}
 
 	// Import comments, creating a map of comment hex (old hex, new hex)
-	commentHex := map[models.HexID]models.HexID{"root": "root"}
+	commentHex := map[models.ParentHexID]models.ParentHexID{RootParentHexID: RootParentHexID}
 	numImported := 0
-	keys := []models.HexID{"root"}
+	keys := []models.ParentHexID{RootParentHexID}
 	for i := 0; i < len(keys); i++ {
 		for _, comment := range comments[keys[i]] {
 			cHex, ok := commenterHex[comment.CommenterHex]
@@ -301,7 +307,7 @@ func domainImportCommento(domain string, url string) (int, error) {
 				logger.Errorf("cannot get commenter: %v", err)
 				return numImported, util.ErrorInternal
 			}
-			parentHex, ok := commentHex[models.HexID(comment.ParentHex)]
+			parentHex, ok := commentHex[comment.ParentHex]
 			if !ok {
 				logger.Errorf("cannot get parent comment: %v", err)
 				return numImported, util.ErrorInternal
@@ -318,9 +324,9 @@ func domainImportCommento(domain string, url string) (int, error) {
 			if err != nil {
 				return numImported, err
 			}
-			commentHex[comment.CommentHex] = hex
+			commentHex[models.ParentHexID(comment.CommentHex)] = models.ParentHexID(hex)
 			numImported++
-			keys = append(keys, comment.CommentHex)
+			keys = append(keys, models.ParentHexID(comment.CommentHex))
 		}
 	}
 
@@ -465,9 +471,9 @@ func domainImportDisqus(domain string, url string) (int, error) {
 			cHex = commenterHex[strfmt.Email(post.Author.Username+"@disqus.com")]
 		}
 
-		parentHex := models.HexID("root")
+		parentHex := RootParentHexID
 		if val, ok := disqusIdMap[post.ParentId.Id]; ok {
-			parentHex = val
+			parentHex = models.ParentHexID(val)
 		}
 
 		// TODO: restrict the list of tags to just the basics: <a>, <b>, <i>, <code>

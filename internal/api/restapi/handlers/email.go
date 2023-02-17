@@ -6,9 +6,10 @@ import (
 	"github.com/go-openapi/strfmt"
 	"gitlab.com/comentario/comentario/internal/api/models"
 	"gitlab.com/comentario/comentario/internal/api/restapi/operations"
-	"gitlab.com/comentario/comentario/internal/mail"
+	"gitlab.com/comentario/comentario/internal/config"
 	"gitlab.com/comentario/comentario/internal/svc"
 	"gitlab.com/comentario/comentario/internal/util"
+	"html/template"
 	"time"
 )
 
@@ -147,11 +148,6 @@ func emailGetByUnsubscribeSecretHex(unsubscribeSecretHex models.HexID) (*models.
 }
 
 func emailNotificationModerator(d *models.Domain, path string, title string, commenterHex models.HexID, commentHex models.HexID, html string, state models.CommentState) {
-	if d.EmailNotificationPolicy == models.EmailNotificationPolicyNone ||
-		d.EmailNotificationPolicy == models.EmailNotificationPolicyPendingDashModeration && state == models.CommentStateApproved {
-		return
-	}
-
 	var commenterName string
 	var commenterEmail strfmt.Email
 	if commenterHex == "anonymous" {
@@ -196,27 +192,12 @@ func emailNotificationModerator(d *models.Domain, path string, title string, com
 			continue
 		}
 
-		if err := mail.SMTPEmailNotification(string(m.Email), name, string(kind), d.Domain, path, commentHex, commenterName, title, html, e.UnsubscribeSecretHex); err != nil {
-			logger.Errorf("error sending email to %s: %v", m.Email, err)
-			continue
-		}
+		emailSendNotification(m.Email, string(kind), d.Domain, path, commenterName, title, html, commentHex, e.UnsubscribeSecretHex)
 	}
 }
 
-func emailNotificationReply(d *models.Domain, path string, title string, commenterHex models.HexID, commentHex models.HexID, html string, parentHex models.HexID, state models.CommentState) {
-	// No reply notifications for root comments.
-	if parentHex == "root" {
-		return
-	}
-
-	// No reply notification emails for unapproved comments.
-	if state != models.CommentStateApproved {
-		return
-	}
-
-	statement := `select commenterHex from comments where commentHex = $1;`
-	row := svc.DB.QueryRow(statement, parentHex)
-
+func emailNotificationReply(d *models.Domain, path string, title string, commenterHex models.HexID, commentHex models.HexID, html string, parentHex models.ParentHexID) {
+	row := svc.DB.QueryRow("select commenterHex from comments where commentHex = $1;", parentHex)
 	var parentCommenterHex models.HexID
 	err := row.Scan(&parentCommenterHex)
 	if err != nil {
@@ -258,14 +239,12 @@ func emailNotificationReply(d *models.Domain, path string, title string, comment
 		return
 	}
 
-	if !epc.SendReplyNotifications {
-		return
+	if epc.SendReplyNotifications {
+		emailSendNotification(pc.Email, "reply", d.Domain, path, commenterName, title, html, commentHex, epc.UnsubscribeSecretHex)
 	}
-
-	_ = mail.SMTPEmailNotification(string(pc.Email), pc.Name, "reply", d.Domain, path, commentHex, commenterName, title, html, epc.UnsubscribeSecretHex)
 }
 
-func emailNotificationNew(d *models.Domain, path string, commenterHex models.HexID, commentHex models.HexID, html string, parentHex models.HexID, state models.CommentState) {
+func emailNotificationNew(d *models.Domain, path string, commenterHex models.HexID, commentHex models.HexID, html string, parentHex models.ParentHexID, state models.CommentState) {
 	p, err := pageGet(d.Domain, path)
 	if err != nil {
 		logger.Errorf("cannot get page to send email notification: %v", err)
@@ -280,8 +259,16 @@ func emailNotificationNew(d *models.Domain, path string, commenterHex models.Hex
 		}
 	}
 
-	emailNotificationModerator(d, path, p.Title, commenterHex, commentHex, html, state)
-	emailNotificationReply(d, path, p.Title, commenterHex, commentHex, html, parentHex, state)
+	// Send an email notification to moderators, if we notify about every comment or comments pending moderation and
+	// the comment isn't approved yet
+	if d.EmailNotificationPolicy == models.EmailNotificationPolicyAll || d.EmailNotificationPolicy == models.EmailNotificationPolicyPendingDashModeration && state != models.CommentStateApproved {
+		emailNotificationModerator(d, path, p.Title, commenterHex, commentHex, html, state)
+	}
+
+	// If it's a reply and the comment is approved, send out a reply notifications
+	if parentHex != RootParentHexID && state == models.CommentStateApproved {
+		emailNotificationReply(d, path, p.Title, commenterHex, commentHex, html, parentHex)
+	}
 }
 
 func emailsRowScan(s util.Scanner, e *models.Email) error {
@@ -292,6 +279,32 @@ func emailsRowScan(s util.Scanner, e *models.Email) error {
 		&e.SendReplyNotifications,
 		&e.SendModeratorNotifications,
 	)
+}
+
+func emailSendNotification(recipientEmail strfmt.Email, kind string, domain, path, commenterName, title, html string, commentHex, unsubscribeSecretHex models.HexID) {
+	_ = svc.TheEmailService.SendFromTemplate(
+		"",
+		string(recipientEmail),
+		"Comentario: "+title,
+		"email-notification.gohtml",
+		map[string]any{
+			"Kind":          kind,
+			"Title":         title,
+			"Domain":        domain,
+			"Path":          path,
+			"CommentHex":    commentHex,
+			"CommenterName": commenterName,
+			"HTML":          template.HTML(html),
+			"ApproveURL": config.URLForAPI(
+				"email/moderate",
+				map[string]string{"action": "approve", "commentHex": string(commentHex), "unsubscribeSecretHex": string(unsubscribeSecretHex)}),
+			"DeleteURL": config.URLForAPI(
+				"email/moderate",
+				map[string]string{"action": "delete", "commentHex": string(commentHex), "unsubscribeSecretHex": string(unsubscribeSecretHex)}),
+			"UnsubscribeURL": config.URLFor(
+				"unsubscribe",
+				map[string]string{"unsubscribeSecretHex": string(unsubscribeSecretHex)}),
+		})
 }
 
 func emailUpdate(e *models.Email) error {

@@ -15,7 +15,7 @@
         const url = $('#disqus-url').val();
         const data = global.dashboard.$data;
         const json = {
-            ownerToken: global.cookieGet('commentoOwnerToken'),
+            ownerToken: global.cookieGet('comentarioOwnerToken'),
             domain: data.domains[data.cd].domain,
             url: url,
         };
@@ -36,10 +36,10 @@
     };
 
     global.importCommento = function () {
-        const url = $('#commento-url').val();
+        const url = $('#comentario-url').val();
         const data = global.dashboard.$data;
         const json = {
-            ownerToken: global.cookieGet('commentoOwnerToken'),
+            ownerToken: global.cookieGet('comentarioOwnerToken'),
             domain: data.domains[data.cd].domain,
             url: url,
         };
@@ -59,4 +59,4 @@
         });
     };
 
-}(window.commento, document));
+}(window.comentario, document));

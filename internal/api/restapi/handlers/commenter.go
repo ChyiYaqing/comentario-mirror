@@ -8,7 +8,7 @@ import (
 	"github.com/go-openapi/strfmt"
 	"gitlab.com/comentario/comentario/internal/api/models"
 	"gitlab.com/comentario/comentario/internal/api/restapi/operations"
-	"gitlab.com/comentario/comentario/internal/mail"
+	"gitlab.com/comentario/comentario/internal/config"
 	"gitlab.com/comentario/comentario/internal/svc"
 	"gitlab.com/comentario/comentario/internal/util"
 	"golang.org/x/crypto/bcrypt"
@@ -69,7 +69,7 @@ func CommenterNew(params operations.CommenterNewParams) middleware.Responder {
 
 	// Succeeded
 	return operations.NewCommenterNewOK().WithPayload(&operations.CommenterNewOKBody{
-		ConfirmEmail: mail.SMTPConfigured,
+		ConfirmEmail: config.SMTPConfigured,
 		Success:      true,
 	})
 }

@@ -4,7 +4,6 @@ package restapi
 
 import (
 	"crypto/tls"
-	"fmt"
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/strfmt"
@@ -14,11 +13,9 @@ import (
 	"gitlab.com/comentario/comentario/internal/api/restapi/handlers"
 	"gitlab.com/comentario/comentario/internal/api/restapi/operations"
 	"gitlab.com/comentario/comentario/internal/config"
-	"gitlab.com/comentario/comentario/internal/mail"
 	"gitlab.com/comentario/comentario/internal/svc"
 	"gitlab.com/comentario/comentario/internal/util"
 	"net/http"
-	"os"
 )
 
 // logger represents a package-wide logger instance
@@ -139,20 +136,4 @@ func configureServer(_ *http.Server, scheme, _ string) {
 
 	// Initialise the services
 	svc.TheServiceManager.Initialise()
-
-	// TODO refactor all below
-	exitIfError(config.ConfigParse())
-	exitIfError(mail.SMTPConfigure())
-	exitIfError(mail.SMTPTemplatesLoad())
-	exitIfError(handlers.OAuthConfigure())
-	exitIfError(config.VersionCheckStart())
-	//TODO replaced with OpenAPI exitIfError(api.RoutesServe())
-
-}
-
-func exitIfError(err error) {
-	if err != nil {
-		fmt.Printf("fatal error: %v\n", err)
-		os.Exit(1)
-	}
 }

@@ -47,7 +47,7 @@ ingress:
 clusterIssuer: letsencrypt-staging
 
 comentario:
-  forbidNewOwners: 'true'
+  allowNewOwners: 'false'
   smtpHost: mail.example.com
   smtpPort: 587
   smtpFromAddress: noreply@example.com

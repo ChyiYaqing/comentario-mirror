@@ -5,11 +5,11 @@
     // noinspection BadExpressionStatementJS
     (document);
 
-    if (window.commento === undefined) {
-        window.commento = {};
+    if (window.comentario === undefined) {
+        window.comentario = {};
     }
 
-    window.commento.origin = '[[[.Origin]]]';
-    window.commento.cdn = '[[[.CdnPrefix]]]';
+    window.comentario.origin = '[[[.Origin]]]';
+    window.comentario.cdn = '[[[.CdnPrefix]]]';
 
 }(window, document));

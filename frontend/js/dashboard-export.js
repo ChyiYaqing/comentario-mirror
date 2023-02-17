@@ -8,7 +8,7 @@
     global.domainExportBegin = function () {
         const data = global.dashboard.$data;
         const json = {
-            ownerToken: global.cookieGet('commentoOwnerToken'),
+            ownerToken: global.cookieGet('comentarioOwnerToken'),
             domain: data.domains[data.cd].domain,
         };
 
@@ -24,4 +24,4 @@
         });
     };
 
-}(window.commento, document));
+}(window.comentario, document));

@@ -98,6 +98,7 @@ func (db *Database) connect() error {
 
 	// Configure the database
 	db.db.SetMaxIdleConns(config.CLIFlags.DBIdleConns)
+	logger.Info("Connected to database")
 	return nil
 }
 

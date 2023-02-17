@@ -33,7 +33,7 @@
             return;
         }
 
-        const json = {ownerToken: global.cookieGet('commentoOwnerToken')};
+        const json = {ownerToken: global.cookieGet('comentarioOwnerToken')};
         const delBtn = $('#delete-owner-button');
         delBtn.prop('disabled', true);
         delBtn.text('Deleting...');
@@ -46,9 +46,9 @@
                 return;
             }
 
-            global.cookieDelete('commentoOwnerToken');
+            global.cookieDelete('comentarioOwnerToken');
             document.location = `${global.origin}/login?deleted=true`;
         });
     };
 
-}(window.commento, document));
+}(window.comentario, document));

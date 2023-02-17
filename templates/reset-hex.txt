@@ -1,7 +1,0 @@
-Hi,
-
-Someone (probably you) recently initiated the procedure to reset your Comentario account password. To do this, use the link below:
-
-{{.Origin}}/reset?hex={{.ResetHex}}
-
-If you did not initiate this request, you can safely ignore this email.

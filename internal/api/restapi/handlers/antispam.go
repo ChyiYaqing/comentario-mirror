@@ -2,12 +2,12 @@ package handlers
 
 import (
 	"github.com/adtac/go-akismet/akismet"
-	"os"
+	"gitlab.com/comentario/comentario/internal/config"
 )
 
 func checkForSpam(domain string, userIp string, userAgent string, name string, email string, url string, markdown string) bool {
-	akismetKey := os.Getenv("AKISMET_KEY")
-	if akismetKey == "" {
+	// Ignore if Akismet isn't configured
+	if config.SecretsConfig.Akismet.Key == "" {
 		return false
 	}
 
@@ -22,7 +22,7 @@ func checkForSpam(domain string, userIp string, userAgent string, name string, e
 			CommentAuthorURL:   url,
 			CommentContent:     markdown,
 		},
-		akismetKey)
+		config.SecretsConfig.Akismet.Key)
 
 	if err != nil {
 		logger.Errorf("error: cannot validate comment using Akismet: %v", err)

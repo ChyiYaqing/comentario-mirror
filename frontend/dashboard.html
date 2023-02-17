@@ -22,10 +22,10 @@
 
   <script>
   window.onload = function() {
-    window.commento.selfGet(function() {
-      window.commento.vueConstruct(function() {
-        window.commento.navbarFill();
-        window.commento.domainRefresh();
+    window.comentario.selfGet(function() {
+      window.comentario.vueConstruct(function() {
+        window.comentario.navbarFill();
+        window.comentario.domainRefresh();
         $(document).ready(function(){
           $("ul.tabs li").click(function(){
             const tab_id = $(this).attr("data-tab");
@@ -52,7 +52,7 @@
         It's so quiet in here.
       </div>
 
-      <div class="pane-setting" v-for="domain in domains" v-on:click="window.commento.domainSelect(domain.domain)" id="{{domain.hex}}" v-bind:class="{selected: domain.selected}" v-if="domain.show">
+      <div class="pane-setting" v-for="domain in domains" v-on:click="window.comentario.domainSelect(domain.domain)" id="{{domain.hex}}" v-bind:class="{selected: domain.selected}" v-if="domain.show">
         <div class="pane-setting-inside">
           <div class="setting-title">{{domain.name}}</div>
           <div class="setting-subtitle">{{domain.domain}}</div>
@@ -67,7 +67,7 @@
     </div>
 
     <div class="pane-middle">
-      <div v-if="showSettings" class="pane-setting" v-for="setting in settings" v-on:click="window.commento.settingSelect(setting.id)" id="{{setting.id}}" v-bind:class="{selected: setting.selected}">
+      <div v-if="showSettings" class="pane-setting" v-for="setting in settings" v-on:click="window.comentario.settingSelect(setting.id)" id="{{setting.id}}" v-bind:class="{selected: setting.selected}">
         <div class="pane-setting-inside">
           <div class="setting-title">{{setting.text}}</div>
           <div class="setting-subtitle">{{setting.meaning}}</div>
@@ -103,7 +103,7 @@
                   <br>
 
                   <div class="normal-text">
-                    Read the Comentario documentation <a href="https://docs.commento.io/configuration/frontend/">on configuration</a>.
+                    Read the Comentario documentation <a href="https://docs.comentario.app/">on configuration</a>.
                   </div>
                 </div>
               </div>
@@ -168,17 +168,17 @@
                       Comment Filtering
                     </div>
                     <div class="answer">
-                      <div class="row no-border commento-round-check">
+                      <div class="row no-border comentario-round-check">
                         <input type="checkbox" v-model="domains[cd].autoSpamFilter" id="spam-filtering">
                         <label for="spam-filtering">Automatic spam filtering</label>
                       </div>
 
-                      <div class="row no-border commento-round-check">
+                      <div class="row no-border comentario-round-check">
                         <input type="checkbox" v-model="domains[cd].requireModeration" id="require-moderation">
                         <label for="require-moderation">Require all comments to be approved manually</label>
                       </div>
 
-                      <div class="row no-border commento-round-check">
+                      <div class="row no-border comentario-round-check">
                         <input type="checkbox" v-model="domains[cd].moderateAllAnonymous" id="moderate-all-anonymous">
                         <label for="moderate-all-anonymous">Require anonymous comments to be approved manually</label>
                       </div>
@@ -190,15 +190,15 @@
                       Email Schedule
                     </div>
                     <div class="answer">
-                      <div class="row no-border commento-round-check">
+                      <div class="row no-border comentario-round-check">
                         <input type="radio" id="email-all" value="all" v-model="domains[cd].emailNotificationPolicy">
                         <label for="email-all">Whenever a new comment is created</label>
                       </div>
-                      <div class="row no-border commento-round-check">
+                      <div class="row no-border comentario-round-check">
                         <input type="radio" id="email-pending-moderation" value="pending-moderation" v-model="domains[cd].emailNotificationPolicy">
                         <label for="email-pending-moderation">Only for comments pending moderation</label>
                       </div>
-                      <div class="row no-border commento-round-check">
+                      <div class="row no-border comentario-round-check">
                         <input type="radio" id="email-none" value="none" v-model="domains[cd].emailNotificationPolicy">
                         <label for="email-none">Do not email moderators</label>
                       </div>
@@ -210,15 +210,15 @@
                       Comment Sorting
                     </div>
                     <div class="answer">
-                      <div class="row no-border commento-round-check">
+                      <div class="row no-border comentario-round-check">
                         <input type="radio" id="defaultSortPolicy-score-desc" value="score-desc" v-model="domains[cd].defaultSortPolicy">
                         <label for="defaultSortPolicy-score-desc">Most upvoted first</label>
                       </div>
-                      <div class="row no-border commento-round-check">
+                      <div class="row no-border comentario-round-check">
                         <input type="radio" id="defaultSortPolicy-creationdate-desc" value="creationdate-desc" v-model="domains[cd].defaultSortPolicy">
                         <label for="defaultSortPolicy-creationdate-desc">Newest first</label>
                       </div>
-                      <div class="row no-border commento-round-check">
+                      <div class="row no-border comentario-round-check">
                         <input type="radio" id="defaultSortPolicy-creationdate-asc" value="creationdate-asc" v-model="domains[cd].defaultSortPolicy">
                         <label for="defaultSortPolicy-creationdate-asc">Oldest first</label>
                       </div>
@@ -226,7 +226,7 @@
                   </div>
 
                   <div class="center">
-                    <button id="save-general-button" onclick="window.commento.generalSaveHandler()" class="button">Save Changes</button>
+                    <button id="save-general-button" onclick="window.comentario.generalSaveHandler()" class="button">Save Changes</button>
                   </div>
                 </div>
 
@@ -236,17 +236,17 @@
 
                     You're still the only administrator and the only person who can add and remove moderators. Moderators do not have access to this dashboard. Their access is restricted to pages on your website.
                   </div>
-                  <div class="commento-email-container">
-                    <div class="commento-email">
-                      <input class="commento-input" type="text" id="new-mod" placeholder="Email">
-                      <button id="new-mod-button" class="commento-email-button" onclick="window.commento.moderatorNewHandler()">Add moderator</button>
+                  <div class="comentario-email-container">
+                    <div class="comentario-email">
+                      <input class="comentario-input" type="text" id="new-mod" placeholder="Email">
+                      <button id="new-mod-button" class="comentario-email-button" onclick="window.comentario.moderatorNewHandler()">Add moderator</button>
                     </div>
                   </div>
                   <div class="mod-emails-container">
                     <div class="content">
                       <div class="mod-email" v-for="email in domains[cd].moderators" v-if="domains[cd].moderators.length > 0">
                         <div class="email">{{email.email}}</div>
-                        <div class="delete" v-on:click="window.commento.moderatorDeleteHandler(email.email)">Delete</div>
+                        <div class="delete" v-on:click="window.comentario.moderatorDeleteHandler(email.email)">Delete</div>
                         <div class="date">added {{email.timeAgo}}</div>
                       </div>
                     </div>
@@ -282,33 +282,33 @@
                       Authentication Options
                     </div>
                     <div class="answer">
-                      <div class="row no-border commento-round-check">
+                      <div class="row no-border comentario-round-check">
                         <input type="checkbox" v-model="domains[cd].allowAnonymous" id="allow-anonymous">
                         <label for="allow-anonymous">Anonymous comments</label>
                       </div>
 
-                      <div class="row no-border commento-round-check">
+                      <div class="row no-border comentario-round-check">
                         <input type="checkbox" v-model="domains[cd].commentoProvider" id="commento-provider">
                         <label for="commento-provider">Email address login</label>
                       </div>
 
-                      <div class="row no-border commento-round-check" v-if="configuredOauths.google">
+                      <div class="row no-border comentario-round-check" v-if="configuredOauths.google">
                         <input type="checkbox" v-model="domains[cd].googleProvider" id="google-provider">
                         <label for="google-provider">Google login</label>
                       </div>
 
-                      <div class="row no-border commento-round-check" v-if="configuredOauths.github">
+                      <div class="row no-border comentario-round-check" v-if="configuredOauths.github">
                         <input type="checkbox" v-model="domains[cd].githubProvider" id="github-provider">
                         <label for="github-provider">GitHub login</label>
                       </div>
 
-                      <div class="row no-border commento-round-check" v-if="configuredOauths.gitlab">
+                      <div class="row no-border comentario-round-check" v-if="configuredOauths.gitlab">
                         <input type="checkbox" v-model="domains[cd].gitlabProvider" id="gitlab-provider">
                         <label for="gitlab-provider">GitLab login</label>
                       </div>
 
-                      <div class="row no-border commento-round-check">
-                        <input type="checkbox" v-model="domains[cd].ssoProvider" id="sso-provider" @change="window.commento.ssoProviderChangeHandler()">
+                      <div class="row no-border comentario-round-check">
+                        <input type="checkbox" v-model="domains[cd].ssoProvider" id="sso-provider" @change="window.comentario.ssoProviderChangeHandler()">
                         <label for="sso-provider">Single sign-on</label>
                       </div>
 
@@ -324,7 +324,7 @@
                         <div class="normal-text">
                           <div class="subtext-container">
                             <div class="subtext">
-                              Read the Comentario documentation <a href="https://docs.commento.io/configuration/frontend/sso.html">on single sign-on</a>.
+                              Read the Comentario documentation <a href="https://docs.comentario.app/">on single sign-on</a>.
                             </div>
                           </div>
                         </div>
@@ -341,15 +341,15 @@
                       Default Comment Sorting
                     </div>
                     <div class="answer">
-                      <div class="row no-border commento-round-check">
+                      <div class="row no-border comentario-round-check">
                         <input type="radio" id="defaultSortPolicy-score-desc" value="score-desc" v-model="domains[cd].defaultSortPolicy">
                         <label for="defaultSortPolicy-score-desc">Most upvoted first</label>
                       </div>
-                      <div class="row no-border commento-round-check">
+                      <div class="row no-border comentario-round-check">
                         <input type="radio" id="defaultSortPolicy-creationdate-desc" value="creationdate-desc" v-model="domains[cd].defaultSortPolicy">
                         <label for="defaultSortPolicy-creationdate-desc">Newest first</label>
                       </div>
-                      <div class="row no-border commento-round-check">
+                      <div class="row no-border comentario-round-check">
                         <input type="radio" id="defaultSortPolicy-creationdate-asc" value="creationdate-asc" v-model="domains[cd].defaultSortPolicy">
                         <label for="defaultSortPolicy-creationdate-asc">Oldest first</label>
                       </div>
@@ -357,7 +357,7 @@
                   </div>
 
                   <div class="center">
-                    <button id="save-general-button" onclick="window.commento.generalSaveHandler()" class="button">Save Changes</button>
+                    <button id="save-general-button" onclick="window.comentario.generalSaveHandler()" class="button">Save Changes</button>
                   </div>
                 </div>
 
@@ -368,7 +368,7 @@
                     Please note that this requires valid SMTP settings in order to send emails.<br><br>
 
                     <div class="center">
-                      <button id="domain-export-button" onclick="window.commento.domainExportBegin()" class="button">Initiate Data Export</button>
+                      <button id="domain-export-button" onclick="window.comentario.domainExportBegin()" class="button">Initiate Data Export</button>
                     </div>
                   </div>
                 </div>
@@ -402,10 +402,10 @@
 
                         <br><br>
 
-                        <div class="commento-email-container">
-                          <div class="commento-email">
-                            <input class="commento-input" type="text" id="disqus-url" placeholder="https://media.disqus.com/uploads/...">
-                            <button id="disqus-import-button" class="commento-email-button" onclick="window.commento.importDisqus()">Import</button>
+                        <div class="comentario-email-container">
+                          <div class="comentario-email">
+                            <input class="comentario-input" type="text" id="disqus-url" placeholder="https://media.disqus.com/uploads/...">
+                            <button id="disqus-import-button" class="comentario-email-button" onclick="window.comentario.importDisqus()">Import</button>
                           </div>
                         </div>
                         <!--
@@ -443,10 +443,10 @@
 
                         <br><br>
 
-                        <div class="commento-email-container">
-                          <div class="commento-email">
-                            <input class="commento-input" type="text" id="commento-url" placeholder="https://example.com/comentario.json.gz">
-                            <button id="commento-import-button" class="commento-email-button" onclick="window.commento.importCommento()">Import</button>
+                        <div class="comentario-email-container">
+                          <div class="comentario-email">
+                            <input class="comentario-input" type="text" id="comentario-url" placeholder="https://example.com/comentario.json.gz">
+                            <button id="commento-import-button" class="comentario-email-button" onclick="window.comentario.importCommento()">Import</button>
                           </div>
                         </div>
 
@@ -553,7 +553,7 @@
         Are you absolutely sure you want to freeze your domain, thereby making it read-only? You can choose to unfreeze later; this is temporary.
       </div>
       <div class="modal-contents center">
-        <button class="button orange-button" onclick="window.commento.domainFreezeHandler()">Freeze Domain</button>
+        <button class="button orange-button" onclick="window.comentario.domainFreezeHandler()">Freeze Domain</button>
       </div>
     </div>
   </div>
@@ -566,7 +566,7 @@
         Are you absolutely sure you want to unfreeze your domain? This will re-allow new comments. You can choose to freeze again in the future.
       </div>
       <div class="modal-contents center">
-        <button class="button green-button" onclick="window.commento.domainUnfreezeHandler()">Unfreeze Domain</button>
+        <button class="button green-button" onclick="window.comentario.domainUnfreezeHandler()">Unfreeze Domain</button>
       </div>
     </div>
   </div>
@@ -579,7 +579,7 @@
         Are you absolutely sure you want to clear all comments data? This is not reversible, so please be certain.
       </div>
       <div class="modal-contents center">
-        <button class="button big-red-button" onclick="window.commento.domainClearHandler()">Clear</button>
+        <button class="button big-red-button" onclick="window.comentario.domainClearHandler()">Clear</button>
       </div>
     </div>
   </div>
@@ -592,7 +592,7 @@
         Are you absolutely sure? This will permanently delete all comments and there is literally no way to retrieve your data once you do this.
       </div>
       <div class="modal-contents center">
-        <button class="button big-red-button" onclick="window.commento.domainDeleteHandler()">Delete Domain</button>
+        <button class="button big-red-button" onclick="window.comentario.domainDeleteHandler()">Delete Domain</button>
       </div>
     </div>
   </div>
@@ -617,7 +617,7 @@
         </div>
         <div id="new-domain-error" class="modal-error-box"></div>
         <div class="center">
-          <button id="add-site-button" onclick="window.commento.domainNewHandler()" class="button">Add Domain</button>
+          <button id="add-site-button" onclick="window.comentario.domainNewHandler()" class="button">Add Domain</button>
         </div>
       </div>
     </div>

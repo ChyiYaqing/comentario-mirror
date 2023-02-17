@@ -7,7 +7,6 @@ import (
 	"gitlab.com/comentario/comentario/internal/api/models"
 	"gitlab.com/comentario/comentario/internal/api/restapi/operations"
 	"gitlab.com/comentario/comentario/internal/config"
-	"gitlab.com/comentario/comentario/internal/mail"
 	"gitlab.com/comentario/comentario/internal/svc"
 	"gitlab.com/comentario/comentario/internal/util"
 	"golang.org/x/crypto/bcrypt"
@@ -72,7 +71,7 @@ func OwnerNew(params operations.OwnerNewParams) middleware.Responder {
 	_, _ = commenterNew(*params.Body.Email, *params.Body.Name, "undefined", "undefined", "commento", *params.Body.Password)
 
 	return operations.NewOwnerNewOK().WithPayload(&operations.OwnerNewOKBody{
-		ConfirmEmail: mail.SMTPConfigured,
+		ConfirmEmail: config.SMTPConfigured,
 		Success:      true,
 	})
 }
@@ -288,35 +287,40 @@ func ownerNew(email strfmt.Email, name string, password string) (string, error) 
 		name,
 		string(passwordHash),
 		time.Now().UTC(),
-		!mail.SMTPConfigured)
+		!config.SMTPConfigured)
 	if err != nil {
 		// TODO: Make sure `err` is actually about conflicting UNIQUE, and not some
 		// other error. If it is something else, we should probably return `errorInternal`.
 		return "", util.ErrorEmailAlreadyExists
 	}
 
-	if mail.SMTPConfigured {
-		confirmHex, err := util.RandomHex(32)
-		if err != nil {
-			logger.Errorf("cannot generate confirmHex: %v", err)
-			return "", util.ErrorInternal
-		}
-
-		_, err = svc.DB.Exec(
-			"insert into ownerConfirmHexes(confirmHex, ownerHex, sendDate) values($1, $2, $3);",
-			confirmHex,
-			ownerHex,
-			time.Now().UTC())
-		if err != nil {
-			logger.Errorf("cannot insert confirmHex: %v\n", err)
-			return "", util.ErrorInternal
-		}
-
-		if err = mail.SMTPOwnerConfirmHex(string(email), name, confirmHex); err != nil {
-			return "", err
-		}
+	confirmHex, err := util.RandomHex(32)
+	if err != nil {
+		logger.Errorf("cannot generate confirmHex: %v", err)
+		return "", util.ErrorInternal
 	}
 
+	_, err = svc.DB.Exec(
+		"insert into ownerConfirmHexes(confirmHex, ownerHex, sendDate) values($1, $2, $3);",
+		confirmHex,
+		ownerHex,
+		time.Now().UTC())
+	if err != nil {
+		logger.Errorf("cannot insert confirmHex: %v\n", err)
+		return "", util.ErrorInternal
+	}
+
+	err = svc.TheEmailService.SendFromTemplate(
+		"",
+		string(email),
+		"Please confirm your email address",
+		"confirm-hex.gohtml",
+		map[string]any{"URL": config.URLForAPI("owner/confirm-hex", map[string]string{"confirmHex": confirmHex})})
+	if err != nil {
+		return "", err
+	}
+
+	// Succeeded
 	return ownerHex, nil
 }
 

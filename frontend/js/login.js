@@ -79,9 +79,9 @@
                 return;
             }
 
-            global.cookieSet('commentoOwnerToken', resp.ownerToken);
+            global.cookieSet('comentarioOwnerToken', resp.ownerToken);
             document.location = `${global.origin}/dashboard`;
         });
     };
 
-}(window.commento, document));
+}(window.comentario, document));

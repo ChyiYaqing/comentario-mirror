@@ -13,19 +13,44 @@ import (
 	"strings"
 )
 
+// Scanner is a database/sql abstraction interface that can be used with both *sql.Row and *sql.Rows
+type Scanner interface {
+	// Scan copies columns from the underlying query row(s) to the values pointed to by dest
+	Scan(dest ...any) error
+}
+
+// Mailer allows sending emails
+type Mailer interface {
+	// Mail sends an email to the specified recipient.
+	// replyTo:     email address/name of the sender (optional).
+	// recipient:   email address/name of the recipient.
+	// subject:     email subject.
+	// htmlMessage: email text in the HTML format.
+	Mail(replyTo, recipient, subject, htmlMessage string) error
+}
+
 // logger represents a package-wide logger instance
 var logger = logging.MustGetLogger("persistence")
 
 var (
 	reDNSHostname  = regexp.MustCompile(`^([a-z\d][-a-z\d]{0,62})(\.[a-z\d][-a-z\d]{0,62})*(\.[a-z]{2,63})$`) // Minimum 2 parts
 	reEmailAddress = regexp.MustCompile(`^[^<>()[\]\\.,;:\s@"%]+(\.[^<>()[\]\\.,;:\s@"%]+)*@`)                // Only the part up to the '@'
+
+	// AppMailer is a Mailer implementation available application-wide. Defaults to a mailer that doesn't do anything
+	AppMailer Mailer = &noOpMailer{}
 )
 
-// Scanner is a database/sql abstraction interface that can be used with both *sql.Row and *sql.Rows
-type Scanner interface {
-	// Scan copies columns from the underlying query row(s) to the values pointed to by dest
-	Scan(dest ...any) error
+// ----------------------------------------------------------------------------------------------------------------------
+
+// noOpMailer is a Mailer implementation that doesn't send any emails
+type noOpMailer struct{}
+
+func (m *noOpMailer) Mail(_, recipient, subject, _ string) error {
+	logger.Debugf("NoOpMailer: not sending email to %s (subject: '%s')", recipient, subject)
+	return nil
 }
+
+// ----------------------------------------------------------------------------------------------------------------------
 
 // IsValidEmail returns whether the passed string is a valid email address
 func IsValidEmail(s string) bool {

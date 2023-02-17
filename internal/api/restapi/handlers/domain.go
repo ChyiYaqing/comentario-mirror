@@ -6,6 +6,7 @@ import (
 	"github.com/go-openapi/strfmt"
 	"gitlab.com/comentario/comentario/internal/api/models"
 	"gitlab.com/comentario/comentario/internal/api/restapi/operations"
+	"gitlab.com/comentario/comentario/internal/config"
 	"gitlab.com/comentario/comentario/internal/svc"
 	"gitlab.com/comentario/comentario/internal/util"
 	"strings"
@@ -92,9 +93,9 @@ func DomainList(params operations.DomainListParams) middleware.Responder {
 	// Succeeded
 	return operations.NewDomainListOK().WithPayload(&operations.DomainListOKBody{
 		ConfiguredOauths: &operations.DomainListOKBodyConfiguredOauths{
-			Github: githubConfigured,
-			Gitlab: gitlabConfigured,
-			Google: googleConfigured,
+			Github: config.OAuthGithubConfig != nil,
+			Gitlab: config.OAuthGitlabConfig != nil,
+			Google: config.OAuthGoogleConfig != nil,
 		},
 		Domains: domains,
 		Success: true,

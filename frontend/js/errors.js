@@ -27,4 +27,4 @@
     global.globalOKShow = function (text) {
         global.showGlobalMessage('#global-ok', text);
     };
-}(window.commento, document));
+}(window.comentario, document));

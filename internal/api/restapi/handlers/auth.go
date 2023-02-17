@@ -5,7 +5,7 @@ import (
 	"github.com/go-openapi/strfmt"
 	"gitlab.com/comentario/comentario/internal/api/models"
 	"gitlab.com/comentario/comentario/internal/api/restapi/operations"
-	"gitlab.com/comentario/comentario/internal/mail"
+	"gitlab.com/comentario/comentario/internal/config"
 	"gitlab.com/comentario/comentario/internal/svc"
 	"gitlab.com/comentario/comentario/internal/util"
 	"golang.org/x/crypto/bcrypt"
@@ -39,12 +39,7 @@ func forgotPassword(email strfmt.Email, entity models.Entity) error {
 		return util.ErrorMissingField
 	}
 
-	if !mail.SMTPConfigured {
-		return util.ErrorSmtpNotConfigured
-	}
-
 	var hex models.HexID
-	var name string
 	if entity == models.EntityOwner {
 		o, err := ownerGetByEmail(email)
 		if err != nil {
@@ -58,7 +53,6 @@ func forgotPassword(email strfmt.Email, entity models.Entity) error {
 			}
 		}
 		hex = o.OwnerHex
-		name = o.Name
 	} else {
 		commenter, err := commenterGetByEmail("commento", email)
 		if err != nil {
@@ -72,7 +66,6 @@ func forgotPassword(email strfmt.Email, entity models.Entity) error {
 			}
 		}
 		hex = commenter.CommenterHex
-		name = commenter.Name
 	}
 
 	resetHex, err := util.RandomHex(32)
@@ -91,7 +84,12 @@ func forgotPassword(email strfmt.Email, entity models.Entity) error {
 		return util.ErrorInternal
 	}
 
-	return mail.SMTPResetHex(string(email), name, resetHex)
+	return svc.TheEmailService.SendFromTemplate(
+		"",
+		string(email),
+		"Reset your password",
+		"reset-hex.gohtml",
+		map[string]any{"URL": config.URLFor("reset", map[string]string{"hex": resetHex})})
 }
 
 func resetPassword(resetHex models.HexID, password string) (models.Entity, error) {

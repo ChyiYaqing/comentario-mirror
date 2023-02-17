@@ -34,12 +34,12 @@ spec:
           image: {{ .Values.image.repository }}:{{ .Values.image.tag | default "latest" }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           env:
-            - name: COMENTARIO_PORT
+            - name: PORT
               value: '8080'
-            - name: COMENTARIO_ORIGIN
+            - name: BASE_URL
               value: 'https://{{ .Values.ingress.host }}/'
-            - name: COMENTARIO_FORBID_NEW_OWNERS
-              value: '{{ .Values.comentario.forbidNewOwners }}'
+            - name: ALLOW_NEW_OWNERS
+              value: '{{ .Values.comentario.allowNewOwners }}'
             - name: COMENTARIO_SMTP_HOST
               value: '{{ .Values.comentario.smtpHost }}'
             - name: COMENTARIO_SMTP_PORT

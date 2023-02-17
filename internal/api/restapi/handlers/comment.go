@@ -8,7 +8,7 @@ import (
 	"github.com/lib/pq"
 	"gitlab.com/comentario/comentario/internal/api/models"
 	"gitlab.com/comentario/comentario/internal/api/restapi/operations"
-	"gitlab.com/comentario/comentario/internal/mail"
+	"gitlab.com/comentario/comentario/internal/config"
 	"gitlab.com/comentario/comentario/internal/svc"
 	"gitlab.com/comentario/comentario/internal/util"
 	"time"
@@ -188,9 +188,9 @@ func CommentList(params operations.CommentListParams) middleware.Responder {
 		Comments:   comments,
 		ConfiguredOauths: map[string]bool{
 			"commento": domain.CommentoProvider,
-			"google":   googleConfigured && domain.GoogleProvider,
-			"github":   githubConfigured && domain.GithubProvider,
-			"gitlab":   gitlabConfigured && domain.GitlabProvider,
+			"google":   domain.GoogleProvider && config.OAuthGoogleConfig != nil,
+			"github":   domain.GithubProvider && config.OAuthGithubConfig != nil,
+			"gitlab":   domain.GitlabProvider && config.OAuthGitlabConfig != nil,
 			"sso":      domain.SsoProvider,
 		},
 		DefaultSortPolicy:     domain.DefaultSortPolicy,
@@ -258,10 +258,7 @@ func CommentNew(params operations.CommentNewParams) middleware.Responder {
 
 	// TODO: reuse html in commentNew and do only one markdown to HTML conversion?
 	html := util.MarkdownToHTML(*params.Body.Markdown)
-
-	if mail.SMTPConfigured {
-		go emailNotificationNew(domain, params.Body.Path, commenterHex, commentHex, html, *params.Body.ParentHex, state)
-	}
+	go emailNotificationNew(domain, params.Body.Path, commenterHex, commentHex, html, *params.Body.ParentHex, state)
 
 	// Succeeded
 	return operations.NewCommentNewOK().WithPayload(&operations.CommentNewOKBody{
@@ -509,7 +506,7 @@ func commentList(commenterHex models.HexID, domain string, path string, includeU
 }
 
 // Take `creationDate` as a param because comment import (from Disqus, for example) will require a custom time
-func commentNew(commenterHex models.HexID, domain string, path string, parentHex models.HexID, markdown string, state models.CommentState, creationDate strfmt.DateTime) (models.HexID, error) {
+func commentNew(commenterHex models.HexID, domain string, path string, parentHex models.ParentHexID, markdown string, state models.CommentState, creationDate strfmt.DateTime) (models.HexID, error) {
 	// path is allowed to be empty
 	if commenterHex == "" || domain == "" || parentHex == "" || markdown == "" || state == "" {
 		return "", util.ErrorMissingField

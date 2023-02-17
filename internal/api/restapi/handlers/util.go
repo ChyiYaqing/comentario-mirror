@@ -4,11 +4,14 @@ import (
 	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/op/go-logging"
+	"gitlab.com/comentario/comentario/internal/api/models"
 	"net/http"
 )
 
 // logger represents a package-wide logger instance
 var logger = logging.MustGetLogger("handlers")
+
+const RootParentHexID = models.ParentHexID("root") // The "root" parent hex
 
 // closeParentWindowResponse returns a responder that renders an HTML script closing the parent window
 func closeParentWindowResponse() middleware.Responder {

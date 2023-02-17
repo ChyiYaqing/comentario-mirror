@@ -5,7 +5,7 @@
     // invalid, they would be redirected back to the login page *after* the
     // cookie is deleted.
     global.loggedInRedirect = function () {
-        if (global.cookieGet('commentoOwnerToken') !== undefined) {
+        if (global.cookieGet('comentarioOwnerToken') !== undefined) {
             document.location = `${global.origin}/dashboard`;
         }
     };
@@ -19,4 +19,4 @@
         }
     };
 
-}(window.commento, document));
+}(window.comentario, document));

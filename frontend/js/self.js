@@ -3,7 +3,7 @@
 
     // Get self details.
     global.selfGet = function (callback) {
-        const json = {ownerToken: global.cookieGet('commentoOwnerToken')};
+        const json = {ownerToken: global.cookieGet('comentarioOwnerToken')};
 
         if (json.ownerToken === undefined) {
             document.location = `${global.origin}/login`;
@@ -12,7 +12,7 @@
 
         global.post(`${global.origin}/api/owner/self`, json, function (resp) {
             if (!resp.success || !resp.loggedIn) {
-                global.cookieDelete('commentoOwnerToken');
+                global.cookieDelete('comentarioOwnerToken');
                 document.location = `${global.origin}/login`;
                 return;
             }
@@ -22,4 +22,4 @@
         });
     };
 
-}(window.commento, document));
+}(window.comentario, document));

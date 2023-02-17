@@ -5,7 +5,7 @@ RUN apk add --no-cache --update bash git curl g++
 COPY . /go/src/comentario/
 WORKDIR /go/src/comentario/api
 RUN go mod tidy && \
-    CGO_ENABLED=0 go build -a -v -o "comentario" -ldflags "-X main.version=$(git describe --tags) -X main.date=$(date --iso-8601=seconds)"
+    CGO_ENABLED=0 go build -a -v -o "comentario" -ldflags "-w -s -X main.version=$(git describe --tags) -X main.date=$(date --iso-8601=seconds)"
 
 # frontend build (html, js, css, images, fonts)
 FROM node:18-alpine AS frontend-build

@@ -31,7 +31,7 @@ definitions:
       commenterHex:
         $ref: "#/definitions/hexId"
       parentHex:
-        type: string
+        $ref: "#/definitions/parentHexId"
       domain:
         type: string
       creationDate:
@@ -41,10 +41,12 @@ definitions:
         $ref: "#/definitions/commentState"
       deleted:
         type: boolean
+        x-omitempty: false
       direction:
         type: integer
       score:
         type: integer
+        x-omitempty: false
       markdown:
         type: string
       html:
@@ -195,6 +197,7 @@ definitions:
     description: Email notification policy
     type: string
     enum:
+      - all
       - none
       - pending-moderation
 
@@ -238,6 +241,12 @@ definitions:
         type: string
       title:
         type: string
+
+  parentHexId:
+    description: ID similar to HexID, consisting of 64 hex digits, which can also be 'root'
+    type: string
+    maxLength: 64
+    pattern: 'root|[0-9a-f]{64}'
 
   sortPolicy:
     description: Sort policy
@@ -533,7 +542,7 @@ paths:
               path:
                 type: string
               parentHex:
-                $ref: "#/definitions/hexId"
+                $ref: "#/definitions/parentHexId"
               markdown:
                 type: string
       responses:
@@ -1491,22 +1500,35 @@ paths:
             Location:
               type: string
 
-  /oauth/sso/redirect:
+  /oauth/sso/callback:
     get:
-      operationId: OauthSsoRedirect
-      # TODO add real parameters and responses
+      operationId: OauthSsoCallback
+      parameters:
+        - in: query
+          name: payload
+          required: true
+          type: string
+        - in: query
+          name: hmac
+          required: true
+          type: string
       responses:
         200:
           description: Success or failure response (see 'success' property)
           schema:
             $ref: "#/definitions/apiResponseBase"
 
-  /oauth/sso/callback:
+  /oauth/sso/redirect:
     get:
-      operationId: OauthSsoCallback
-      # TODO add real parameters and responses
+      operationId: OauthSsoRedirect
+      parameters:
+        - in: query
+          name: commenterToken
+          required: true
+          type: string
       responses:
-        200:
-          description: Success or failure response (see 'success' property)
-          schema:
-            $ref: "#/definitions/apiResponseBase"
+        302:
+          description: Redirect to authentication provider
+          headers:
+            Location:
+              type: string

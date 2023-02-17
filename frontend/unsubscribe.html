@@ -14,7 +14,7 @@
 
   <script>
   window.onload = function() {
-    window.commento.emailGet();
+    window.comentario.emailGet();
   };
   </script>
 
@@ -24,14 +24,14 @@
       <div class="loading">Loading...</div>
       <div class="checkboxes" style="display: none">
         <div class="email" id="email"></div>
-        <div class="row no-border commento-round-check indent" id="mod-checkbox">
+        <div class="row no-border comentario-round-check indent" id="mod-checkbox">
           <input type="checkbox" id="moderator" value="moderator">
           <label for="moderator">Email me moderator-related notifications</label>
           <div class="pitch">
             If you're a moderator of any domain, depending on each domain's moderator email policy, you may receive emails when a new comment is posted or when a comment is pending moderation. Unchecking this override those settings for you.
           </div>
         </div>
-        <div class="row no-border commento-round-check indent" id="reply-checkbox">
+        <div class="row no-border comentario-round-check indent" id="reply-checkbox">
           <input type="checkbox" id="reply" value="reply">
           <label for="reply">Email me when someone replies to my comment</label>
           <div class="pitch">
@@ -39,7 +39,7 @@
           </div>
         </div>
         <div class="msg"></div>
-        <button id="save-button" class="button" onclick="window.commento.emailUpdate()">Update</button>
+        <button id="save-button" class="button" onclick="window.comentario.emailUpdate()">Update</button>
       </div>
     </div>
   </div>

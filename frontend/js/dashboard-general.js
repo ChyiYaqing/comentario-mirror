@@ -26,7 +26,7 @@
 
         if (data.domains[data.cd].ssoSecret === '') {
             const json = {
-                ownerToken: global.cookieGet('commentoOwnerToken'),
+                ownerToken: global.cookieGet('comentarioOwnerToken'),
                 domain: data.domains[data.cd].domain,
             };
 
@@ -44,4 +44,4 @@
         }
     };
 
-}(window.commento, document));
+}(window.comentario, document));

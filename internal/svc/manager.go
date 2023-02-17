@@ -40,6 +40,9 @@ func (m *manager) Initialise() {
 	if err = TheCleanupService.Init(); err != nil {
 		logger.Fatalf("Failed to initialise cleanup service: %v", err)
 	}
+
+	// Start the version service
+	TheVersionCheckService.Init()
 }
 
 func (m *manager) Shutdown() {

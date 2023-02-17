@@ -2,8 +2,8 @@
     'use strict';
 
     global.logout = function () {
-        global.cookieDelete('commentoOwnerToken');
+        global.cookieDelete('comentarioOwnerToken');
         document.location = `${global.origin}/login`;
     };
 
-}(window.commento, document));
+}(window.comentario, document));

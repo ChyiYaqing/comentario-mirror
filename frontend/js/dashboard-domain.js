@@ -36,7 +36,7 @@
     // Creates a new domain.
     global.domainNewHandler = function () {
         const json = {
-            ownerToken: global.cookieGet('commentoOwnerToken'),
+            ownerToken: global.cookieGet('comentarioOwnerToken'),
             name: $('#new-domain-name').val(),
             domain: $('#new-domain-domain').val(),
         };
@@ -65,7 +65,7 @@
     // Refreshes the list of domains.
     global.domainRefresh = function (callback) {
         const json = {
-            ownerToken: global.cookieGet('commentoOwnerToken'),
+            ownerToken: global.cookieGet('comentarioOwnerToken'),
         };
 
         global.post(`${global.origin}/api/domain/list`, json, function (resp) {
@@ -112,7 +112,7 @@
     global.domainUpdate = function (domain, callback) {
         domain.requireIdentification = !domain.allowAnonymous;
         const json = {
-            ownerToken: global.cookieGet('commentoOwnerToken'),
+            ownerToken: global.cookieGet('comentarioOwnerToken'),
             domain: domain,
         };
 
@@ -131,7 +131,7 @@
     // Deletes a domain.
     global.domainDelete = function (domain, callback) {
         const json = {
-            ownerToken: global.cookieGet('commentoOwnerToken'),
+            ownerToken: global.cookieGet('comentarioOwnerToken'),
             domain: domain,
         };
 
@@ -150,7 +150,7 @@
     // Clears the comments in a domain.
     global.domainClear = function (domain, callback) {
         const json = {
-            ownerToken: global.cookieGet('commentoOwnerToken'),
+            ownerToken: global.cookieGet('comentarioOwnerToken'),
             domain: domain,
         };
 
@@ -165,4 +165,4 @@
             }
         });
     };
-}(window.commento, document));
+}(window.comentario, document));

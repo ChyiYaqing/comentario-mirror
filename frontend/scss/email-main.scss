@@ -1,20 +1,20 @@
 @import "colors-main";
 @import "common-main";
 
-.commento-email-container {
+.comentario-email-container {
     display: flex;
     justify-content: center;
     width: 100%;
     margin: 8px 0;
 
-    .commento-email {
+    .comentario-email {
         @extend .shadow;
         border-radius: 4px;
         background: $white;
         width: 100%;
         max-width: 400px;
 
-        .commento-input {
+        .comentario-input {
             display: inline;
             height: 40px;
             background: $white;
@@ -24,11 +24,11 @@
             width: calc(100% - 150px);
         }
 
-        .commento-input::placeholder {
+        .comentario-input::placeholder {
             color: $gray-5;
         }
 
-        .commento-email-button {
+        .comentario-email-button {
             height: 40px;
             min-width: 110px;
             float: right;
@@ -47,11 +47,11 @@
             width: unset;
         }
 
-        .commento-email-button:hover {
+        .comentario-email-button:hover {
             color: $blue-6;
         }
 
-        .commento-email-button:disabled {
+        .comentario-email-button:disabled {
             cursor: default;
             color: $gray-6;
         }

@@ -156,7 +156,7 @@ export class CommentCard extends Wrap<HTMLDivElement> {
 
         // Score
         this.eScore
-            ?.inner(c.score.toString())
+            ?.inner(c.score?.toString() || '0')
             .setClasses(c.score > 0, 'upvoted').setClasses(c.score < 0, 'downvoted');
         this.btnUpvote?.setClasses(c.direction > 0, 'upvoted');
         this.btnDownvote?.setClasses(c.direction < 0, 'downvoted');

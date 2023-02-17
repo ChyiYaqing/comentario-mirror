@@ -16,7 +16,7 @@
         const data = global.dashboard.$data;
         const email = $('#new-mod').val();
         const json = {
-            ownerToken: global.cookieGet('commentoOwnerToken'),
+            ownerToken: global.cookieGet('comentarioOwnerToken'),
             domain: data.domains[data.cd].domain,
             email: email,
         };
@@ -55,7 +55,7 @@
         const data = global.dashboard.$data;
 
         const json = {
-            ownerToken: global.cookieGet('commentoOwnerToken'),
+            ownerToken: global.cookieGet('comentarioOwnerToken'),
             domain: data.domains[data.cd].domain,
             email: email,
         };
@@ -81,4 +81,4 @@
         }
     };
 
-}(window.commento, document));
+}(window.comentario, document));

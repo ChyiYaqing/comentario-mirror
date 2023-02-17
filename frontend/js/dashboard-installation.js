@@ -18,4 +18,4 @@
         $('#installation-view').show();
     };
 
-}(window.commento, document));
+}(window.comentario, document));

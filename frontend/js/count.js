@@ -60,10 +60,10 @@
 
             href = href.replace(/^.*\/\/[^\/]+/, '');
 
-            if (href.endsWith('#commento')) {
+            if (href.endsWith('#comentario')) {
                 let pageId = attrGet(as[i], 'data-page-id');
                 if (pageId === undefined) {
-                    pageId = href.substring(0, href.indexOf('#commento'));
+                    pageId = href.substring(0, href.indexOf('#comentario'));
                     if (pageId.startsWith(parent.location.host)) {
                         pageId = pageId.substring(parent.location.host.length);
                     }
@@ -81,7 +81,7 @@
 
         post(`${origin}/api/comment/count`, json, function (resp) {
             if (!resp.success) {
-                console.log(`[commento] error: ${resp.message}`);
+                console.log(`[comentario] error: ${resp.message}`);
                 return;
             }
 

@@ -1,15 +1,30 @@
-package config
+package svc
 
 import (
 	"bytes"
 	"encoding/json"
+	"gitlab.com/comentario/comentario/internal/config"
 	"io"
 	"net/http"
 	"net/url"
 	"time"
 )
 
-func VersionCheckStart() error {
+// TheVersionCheckService is a global VersionCheckService implementation
+var TheVersionCheckService VersionCheckService = &versionCheckService{}
+
+// VersionCheckService is a service that periodically checks for version updates
+type VersionCheckService interface {
+	Init()
+}
+
+type versionCheckService struct{}
+
+func (svc *versionCheckService) Init() {
+	svc.run()
+}
+
+func (svc *versionCheckService) run() {
 	go func() {
 		printedError := false
 		errorCount := 0
@@ -19,14 +34,15 @@ func VersionCheckStart() error {
 			time.Sleep(5 * time.Minute)
 
 			data := url.Values{
-				"version": {AppVersion},
+				"version": {config.AppVersion},
 			}
 
 			var body []byte
 			var err error
 			func() {
 				var resp *http.Response
-				resp, err = http.Post("https://version.commento.io/api/check", "application/x-www-form-urlencoded", bytes.NewBufferString(data.Encode()))
+				// TODO version.comentario.io doesn't exist yet
+				resp, err = http.Post("https://version.comentario.io/api/check", "application/x-www-form-urlencoded", bytes.NewBufferString(data.Encode()))
 				if err != nil {
 					// Print the error only once; we don't want to spam the logs with this every five minutes
 					if !printedError && errorCount > 5 {
@@ -74,5 +90,4 @@ func VersionCheckStart() error {
 			printedError = false
 		}
 	}()
-	return nil
 }

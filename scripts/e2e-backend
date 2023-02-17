@@ -60,7 +60,7 @@ rm -rf "$build_dir/db" "$build_dir/templates"
 ((do_gen))   && go generate
 ((do_build)) &&
     rm -f "$build_dir/comentario" &&
-    CGO_ENABLED=0 go build -a -o "$build_dir/comentario" -ldflags "-X main.version=$(git describe --tags) -X main.date=$(date --iso-8601=seconds)"
+    go build -o "$build_dir/comentario" -ldflags "-X main.version=$(git describe --tags) -X main.date=$(date --iso-8601=seconds)"
 
 # (Re)start the database
 if ((do_db)); then
@@ -75,7 +75,6 @@ cp -r "$root_dir/db/" "$root_dir/templates/" "$build_dir"
 # Start the backend
 echo "Starting $build_dir/comentario"
 env \
-    'COMENTARIO_ORIGIN=http://localhost:8080' \
     'COMENTARIO_PORT=8080' \
     'COMENTARIO_POSTGRES=postgres://postgres:postgres@localhost:5432/comentario?sslmode=disable' \
     'COMENTARIO_GITHUB_KEY=a' \

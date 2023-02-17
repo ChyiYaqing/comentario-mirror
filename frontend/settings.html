@@ -22,9 +22,9 @@
 
   <script>
   window.onload = function() {
-    window.commento.selfGet(function() {
-      window.commento.vueConstruct(function() {
-        window.commento.settingShow("delete-owner");
+    window.comentario.selfGet(function() {
+      window.comentario.vueConstruct(function() {
+        window.comentario.settingShow("delete-owner");
       });
     });
   };
@@ -35,7 +35,7 @@
 
   <div id="settings" class="dashboard-container">
     <div class="pane-left">
-      <div class="pane-setting" id="delete-owner" onclick="window.commento.settingShow('delete-owner')">
+      <div class="pane-setting" id="delete-owner" onclick="window.comentario.settingShow('delete-owner')">
         <div class="pane-setting-inside">
           <div class="setting-title">Delete Account</div>
         </div>
@@ -81,7 +81,7 @@
         Are you absolutely sure you want to delete your account? This is a permanent change; there is no way to recover your account or any data associated with it.
       </div>
       <div class="modal-contents center">
-        <button id="delete-owner-button" class="button big-red-button" onclick="window.commento.deleteOwnerHandler()">Delete Account</button>
+        <button id="delete-owner-button" class="button big-red-button" onclick="window.comentario.deleteOwnerHandler()">Delete Account</button>
       </div>
     </div>
   </div>
