@@ -55,7 +55,7 @@ build:
     - go mod download
 
     # Make sure there are no formatting issues
-    - test -z "$(go fmt ./api/)"
+    - test -z "$(go fmt ./...)"
 
     # Run backend tests
     - go test -v ./...
