@@ -48,6 +48,7 @@ clusterIssuer: letsencrypt-staging
 
 comentario:
   allowNewOwners: 'false'
+  emailFrom: 'noreply@example.com'
   secretName: comentario-secrets
 
 resources:

@@ -46,7 +46,7 @@ spec:
             - name: SECRETS_FILE
               value: /comentario-secrets/secrets.yaml
             - name: EMAIL_FROM
-              value: '{{ .Values.comentario.smtpFromAddress }}'
+              value: '{{ .Values.comentario.emailFrom }}'
           ports:
             - name: http
               containerPort: 80
