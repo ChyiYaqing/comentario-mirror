@@ -19,4 +19,4 @@ RUN test -x /comentario/comentario && \
 
 WORKDIR /comentario/
 ENTRYPOINT ["/comentario/comentario"]
-CMD ["--port=80", "--static-path=/comentario", "--db-migration-path=/comentario/db", "--template-path=/comentario/templates", "-v"]
+CMD ["--host=0.0.0.0", "--port=80", "--static-path=/comentario", "--db-migration-path=/comentario/db", "--template-path=/comentario/templates", "-v"]
