@@ -36,8 +36,6 @@ spec:
           volumeMounts:
             - name: secrets-volume
               mountPath: /comentario-secrets
-          command:
-            -
           env:
             - name: PORT
               value: '80'
