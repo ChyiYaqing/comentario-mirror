@@ -51,6 +51,9 @@ build:
     #-------------------------------------------------------------------------------------------------------------------
     # Build the app
     #-------------------------------------------------------------------------------------------------------------------
+    # Generate code
+    - go generate
+
     # Fetch the dependencies explicitly (not exactly necessary, but it's easier to spot problems if we do)
     - go mod download
 
