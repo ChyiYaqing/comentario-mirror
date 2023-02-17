@@ -65,7 +65,7 @@ func forgotPassword(email strfmt.Email, entity models.Entity) error {
 				return util.ErrorInternal
 			}
 		}
-		hex = commenter.CommenterHex
+		hex = models.HexID(commenter.CommenterHex)
 	}
 
 	resetHex, err := util.RandomHex(32)

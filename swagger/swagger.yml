@@ -29,7 +29,7 @@ definitions:
       commentHex:
         $ref: "#/definitions/hexId"
       commenterHex:
-        $ref: "#/definitions/hexId"
+        $ref: "#/definitions/commenterHexId"
       parentHex:
         $ref: "#/definitions/parentHexId"
       domain:
@@ -58,7 +58,7 @@ definitions:
     type: object
     properties:
       commenterHex:
-        $ref: "#/definitions/hexId"
+        $ref: "#/definitions/commenterHexId"
       email:
         type: string
         format: email
@@ -76,11 +76,11 @@ definitions:
         type: boolean
         x-omitempty: false
 
-  commenterToken:
-    description: Authenticated commenter token, or 'anonymous' when commenting anonymously
+  commenterHexId:
+    description: Commenter hex ID/token, which can also be 'anonymous' when commenting anonymously
     type: string
-    minLength: 9 # 'anonymous'
-    maxLength: 64 # '57f7f460a42f203954860385675676996fde87df8e99c54e0f1669e55389f70e'
+    maxLength: 64
+    pattern: 'anonymous|[0-9a-f]{64}'
 
   commentState:
     description: Comment state
@@ -368,7 +368,7 @@ paths:
               - commentHex
             properties:
               commenterToken:
-                $ref: "#/definitions/commenterToken"
+                $ref: "#/definitions/commenterHexId"
               commentHex:
                 $ref: "#/definitions/hexId"
       responses:
@@ -424,7 +424,7 @@ paths:
               - commentHex
             properties:
               commenterToken:
-                $ref: "#/definitions/commenterToken"
+                $ref: "#/definitions/commenterHexId"
               commentHex:
                 $ref: "#/definitions/hexId"
       responses:
@@ -448,7 +448,7 @@ paths:
               - markdown
             properties:
               commenterToken:
-                $ref: "#/definitions/commenterToken"
+                $ref: "#/definitions/commenterHexId"
               commentHex:
                 $ref: "#/definitions/hexId"
               markdown:
@@ -481,7 +481,7 @@ paths:
               - domain
             properties:
               commenterToken:
-                $ref: "#/definitions/commenterToken"
+                $ref: "#/definitions/commenterHexId"
               domain:
                 type: string
               path:
@@ -536,7 +536,7 @@ paths:
               - markdown
             properties:
               commenterToken:
-                $ref: "#/definitions/commenterToken"
+                $ref: "#/definitions/commenterHexId"
               domain:
                 type: string
               path:
@@ -578,7 +578,7 @@ paths:
               - direction
             properties:
               commenterToken:
-                $ref: "#/definitions/commenterToken"
+                $ref: "#/definitions/commenterHexId"
               commentHex:
                 $ref: "#/definitions/hexId"
               direction:
@@ -627,7 +627,7 @@ paths:
               message:
                 type: string
               commenterToken:
-                $ref: "#/definitions/commenterToken"
+                $ref: "#/definitions/commenterHexId"
               commenter:
                 $ref: "#/definitions/commenter"
               email:
@@ -682,6 +682,7 @@ paths:
           in: query
           type: string
           required: true
+          maxLength: 64
       responses:
         200:
           description: Success or failure response (see 'success' property)
@@ -701,7 +702,7 @@ paths:
               - commenterToken
             properties:
               commenterToken:
-                $ref: "#/definitions/commenterToken"
+                $ref: "#/definitions/commenterHexId"
       responses:
         200:
           description: Success or failure response (see 'success' property)
@@ -733,7 +734,7 @@ paths:
               message:
                 type: string
               commenterToken:
-                $ref: "#/definitions/commenterToken"
+                $ref: "#/definitions/commenterHexId"
 
   /commenter/update:
     post:
@@ -750,7 +751,7 @@ paths:
               - email
             properties:
               commenterToken:
-                $ref: "#/definitions/commenterToken"
+                $ref: "#/definitions/commenterHexId"
               name:
                 type: string
               email:
@@ -849,6 +850,8 @@ paths:
           name: exportHex
           type: string
           required: true
+          minLength: 64
+          maxLength: 64
       responses:
         200:
           description: Export file
@@ -1185,19 +1188,23 @@ paths:
       parameters:
         - name: unsubscribeSecretHex
           in: query
-          required: true
           type: string
+          required: true
+          minLength: 64
+          maxLength: 64
         - name: action
           in: query
-          required: true
           type: string
+          required: true
           enum:
             - approve
             - delete
         - name: commentHex
           in: query
-          required: true
           type: string
+          required: true
+          minLength: 64
+          maxLength: 64
       responses:
         200:
           description: Success or failure response (see 'success' property)
@@ -1384,7 +1391,7 @@ paths:
               - attributes
             properties:
               commenterToken:
-                $ref: "#/definitions/commenterToken"
+                $ref: "#/definitions/commenterHexId"
               domain:
                 type: string
               path:
@@ -1407,12 +1414,12 @@ paths:
       parameters:
         - in: query
           name: state
-          required: true
           type: string
+          required: true
         - in: query
           name: code
-          required: true
           type: string
+          required: true
       responses:
         200:
           description: Success or failure response (see 'success' property)
@@ -1425,8 +1432,8 @@ paths:
       parameters:
         - in: query
           name: commenterToken
-          required: true
           type: string
+          required: true
       responses:
         302:
           description: Redirect to authentication provider
@@ -1440,12 +1447,12 @@ paths:
       parameters:
         - in: query
           name: state
-          required: true
           type: string
+          required: true
         - in: query
           name: code
-          required: true
           type: string
+          required: true
       responses:
         200:
           description: Success or failure response (see 'success' property)
@@ -1458,8 +1465,8 @@ paths:
       parameters:
         - in: query
           name: commenterToken
-          required: true
           type: string
+          required: true
       responses:
         302:
           description: Redirect to authentication provider
@@ -1473,12 +1480,12 @@ paths:
       parameters:
         - in: query
           name: state
-          required: true
           type: string
+          required: true
         - in: query
           name: code
-          required: true
           type: string
+          required: true
       responses:
         200:
           description: Success or failure response (see 'success' property)
@@ -1491,8 +1498,8 @@ paths:
       parameters:
         - in: query
           name: commenterToken
-          required: true
           type: string
+          required: true
       responses:
         302:
           description: Redirect to authentication provider
@@ -1506,12 +1513,12 @@ paths:
       parameters:
         - in: query
           name: payload
-          required: true
           type: string
+          required: true
         - in: query
           name: hmac
-          required: true
           type: string
+          required: true
       responses:
         200:
           description: Success or failure response (see 'success' property)
@@ -1524,8 +1531,8 @@ paths:
       parameters:
         - in: query
           name: commenterToken
-          required: true
           type: string
+          required: true
       responses:
         302:
           description: Redirect to authentication provider

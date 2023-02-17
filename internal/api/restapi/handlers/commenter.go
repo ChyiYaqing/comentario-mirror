@@ -75,7 +75,7 @@ func CommenterNew(params operations.CommenterNewParams) middleware.Responder {
 }
 
 func CommenterPhoto(params operations.CommenterPhotoParams) middleware.Responder {
-	c, err := commenterGetByHex(models.HexID(params.CommenterHex))
+	c, err := commenterGetByHex(models.CommenterHexID(params.CommenterHex))
 	if err != nil {
 		return operations.NewGenericNotFound()
 	}
@@ -175,7 +175,7 @@ func CommenterUpdate(params operations.CommenterUpdateParams) middleware.Respond
 	return operations.NewCommenterUpdateOK().WithPayload(&models.APIResponseBase{Success: true})
 }
 
-func commenterGetByCommenterToken(commenterToken models.CommenterToken) (*models.Commenter, error) {
+func commenterGetByCommenterToken(commenterToken models.CommenterHexID) (*models.Commenter, error) {
 	if commenterToken == "" {
 		return nil, util.ErrorMissingField
 	}
@@ -220,7 +220,7 @@ func commenterGetByEmail(provider string, email strfmt.Email) (*models.Commenter
 	return &c, nil
 }
 
-func commenterGetByHex(commenterHex models.HexID) (*models.Commenter, error) {
+func commenterGetByHex(commenterHex models.CommenterHexID) (*models.Commenter, error) {
 	if commenterHex == "" {
 		return nil, util.ErrorMissingField
 	}
@@ -237,7 +237,7 @@ func commenterGetByHex(commenterHex models.HexID) (*models.Commenter, error) {
 	return &c, nil
 }
 
-func commenterLogin(email strfmt.Email, password string) (models.CommenterToken, error) {
+func commenterLogin(email strfmt.Email, password string) (models.CommenterHexID, error) {
 	if email == "" || password == "" {
 		return "", util.ErrorMissingField
 	}
@@ -273,10 +273,10 @@ func commenterLogin(email strfmt.Email, password string) (models.CommenterToken,
 		return "", util.ErrorInternal
 	}
 
-	return models.CommenterToken(commenterToken), nil
+	return models.CommenterHexID(commenterToken), nil
 }
 
-func commenterNew(email strfmt.Email, name string, link string, photo string, provider string, password string) (models.HexID, error) {
+func commenterNew(email strfmt.Email, name string, link string, photo string, provider string, password string) (models.CommenterHexID, error) {
 	if email == "" || name == "" || link == "" || photo == "" || provider == "" {
 		return "", util.ErrorMissingField
 	}
@@ -320,7 +320,7 @@ func commenterNew(email strfmt.Email, name string, link string, photo string, pr
 		return "", util.ErrorInternal
 	}
 
-	return models.HexID(commenterHex), nil
+	return models.CommenterHexID(commenterHex), nil
 }
 
 func commentersRowScan(s util.Scanner, c *models.Commenter) error {
@@ -335,7 +335,7 @@ func commentersRowScan(s util.Scanner, c *models.Commenter) error {
 	)
 }
 
-func commenterSessionUpdate(commenterToken models.HexID, commenterHex models.HexID) error {
+func commenterSessionUpdate(commenterToken models.HexID, commenterHex models.CommenterHexID) error {
 	if commenterToken == "" || commenterHex == "" {
 		return util.ErrorMissingField
 	}
@@ -348,7 +348,7 @@ func commenterSessionUpdate(commenterToken models.HexID, commenterHex models.Hex
 	return nil
 }
 
-func commenterTokenNew() (models.CommenterToken, error) {
+func commenterTokenNew() (models.CommenterHexID, error) {
 	commenterToken, err := util.RandomHex(32)
 	if err != nil {
 		logger.Errorf("cannot create commenterToken: %v", err)
@@ -364,10 +364,10 @@ func commenterTokenNew() (models.CommenterToken, error) {
 		return "", util.ErrorInternal
 	}
 
-	return models.CommenterToken(commenterToken), nil
+	return models.CommenterHexID(commenterToken), nil
 }
 
-func commenterUpdate(commenterHex models.HexID, email strfmt.Email, name string, link string, photo string, provider string) error {
+func commenterUpdate(commenterHex models.CommenterHexID, email strfmt.Email, name string, link string, photo string, provider string) error {
 	if email == "" || name == "" || provider == "" {
 		return util.ErrorMissingField
 	}
@@ -378,7 +378,7 @@ func commenterUpdate(commenterHex models.HexID, email strfmt.Email, name string,
 	}
 
 	_, err := svc.DB.Exec(
-		"update commenters set email = $3, name = $4, link = $5, photo = $6 where commenterHex = $1 and provider = $2;",
+		"update commenters set email=$3, name=$4, link=$5, photo=$6 where commenterHex=$1 and provider=$2;",
 		commenterHex,
 		provider,
 		email,

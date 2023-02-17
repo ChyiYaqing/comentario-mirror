@@ -264,7 +264,7 @@ func domainImportCommento(domain string, url string) (int, error) {
 
 	// Check if imported commentedHex or email exists, creating a map of
 	// commenterHex (old hex, new hex)
-	commenterHex := map[models.HexID]models.HexID{"anonymous": "anonymous"}
+	commenterHex := map[models.CommenterHexID]models.CommenterHexID{AnonymousCommenterHexID: AnonymousCommenterHexID}
 	for _, commenter := range data.Commenters {
 		c, err := commenterGetByEmail("commento", commenter.Email)
 		if err != nil && err != util.ErrorNoSuchCommenter {
@@ -422,7 +422,7 @@ func domainImportDisqus(domain string, url string) (int, error) {
 
 	// Map Disqus emails to commenterHex (if not available, create a new one
 	// with a random password that can be reset later).
-	commenterHex := map[strfmt.Email]models.HexID{}
+	commenterHex := map[strfmt.Email]models.CommenterHexID{}
 	for _, post := range x.Posts {
 		if post.IsDeleted || post.IsSpam {
 			continue
@@ -466,7 +466,7 @@ func domainImportDisqus(domain string, url string) (int, error) {
 			continue
 		}
 
-		cHex := models.HexID("anonymous")
+		cHex := AnonymousCommenterHexID
 		if !post.Author.IsAnonymous {
 			cHex = commenterHex[strfmt.Email(post.Author.Username+"@disqus.com")]
 		}
@@ -484,7 +484,7 @@ func domainImportDisqus(domain string, url string) (int, error) {
 			pathStrip(threads[post.ThreadId.Id].URL),
 			parentHex,
 			html2md.Convert(post.Message),
-			"approved",
+			models.CommentStateApproved,
 			strfmt.DateTime(post.CreationDate))
 		if err != nil {
 			return numImported, err

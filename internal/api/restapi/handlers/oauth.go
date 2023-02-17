@@ -29,7 +29,7 @@ type ssoPayload struct {
 }
 
 func OauthGithubCallback(params operations.OauthGithubCallbackParams) middleware.Responder {
-	commenterToken := models.CommenterToken(params.State)
+	commenterToken := models.CommenterHexID(params.State)
 
 	_, err := commenterGetByCommenterToken(commenterToken)
 	if err != nil && err != util.ErrorNoSuchToken {
@@ -89,7 +89,7 @@ func OauthGithubCallback(params operations.OauthGithubCallbackParams) middleware
 		return oauthFailure(err)
 	}
 
-	var commenterHex models.HexID
+	var commenterHex models.CommenterHexID
 	if err == util.ErrorNoSuchCommenter {
 		commenterHex, err = commenterNew(strfmt.Email(email), name, link, photo, "github", "")
 		if err != nil {
@@ -116,7 +116,7 @@ func OauthGithubRedirect(params operations.OauthGithubRedirectParams) middleware
 		return oauthNotConfigured()
 	}
 
-	_, err := commenterGetByCommenterToken(models.CommenterToken(params.CommenterToken))
+	_, err := commenterGetByCommenterToken(models.CommenterHexID(params.CommenterToken))
 	if err != nil && err != util.ErrorNoSuchToken {
 		return oauthFailure(err)
 	}
@@ -126,7 +126,7 @@ func OauthGithubRedirect(params operations.OauthGithubRedirectParams) middleware
 }
 
 func OauthGitlabCallback(params operations.OauthGitlabCallbackParams) middleware.Responder {
-	commenterToken := models.CommenterToken(params.State)
+	commenterToken := models.CommenterHexID(params.State)
 
 	_, err := commenterGetByCommenterToken(commenterToken)
 	if err != nil && err != util.ErrorNoSuchToken {
@@ -182,7 +182,7 @@ func OauthGitlabCallback(params operations.OauthGitlabCallbackParams) middleware
 		return oauthFailure(err)
 	}
 
-	var commenterHex models.HexID
+	var commenterHex models.CommenterHexID
 
 	if err == util.ErrorNoSuchCommenter {
 		commenterHex, err = commenterNew(strfmt.Email(email), name, link, photo, "gitlab", "")
@@ -211,7 +211,7 @@ func OauthGitlabRedirect(params operations.OauthGitlabRedirectParams) middleware
 		return oauthNotConfigured()
 	}
 
-	_, err := commenterGetByCommenterToken(models.CommenterToken(params.CommenterToken))
+	_, err := commenterGetByCommenterToken(models.CommenterHexID(params.CommenterToken))
 	if err != nil && err != util.ErrorNoSuchToken {
 		return oauthFailure(err)
 	}
@@ -221,7 +221,7 @@ func OauthGitlabRedirect(params operations.OauthGitlabRedirectParams) middleware
 }
 
 func OauthGoogleCallback(params operations.OauthGoogleCallbackParams) middleware.Responder {
-	commenterToken := models.CommenterToken(params.State)
+	commenterToken := models.CommenterHexID(params.State)
 
 	_, err := commenterGetByCommenterToken(commenterToken)
 	if err != nil && err != util.ErrorNoSuchToken {
@@ -269,7 +269,7 @@ func OauthGoogleCallback(params operations.OauthGoogleCallbackParams) middleware
 		photo = user["picture"].(string)
 	}
 
-	var commenterHex models.HexID
+	var commenterHex models.CommenterHexID
 
 	if err == util.ErrorNoSuchCommenter {
 		commenterHex, err = commenterNew(strfmt.Email(email), name, link, photo, "google", "")
@@ -298,7 +298,7 @@ func OauthGoogleRedirect(params operations.OauthGoogleRedirectParams) middleware
 		return oauthNotConfigured()
 	}
 
-	_, err := commenterGetByCommenterToken(models.CommenterToken(params.CommenterToken))
+	_, err := commenterGetByCommenterToken(models.CommenterHexID(params.CommenterToken))
 	if err != nil && err != util.ErrorNoSuchToken {
 		return oauthFailure(err)
 	}
@@ -377,7 +377,7 @@ func OauthSsoCallback(params operations.OauthSsoCallbackParams) middleware.Respo
 		return oauthFailure(err)
 	}
 
-	var commenterHex models.HexID
+	var commenterHex models.CommenterHexID
 	if err == util.ErrorNoSuchCommenter {
 		if commenterHex, err = commenterNew(strfmt.Email(payload.Email), payload.Name, payload.Link, payload.Photo, "sso:"+domain, ""); err != nil {
 			return oauthFailure(err)
@@ -406,7 +406,7 @@ func OauthSsoRedirect(params operations.OauthSsoRedirectParams) middleware.Respo
 	}
 	domainName := domainURL.Host
 
-	if _, err = commenterGetByCommenterToken(models.CommenterToken(params.CommenterToken)); err != nil && err != util.ErrorNoSuchToken {
+	if _, err = commenterGetByCommenterToken(models.CommenterHexID(params.CommenterToken)); err != nil && err != util.ErrorNoSuchToken {
 		return oauthFailure(err)
 	}
 
@@ -494,12 +494,12 @@ func oauthNotConfigured() middleware.Responder {
 	return operations.NewGenericBadRequest().WithPayload(&operations.GenericBadRequestBody{Details: util.ErrorOAuthNotConfigured.Error()})
 }
 
-func ssoTokenExtract(token string) (string, models.CommenterToken, error) {
+func ssoTokenExtract(token string) (string, models.CommenterHexID, error) {
 	statement := "select domain, commenterToken from ssoTokens where token = $1;"
 	row := svc.DB.QueryRow(statement, token)
 
 	var domain string
-	var commenterToken models.CommenterToken
+	var commenterToken models.CommenterHexID
 	if err := row.Scan(&domain, &commenterToken); err != nil {
 		return "", "", util.ErrorNoSuchToken
 	}

@@ -147,30 +147,27 @@ func emailGetByUnsubscribeSecretHex(unsubscribeSecretHex models.HexID) (*models.
 	return &e, nil
 }
 
-func emailNotificationModerator(d *models.Domain, path string, title string, commenterHex models.HexID, commentHex models.HexID, html string, state models.CommentState) {
-	var commenterName string
+func emailNotificationModerator(d *models.Domain, path string, title string, commenterHex models.CommenterHexID, commentHex models.HexID, html string, state models.CommentState) {
+	commenterName := "Anonymous"
 	var commenterEmail strfmt.Email
-	if commenterHex == "anonymous" {
-		commenterName = "Anonymous"
-	} else {
+	if commenterHex != AnonymousCommenterHexID {
 		c, err := commenterGetByHex(commenterHex)
 		if err != nil {
 			logger.Errorf("cannot get commenter to send email notification: %v", err)
 			return
 		}
-
 		commenterName = c.Name
 		commenterEmail = c.Email
 	}
 
 	kind := d.EmailNotificationPolicy
-	if state != "approved" {
-		kind = "pending-moderation"
+	if state != models.CommentStateApproved {
+		kind = models.EmailNotificationPolicyPendingDashModeration
 	}
 
 	for _, m := range d.Moderators {
 		// Do not email the commenting moderator their own comment.
-		if commenterHex != "anonymous" && m.Email == commenterEmail {
+		if commenterHex != AnonymousCommenterHexID && m.Email == commenterEmail {
 			continue
 		}
 
@@ -196,22 +193,17 @@ func emailNotificationModerator(d *models.Domain, path string, title string, com
 	}
 }
 
-func emailNotificationReply(d *models.Domain, path string, title string, commenterHex models.HexID, commentHex models.HexID, html string, parentHex models.ParentHexID) {
+func emailNotificationReply(d *models.Domain, path string, title string, commenterHex models.CommenterHexID, commentHex models.HexID, html string, parentHex models.ParentHexID) {
 	row := svc.DB.QueryRow("select commenterHex from comments where commentHex = $1;", parentHex)
-	var parentCommenterHex models.HexID
+	var parentCommenterHex models.CommenterHexID
 	err := row.Scan(&parentCommenterHex)
 	if err != nil {
 		logger.Errorf("cannot scan commenterHex and parentCommenterHex: %v", err)
 		return
 	}
 
-	// No reply notification emails for anonymous users.
-	if parentCommenterHex == "anonymous" {
-		return
-	}
-
-	// No reply notification email for self replies.
-	if parentCommenterHex == commenterHex {
+	// No reply notification emails for anonymous users and self replies
+	if parentCommenterHex == AnonymousCommenterHexID || parentCommenterHex == commenterHex {
 		return
 	}
 
@@ -221,10 +213,8 @@ func emailNotificationReply(d *models.Domain, path string, title string, comment
 		return
 	}
 
-	var commenterName string
-	if commenterHex == "anonymous" {
-		commenterName = "Anonymous"
-	} else {
+	commenterName := "Anonymous"
+	if commenterHex != AnonymousCommenterHexID {
 		c, err := commenterGetByHex(commenterHex)
 		if err != nil {
 			logger.Errorf("cannot get commenter to send email notification: %v", err)
@@ -244,7 +234,7 @@ func emailNotificationReply(d *models.Domain, path string, title string, comment
 	}
 }
 
-func emailNotificationNew(d *models.Domain, path string, commenterHex models.HexID, commentHex models.HexID, html string, parentHex models.ParentHexID, state models.CommentState) {
+func emailNotificationNew(d *models.Domain, path string, commenterHex models.CommenterHexID, commentHex models.HexID, html string, parentHex models.ParentHexID, state models.CommentState) {
 	p, err := pageGet(d.Domain, path)
 	if err != nil {
 		logger.Errorf("cannot get page to send email notification: %v", err)

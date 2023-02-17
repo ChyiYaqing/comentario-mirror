@@ -92,7 +92,7 @@ func CommentDelete(params operations.CommentDeleteParams) middleware.Responder {
 		return operations.NewCommentDeleteOK().WithPayload(&models.APIResponseBase{Message: util.ErrorNotModerator.Error()})
 	}
 
-	if err = commentDelete(*params.Body.CommentHex, commenter.CommenterHex); err != nil {
+	if err = commentDelete(*params.Body.CommentHex, models.HexID(commenter.CommenterHex)); err != nil {
 		return operations.NewCommentDeleteOK().WithPayload(&models.APIResponseBase{Message: err.Error()})
 	}
 
@@ -139,17 +139,16 @@ func CommentList(params operations.CommentListParams) middleware.Responder {
 		return operations.NewCommentListOK().WithPayload(&operations.CommentListOKBody{Message: err.Error()})
 	}
 
-	var commenterHex models.HexID = "anonymous"
+	var commenterHex = AnonymousCommenterHexID
 	isModerator := false
 	modList := map[strfmt.Email]bool{}
 
-	if *params.Body.CommenterToken != "anonymous" {
+	if *params.Body.CommenterToken != AnonymousCommenterHexID {
 		c, err := commenterGetByCommenterToken(*params.Body.CommenterToken)
 		if err != nil {
 			if err != util.ErrorNoSuchToken {
 				return operations.NewCommentListOK().WithPayload(&operations.CommentListOKBody{Message: err.Error()})
 			}
-			commenterHex = "anonymous"
 		} else {
 			commenterHex = c.CommenterHex
 		}
@@ -173,13 +172,13 @@ func CommentList(params operations.CommentListParams) middleware.Responder {
 		return operations.NewCommentListOK().WithPayload(&operations.CommentListOKBody{Message: err.Error()})
 	}
 
-	_commenters := map[models.HexID]*models.Commenter{}
-	for commenterHex, cr := range commenters {
+	_commenters := map[models.CommenterHexID]*models.Commenter{}
+	for ch, cr := range commenters {
 		if _, ok := modList[cr.Email]; ok {
 			cr.IsModerator = true
 		}
 		cr.Email = ""
-		_commenters[commenterHex] = cr
+		_commenters[ch] = cr
 	}
 
 	return operations.NewCommentListOK().WithPayload(&operations.CommentListOKBody{
@@ -214,16 +213,16 @@ func CommentNew(params operations.CommentNewParams) middleware.Responder {
 		return operations.NewCommentNewOK().WithPayload(&operations.CommentNewOKBody{Message: util.ErrorDomainFrozen.Error()})
 	}
 
-	if domain.RequireIdentification && *params.Body.CommenterToken == "anonymous" {
+	if domain.RequireIdentification && *params.Body.CommenterToken == AnonymousCommenterHexID {
 		return operations.NewCommentNewOK().WithPayload(&operations.CommentNewOKBody{Message: util.ErrorNotAuthorised.Error()})
 	}
 
-	commenterHex := models.HexID("anonymous")
+	commenterHex := AnonymousCommenterHexID
 	commenterEmail := strfmt.Email("")
 	commenterName := "Anonymous"
 	commenterLink := ""
 	var isModerator bool
-	if *params.Body.CommenterToken != "anonymous" {
+	if *params.Body.CommenterToken != AnonymousCommenterHexID {
 		c, err := commenterGetByCommenterToken(*params.Body.CommenterToken)
 		if err != nil {
 			return operations.NewCommentNewOK().WithPayload(&operations.CommentNewOKBody{Message: err.Error()})
@@ -243,7 +242,7 @@ func CommentNew(params operations.CommentNewParams) middleware.Responder {
 	var state models.CommentState
 	if isModerator {
 		state = models.CommentStateApproved
-	} else if domain.RequireModeration || commenterHex == "anonymous" && domain.ModerateAllAnonymous {
+	} else if domain.RequireModeration || commenterHex == AnonymousCommenterHexID && domain.ModerateAllAnonymous {
 		state = models.CommentStateUnapproved
 	} else if domain.AutoSpamFilter && checkForSpam(*params.Body.Domain, util.UserIP(params.HTTPRequest), util.UserAgent(params.HTTPRequest), commenterName, string(commenterEmail), commenterLink, *params.Body.Markdown) {
 		state = models.CommentStateFlagged
@@ -270,7 +269,7 @@ func CommentNew(params operations.CommentNewParams) middleware.Responder {
 }
 
 func CommentVote(params operations.CommentVoteParams) middleware.Responder {
-	if *params.Body.CommenterToken == "anonymous" {
+	if *params.Body.CommenterToken == AnonymousCommenterHexID {
 		return operations.NewCommentVoteOK().WithPayload(&models.APIResponseBase{Message: util.ErrorUnauthorisedVote.Error()})
 	}
 
@@ -412,7 +411,7 @@ func commentGetByCommentHex(commentHex models.HexID) (*models.Comment, error) {
 	return &c, nil
 }
 
-func commentList(commenterHex models.HexID, domain string, path string, includeUnapproved bool) ([]*models.Comment, map[models.HexID]*models.Commenter, error) {
+func commentList(commenterHex models.CommenterHexID, domain string, path string, includeUnapproved bool) ([]*models.Comment, map[models.CommenterHexID]*models.Commenter, error) {
 	// Path can be empty
 	if commenterHex == "" || domain == "" {
 		return nil, nil, util.ErrorMissingField
@@ -423,7 +422,7 @@ func commentList(commenterHex models.HexID, domain string, path string, includeU
 		"where comments.domain = $1 and comments.path = $2 and comments.deleted = false"
 
 	if !includeUnapproved {
-		if commenterHex == "anonymous" {
+		if commenterHex == AnonymousCommenterHexID {
 			statement += " and state = 'approved'"
 		} else {
 			statement += " and (state = 'approved' or commenterHex = $3)"
@@ -435,7 +434,7 @@ func commentList(commenterHex models.HexID, domain string, path string, includeU
 	var rows *sql.Rows
 	var err error
 
-	if !includeUnapproved && commenterHex != "anonymous" {
+	if !includeUnapproved && commenterHex != AnonymousCommenterHexID {
 		rows, err = svc.DB.Query(statement, domain, path, commenterHex)
 	} else {
 		rows, err = svc.DB.Query(statement, domain, path)
@@ -447,9 +446,9 @@ func commentList(commenterHex models.HexID, domain string, path string, includeU
 	}
 	defer rows.Close()
 
-	commenters := map[models.HexID]*models.Commenter{
-		"anonymous": {
-			CommenterHex: "anonymous",
+	commenters := map[models.CommenterHexID]*models.Commenter{
+		AnonymousCommenterHexID: {
+			CommenterHex: AnonymousCommenterHexID,
 			Email:        "undefined",
 			Name:         "Anonymous",
 			Link:         "undefined",
@@ -474,7 +473,7 @@ func commentList(commenterHex models.HexID, domain string, path string, includeU
 			return nil, nil, util.ErrorInternal
 		}
 
-		if commenterHex != "anonymous" {
+		if commenterHex != AnonymousCommenterHexID {
 			statement = `select direction from votes where commentHex=$1 and commenterHex=$2;`
 			row := svc.DB.QueryRow(statement, comment.CommentHex, commenterHex)
 			if err = row.Scan(&comment.Direction); err != nil {
@@ -506,7 +505,7 @@ func commentList(commenterHex models.HexID, domain string, path string, includeU
 }
 
 // Take `creationDate` as a param because comment import (from Disqus, for example) will require a custom time
-func commentNew(commenterHex models.HexID, domain string, path string, parentHex models.ParentHexID, markdown string, state models.CommentState, creationDate strfmt.DateTime) (models.HexID, error) {
+func commentNew(commenterHex models.CommenterHexID, domain string, path string, parentHex models.ParentHexID, markdown string, state models.CommentState, creationDate strfmt.DateTime) (models.HexID, error) {
 	// path is allowed to be empty
 	if commenterHex == "" || domain == "" || parentHex == "" || markdown == "" || state == "" {
 		return "", util.ErrorMissingField
@@ -567,14 +566,14 @@ func commentsRowScan(s util.Scanner, c *models.Comment) error {
 	)
 }
 
-func commentVote(commenterHex models.HexID, commentHex models.HexID, direction int) error {
+func commentVote(commenterHex models.CommenterHexID, commentHex models.HexID, direction int) error {
 	if commentHex == "" || commenterHex == "" {
 		return util.ErrorMissingField
 	}
 
 	row := svc.DB.QueryRow("select commenterHex from comments where commentHex = $1;", commentHex)
 
-	var authorHex models.HexID
+	var authorHex models.CommenterHexID
 	if err := row.Scan(&authorHex); err != nil {
 		logger.Errorf("error selecting authorHex for vote")
 		return util.ErrorInternal

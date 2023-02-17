@@ -11,7 +11,8 @@ import (
 // logger represents a package-wide logger instance
 var logger = logging.MustGetLogger("handlers")
 
-const RootParentHexID = models.ParentHexID("root") // The "root" parent hex
+const RootParentHexID = models.ParentHexID("root")                 // The "root" parent hex
+const AnonymousCommenterHexID = models.CommenterHexID("anonymous") // The "anonymous" commenter hex ID or token
 
 // closeParentWindowResponse returns a responder that renders an HTML script closing the parent window
 func closeParentWindowResponse() middleware.Responder {

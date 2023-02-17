@@ -620,7 +620,7 @@ func domainUpdate(d *models.Domain) error {
 	return nil
 }
 
-func domainViewRecord(domain string, commenterHex models.HexID) {
+func domainViewRecord(domain string, commenterHex models.CommenterHexID) {
 	_, err := svc.DB.Exec(
 		"insert into views(domain, commenterHex, viewDate) values ($1, $2, $3);",
 		domain,
