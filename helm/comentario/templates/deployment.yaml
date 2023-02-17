@@ -36,9 +36,11 @@ spec:
           volumeMounts:
             - name: secrets-volume
               mountPath: /comentario-secrets
+          command:
+            -
           env:
             - name: PORT
-              value: '8080'
+              value: '80'
             - name: BASE_URL
               value: 'https://{{ .Values.ingress.host }}/'
             - name: ALLOW_NEW_OWNERS
@@ -49,7 +51,7 @@ spec:
               value: '{{ .Values.comentario.smtpFromAddress }}'
           ports:
             - name: http
-              containerPort: 8080
+              containerPort: 80
               protocol: TCP
           livenessProbe:
             httpGet:

@@ -17,7 +17,6 @@ RUN test -x /comentario/comentario && \
     test -s /comentario/js/comentario.js && \
     test -d /comentario/templates
 
-EXPOSE 8080
 WORKDIR /comentario/
 ENTRYPOINT ["/comentario/comentario"]
-CMD ["--static-path=/comentario", "--db-migration-path=/comentario/db", "--template-path=/comentario/templates"]
+CMD ["--port=80", "--static-path=/comentario", "--db-migration-path=/comentario/db", "--template-path=/comentario/templates", "-v"]
