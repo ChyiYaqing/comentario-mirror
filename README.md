@@ -45,12 +45,45 @@ There are quite a few major points (and counting):
 1. Comentario is installed using the [Helm package manager](https://helm.sh/) 3.x.
 2. We're using [certmanager](https://cert-manager.io/) for dealing with SSL certificates in the cluster: requesting and renewing.
 3. Once you have `certmanager` up and running, create a new `ClusterIssuer` for Let's Encrypt. Or, even better, two issuers: `letsencrypt-staging` for experimenting with your installation (so that you don't hit Let's Encrypt usage limits) and `letsencrypt-prod` for production usage.
-4. The Helm chart does not include PostgreSQL: it has to be installed separately (have a look at [.gitlab-ci.yml](.gitlab-ci.yml) for inspiration).
+
+All examples below use the same namespace, referred to as `$NAMESPACE`. If it doesn't exist yet, create it with:
+
+```bash
+kubectl create namespace $NAMESPACE
+```
+
+#### Installing PostgreSQL
+
+Our Helm chart does not include PostgreSQL: it has to be installed separately. The easiest way to get it up and running is using a Helm chart by Bitnami.
+
+**Step 1**: Before installing PostgreSQL it's recommended to manually create a storage volume (PVC): you can use the file [postgres-pvc.yaml](k8s/postgres-pvc.yaml) for creating a volume of 1Gi:
+
+```bash
+kubectl create -f k8s/postgres-pvc.yaml -n $NAMESPACE
+```
+
+**Step 2**: install PostgreSQL server:
+
+```bash
+helm repo add bitnami https://charts.bitnami.com/bitnami
+helm repo update
+helm install \
+    --namespace $NAMESPACE \
+    --set "image.repository=postgres" \
+    --set "image.tag=15-alpine" \
+    --set "primary.persistence.existingClaim=comentario-postgres-pvc" \
+    --set "global.postgresql.auth.postgresPassword=SECR3t" \
+    --set "global.postgresql.auth.database=comentario" \
+    --wait \
+    comentario-postgres \
+    bitnami/postgresql
+```
+
+After this, a new release called `comentario-postgres` will be installed, with PostgreSQL version `15-alpine` (adjust values as needed), user `postgres` and password `SECR3t`.
 
 #### Deployment
 
-1. Create a new namespace (in these examples I'll refer to it as `$NAMESPACE`): `kubectl create namespace $NAMESPACE`
-2. Edit the values in `k8s/comentario-secrets.yaml` as required. Don't forget to base64-encode the values as the last step.
+2. Edit the values in `k8s/comentario-secrets.yaml` as required and copy-paste its contents into `comentario-secrets.yaml` (indent with 4 spaces)
 3. Create the secret: `kubectl create -f k8s/comentario-secrets.yaml -n $NAMESPACE`
 4. Install Comentario using Helm (adjust the values as you see fit):
 ```bash

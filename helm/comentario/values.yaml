@@ -48,9 +48,6 @@ clusterIssuer: letsencrypt-staging
 
 comentario:
   allowNewOwners: 'false'
-  smtpHost: mail.example.com
-  smtpPort: 587
-  smtpFromAddress: noreply@example.com
   secretName: comentario-secrets
 
 resources:

@@ -36,7 +36,7 @@ func (svc *emailService) Send(replyTo, recipient, subject, htmlMessage string) e
 
 func (svc *emailService) SendFromTemplate(replyTo, recipient, subject, templateFile string, templateData map[string]any) error {
 	// Load and parse the template
-	filename := templatePath(templateFile)
+	filename := path.Join(config.CLIFlags.TemplatePath, templateFile)
 	t, err := template.ParseFiles(filename)
 	if err != nil {
 		logger.Errorf("Failed to parse HTML template file %s: %v", filename, err)
@@ -52,8 +52,4 @@ func (svc *emailService) SendFromTemplate(replyTo, recipient, subject, templateF
 
 	// Send the mail
 	return svc.Send(replyTo, recipient, subject, bufHTML.String())
-}
-
-func templatePath(filename string) string {
-	return path.Join(config.CLIFlags.StaticPath, "templates", filename)
 }

@@ -33,6 +33,9 @@ spec:
             {{- toYaml .Values.securityContext | nindent 12 }}
           image: {{ .Values.image.repository }}:{{ .Values.image.tag | default "latest" }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          volumeMounts:
+            - name: secrets-volume
+              mountPath: /comentario-secrets
           env:
             - name: PORT
               value: '8080'
@@ -40,58 +43,10 @@ spec:
               value: 'https://{{ .Values.ingress.host }}/'
             - name: ALLOW_NEW_OWNERS
               value: '{{ .Values.comentario.allowNewOwners }}'
-            - name: COMENTARIO_SMTP_HOST
-              value: '{{ .Values.comentario.smtpHost }}'
-            - name: COMENTARIO_SMTP_PORT
-              value: '{{ .Values.comentario.smtpPort }}'
+            - name: SECRETS_FILE
+              value: /comentario-secrets/secrets.yaml
             - name: EMAIL_FROM
               value: '{{ .Values.comentario.smtpFromAddress }}'
-            - name: COMENTARIO_POSTGRES
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.comentario.secretName }}
-                  key: postgresUrl
-            - name: COMENTARIO_SMTP_USERNAME
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.comentario.secretName }}
-                  key: smtpUsername
-            - name: COMENTARIO_SMTP_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.comentario.secretName }}
-                  key: smtpPassword
-            - name: COMENTARIO_GOOGLE_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.comentario.secretName }}
-                  key: googleKey
-            - name: COMENTARIO_GOOGLE_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.comentario.secretName }}
-                  key: googleSecret
-            # GitHub/Twitter auth are broken in Comentario
-            # - name: COMENTARIO_GITHUB_KEY
-            #   valueFrom:
-            #     secretKeyRef:
-            #       name: {{ .Values.comentario.secretName }}
-            #       key: githubKey
-            # - name: COMENTARIO_GITHUB_SECRET
-            #   valueFrom:
-            #     secretKeyRef:
-            #       name: {{ .Values.comentario.secretName }}
-            #       key: githubSecret
-            #- name: COMENTARIO_TWITTER_KEY
-            #  valueFrom:
-            #    secretKeyRef:
-            #      name: {{ .Values.comentario.secretName }}
-            #      key: twitterKey
-            #- name: COMENTARIO_TWITTER_SECRET
-            #  valueFrom:
-            #    secretKeyRef:
-            #      name: {{ .Values.comentario.secretName }}
-            #      key: twitterSecret
           ports:
             - name: http
               containerPort: 8080
@@ -106,6 +61,10 @@ spec:
               port: http
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
+      volumes:
+        - name: secrets-volume
+          secret:
+            secretName: {{ .Values.comentario.secretName }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

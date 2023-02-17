@@ -74,17 +74,10 @@ cp -r "$root_dir/db/" "$root_dir/templates/" "$build_dir"
 
 # Start the backend
 echo "Starting $build_dir/comentario"
-env \
-    'COMENTARIO_PORT=8080' \
-    'COMENTARIO_POSTGRES=postgres://postgres:postgres@localhost:5432/comentario?sslmode=disable' \
-    'COMENTARIO_GITHUB_KEY=a' \
-    'COMENTARIO_GITHUB_SECRET=b' \
-    'COMENTARIO_GITLAB_KEY=a' \
-    'COMENTARIO_GITLAB_SECRET=b' \
-    'COMENTARIO_GOOGLE_KEY=a' \
-    'COMENTARIO_GOOGLE_SECRET=b' \
-    "$build_dir/comentario" \
-        -vv \
-        --port=8080 \
-        --db-migrations-path="$build_dir/db" \
-        --static-path="$build_dir"
+"$build_dir/comentario" \
+    -vv \
+    --port=8080 \
+    --static-path="$build_dir" \
+    --db-migration-path="$build_dir/db" \
+    --template-path="$build_dir/templates" \
+    --secrets="$root_dir/k8s/secrets.yaml"

@@ -15,17 +15,12 @@ stages:
 
 variables:
   CI_TOOLS_VERSION: "v2"
-  POSTGRES_VERSION: "15-alpine"
-  # Override to "true" to upgrade the existing PostgreSQL release (only relevant if there is one)
-  UPGRADE_POSTGRES: "false"
   # Namespace to deploy Kubernetes objects into
   NAMESPACE: ys-comentario
 
 build:
   stage: build
   image: registry.gitlab.com/comentario/comentario-ci-tools/builder:$CI_TOOLS_VERSION
-  services:
-    - postgres:$POSTGRES_VERSION
   artifacts:
     when: always
     name: comentario
@@ -37,12 +32,6 @@ build:
     GOPATH: $CI_PROJECT_DIR/.go
     # Statically link the executable so that we can run that in Alpine
     CGO_ENABLED: 0
-    # Required for the DB service (Postgres) to run
-    POSTGRES_USER: postgres
-    POSTGRES_PASSWORD: postgres
-    POSTGRES_DB: comentario_test
-    # Required for the app to run
-    COMENTARIO_POSTGRES: postgres://postgres:postgres@postgres/comentario_test?sslmode=disable
   cache:
     key:
       files:
@@ -69,7 +58,7 @@ build:
     - test -z "$(go fmt ./api/)"
 
     # Run backend tests
-    - go test -v ./api/...
+    - go test -v ./...
 
     # Build the backend
     - CGO_ENABLED=0 go build -a -v -o "../build/comentario" -ldflags "-w -s -X main.version=$(git describe --tags) -X main.date=$(date --iso-8601=seconds)"
@@ -125,8 +114,6 @@ deploy-dev:
         --set "image.repository=$CI_REGISTRY_IMAGE"
         --set "image.tag=$VERSION"
         --set "comentario.secretName=comentario-edge-secrets"
-        --set "comentario.smtpHost=mail.privateemail.com"
-        --set "comentario.smtpFromAddress=noreply@yktoo.com"
         --set "ingress.host=edge.comentario.app"
         --wait
         --timeout 2m
@@ -144,42 +131,6 @@ deploy-tag:
     # Use the Kubernetes context from GitLab agent
     - kubectl config use-context comentario/comentario-ci-tools:ys-comentario
 
-    # Create a PVC for PostgreSQL if there's none yet
-    - if ! kubectl --namespace $NAMESPACE get pvc comentario-postgres-pvc; then
-    -   kubectl --namespace $NAMESPACE create -f k8s/postgres-pvc.yaml
-    - fi
-
-    # Install PostgreSQL if it isn't installed
-    - helm repo add bitnami https://charts.bitnami.com/bitnami
-    - helm repo update
-    - if ! helm status --namespace $NAMESPACE comentario-postgres; then
-    -   helm install
-          --namespace $NAMESPACE
-          --set "image.repository=postgres"
-          --set "image.tag=$POSTGRES_VERSION"
-          --set "primary.persistence.existingClaim=comentario-postgres-pvc"
-          --set "global.postgresql.auth.existingSecret=comentario-yktoo-com-secrets"
-          --set "global.postgresql.auth.secretKeys.adminPasswordKey=postgresPassword"
-          --set "global.postgresql.auth.database=comentario"
-          --wait
-          comentario-postgres
-          bitnami/postgresql
-
-    # It's already installed: upgrade PostgreSQL if needed
-    - elif [[ "$UPGRADE_POSTGRES" == "true" ]]; then
-    -   helm upgrade
-          --namespace $NAMESPACE
-          --set "image.repository=postgres"
-          --set "image.tag=$POSTGRES_VERSION"
-          --set "primary.persistence.existingClaim=comentario-postgres-pvc"
-          --set "global.postgresql.auth.existingSecret=comentario-yktoo-com-secrets"
-          --set "global.postgresql.auth.secretKeys.adminPasswordKey=postgresPassword"
-          --set "global.postgresql.auth.database=comentario"
-          --wait
-          comentario-postgres
-          bitnami/postgresql
-    - fi
-
     # Perform chart installation/upgrade (comment.yktoo.com), waiting for it to complete (up to two minutes)
     - helm upgrade
         --namespace $NAMESPACE
@@ -188,8 +139,6 @@ deploy-tag:
         --set "image.repository=$CI_REGISTRY_IMAGE"
         --set "image.tag=$VERSION"
         --set "comentario.secretName=comentario-yktoo-com-secrets"
-        --set "comentario.smtpHost=mail.privateemail.com"
-        --set "comentario.smtpFromAddress=noreply@yktoo.com"
         --set "ingress.host=comment.yktoo.com"
         --wait
         --timeout 2m

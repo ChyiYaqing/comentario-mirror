@@ -33,6 +33,14 @@ var logger = logging.MustGetLogger("config")
 var (
 	// SecretsConfig is a configuration object for storing sensitive information
 	SecretsConfig = &struct {
+		Postgres struct {
+			Host     string `yaml:"host"`     // PostgreSQL host
+			Port     int    `yaml:"port"`     // PostgreSQL port
+			Username string `yaml:"username"` // PostgreSQL username
+			Password string `yaml:"password"` // PostgreSQL password
+			Database string `yaml:"database"` // PostgreSQL database
+		} `yaml:"postgres"`
+
 		SMTPServer struct {
 			Host string `yaml:"host"`     // SMTP server hostname
 			Port int    `yaml:"port"`     // SMTP server port
@@ -53,22 +61,18 @@ var (
 
 	// CLIFlags stores command-line flags
 	CLIFlags = struct {
-		Verbose          []bool `short:"v" long:"verbose"            description:"Verbose logging"`
-		BaseURL          string `long:"base-url"                     description:"Server's own base URL"                      default:"http://localhost:8080/" env:"BASE_URL"`
-		CDNURL           string `long:"cdn-url"                      description:"Static file CDN URL (defaults to base URL)" default:""                       env:"CDN_URL"`
-		EmailFrom        string `long:"email-from"                   description:"'From' address in sent emails"              default:"noreply@localhost"      env:"EMAIL_FROM"`
-		DBHost           string `long:"db-host"                      description:"PostgreSQL host"                            default:"localhost"              env:"POSTGRES_HOST"`
-		DBPort           int    `long:"db-port"                      description:"PostgreSQL port"                            default:"5432"                   env:"POSTGRES_PORT"`
-		DBUsername       string `long:"db-username"                  description:"PostgreSQL username"                        default:"postgres"               env:"POSTGRES_USERNAME"`
-		DBPassword       string `long:"db-password"                  description:"PostgreSQL password"                        default:"postgres"               env:"POSTGRES_PASSWORD"`
-		DBName           string `long:"db-name"                      description:"PostgreSQL database name"                   default:"comentario"             env:"POSTGRES_DATABASE"`
-		DBIdleConns      int    `long:"db-idle-conns"                description:"Max. # of idle DB connections"              default:"50"                     env:"DB_MAX_IDLE_CONNS"`
-		DBMigrationsPath string `short:"m" long:"db-migrations-path" description:"Path to DB migration files"                 default:"./db"                   env:"DB_MIGRATIONS_PATH"`
-		EnableSwaggerUI  bool   `long:"enable-swagger-ui"            description:"Enable Swagger UI at /api/docs"`
-		StaticPath       string `short:"s" long:"static-path"        description:"Path to static files"                       default:"."                      env:"STATIC_PATH"`
-		SecretsFile      string `long:"secrets"                      description:"Path to YAML file with secrets"             default:"k8s/secrets.yaml"       env:"SECRETS_FILE"`
-		AllowNewOwners   bool   `long:"allow-new-owners"             description:"Allow new owner signups"                                                     env:"ALLOW_NEW_OWNERS"`
-		GitLabURL        string `long:"gitlab-url"                   description:"Custom GitLab URL for authentication"       default:""                       env:"GITLAB_URL"`
+		Verbose         []bool `short:"v" long:"verbose" description:"Verbose logging"`
+		BaseURL         string `long:"base-url"          description:"Server's own base URL"                      default:"http://localhost:8080/" env:"BASE_URL"`
+		CDNURL          string `long:"cdn-url"           description:"Static file CDN URL (defaults to base URL)" default:""                       env:"CDN_URL"`
+		EmailFrom       string `long:"email-from"        description:"'From' address in sent emails"              default:"noreply@localhost"      env:"EMAIL_FROM"`
+		DBIdleConns     int    `long:"db-idle-conns"     description:"Max. # of idle DB connections"              default:"50"                     env:"DB_MAX_IDLE_CONNS"`
+		EnableSwaggerUI bool   `long:"enable-swagger-ui" description:"Enable Swagger UI at /api/docs"`
+		StaticPath      string `long:"static-path"       description:"Path to static files"                       default:"."                      env:"STATIC_PATH"`
+		DBMigrationPath string `long:"db-migration-path" description:"Path to DB migration files"                 default:"."                      env:"DB_MIGRATION_PATH"`
+		TemplatePath    string `long:"template-path"     description:"Path to template files"                     default:"."                      env:"TEMPLATE_PATH"`
+		SecretsFile     string `long:"secrets"           description:"Path to YAML file with secrets"             default:"secrets.yaml"           env:"SECRETS_FILE"`
+		AllowNewOwners  bool   `long:"allow-new-owners"  description:"Allow new owner signups"                                                     env:"ALLOW_NEW_OWNERS"`
+		GitLabURL       string `long:"gitlab-url"        description:"Custom GitLab URL for authentication"       default:""                       env:"GITLAB_URL"`
 	}{}
 
 	// Derived values

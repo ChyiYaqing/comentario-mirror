@@ -27,6 +27,12 @@ type Database struct {
 
 // InitDB establishes a database connection
 func InitDB() (*Database, error) {
+	// Verify configuration
+	if err := validateConfig(); err != nil {
+		return nil, err
+	}
+
+	// Create a new database instance
 	db := &Database{}
 
 	// Try to connect
@@ -75,7 +81,12 @@ func (db *Database) Shutdown() error {
 
 // connect establishes a database connection up to the configured number of attempts
 func (db *Database) connect() error {
-	logger.Infof("Connecting to database at %s@%s:%d...", config.CLIFlags.DBUsername, config.CLIFlags.DBHost, config.CLIFlags.DBPort)
+	logger.Infof(
+		"Connecting to database '%s' at %s@%s:%d...",
+		config.SecretsConfig.Postgres.Database,
+		config.SecretsConfig.Postgres.Username,
+		config.SecretsConfig.Postgres.Host,
+		config.SecretsConfig.Postgres.Port)
 
 	var err error
 	var retryDelay = time.Second // Start with a delay of one second
@@ -105,9 +116,9 @@ func (db *Database) connect() error {
 // getAvailableMigrations returns a list of available database migration files
 func (db *Database) getAvailableMigrations() ([]string, error) {
 	// Scan the migrations dir for available migration files
-	files, err := os.ReadDir(config.CLIFlags.DBMigrationsPath)
+	files, err := os.ReadDir(config.CLIFlags.DBMigrationPath)
 	if err != nil {
-		logger.Errorf("Failed to read DB migrations dir '%s': %v", config.CLIFlags.DBMigrationsPath, err)
+		logger.Errorf("Failed to read DB migrations dir '%s': %v", config.CLIFlags.DBMigrationPath, err)
 		return nil, err
 	}
 
@@ -122,7 +133,7 @@ func (db *Database) getAvailableMigrations() ([]string, error) {
 
 	// The files must be sorted by name, in the ascending order
 	sort.Strings(list)
-	logger.Infof("Discovered %d database migrations in %s", len(list), config.CLIFlags.DBMigrationsPath)
+	logger.Infof("Discovered %d database migrations in %s", len(list), config.CLIFlags.DBMigrationPath)
 	return list, err
 }
 
@@ -178,7 +189,7 @@ func (db *Database) migrate() error {
 
 		// Read in the content of the file
 		logger.Debugf("Installing migration '%s'", filename)
-		fullName := path.Join(config.CLIFlags.DBMigrationsPath, filename)
+		fullName := path.Join(config.CLIFlags.DBMigrationPath, filename)
 		contents, err := os.ReadFile(fullName)
 		if err != nil {
 			logger.Errorf("Failed to read file '%s': %v", fullName, err)
@@ -223,11 +234,11 @@ func (db *Database) tryConnect(num, total int) error {
 		"postgres",
 		fmt.Sprintf(
 			"postgres://%s:%s@%s:%d/%s?sslmode=disable",
-			config.CLIFlags.DBUsername,
-			config.CLIFlags.DBPassword,
-			config.CLIFlags.DBHost,
-			config.CLIFlags.DBPort,
-			config.CLIFlags.DBName,
+			config.SecretsConfig.Postgres.Username,
+			config.SecretsConfig.Postgres.Password,
+			config.SecretsConfig.Postgres.Host,
+			config.SecretsConfig.Postgres.Port,
+			config.SecretsConfig.Postgres.Database,
 		))
 
 	// Failed to connect
@@ -242,4 +253,28 @@ func (db *Database) tryConnect(num, total int) error {
 		logger.Warningf("[Attempt %d/%d] Failed to ping database: %v", num, total, err)
 	}
 	return err
+}
+
+// validateConfig verifies the database configuration is valid
+func validateConfig() error {
+	var errors []string
+	if config.SecretsConfig.Postgres.Host == "" {
+		errors = append(errors, "host is not specified")
+	}
+	if config.SecretsConfig.Postgres.Port == 0 {
+		config.SecretsConfig.Postgres.Port = 5432 // PostgreSQL default
+	}
+	if config.SecretsConfig.Postgres.Database == "" {
+		errors = append(errors, "DB name is not specified")
+	}
+	if config.SecretsConfig.Postgres.Username == "" {
+		errors = append(errors, "username is not specified")
+	}
+	if config.SecretsConfig.Postgres.Password == "" {
+		errors = append(errors, "password is not specified")
+	}
+	if len(errors) > 0 {
+		return fmt.Errorf("database misconfigured: %s", strings.Join(errors, "; "))
+	}
+	return nil
 }
