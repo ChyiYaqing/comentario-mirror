@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/go-openapi/strfmt"
+	"github.com/markbates/goth"
+	"gitlab.com/comentario/comentario/internal/api/exmodels"
 	"gitlab.com/comentario/comentario/internal/api/models"
 	"gitlab.com/comentario/comentario/internal/api/restapi/operations"
-	"gitlab.com/comentario/comentario/internal/config"
 	"gitlab.com/comentario/comentario/internal/svc"
 	"gitlab.com/comentario/comentario/internal/util"
 	"strings"
@@ -90,15 +91,17 @@ func DomainList(params operations.DomainListParams) middleware.Responder {
 		return operations.NewDomainListOK().WithPayload(&operations.DomainListOKBody{Message: err.Error()})
 	}
 
+	// Prepare an IdentityProviderMap
+	idps := exmodels.IdentityProviderMap{}
+	for _, idp := range util.FederatedIdProviders {
+		idps[idp] = goth.GetProviders()[idp] != nil
+	}
+
 	// Succeeded
 	return operations.NewDomainListOK().WithPayload(&operations.DomainListOKBody{
-		ConfiguredOauths: &operations.DomainListOKBodyConfiguredOauths{
-			Github: config.OAuthGithubConfig != nil,
-			Gitlab: config.OAuthGitlabConfig != nil,
-			Google: config.OAuthGoogleConfig != nil,
-		},
-		Domains: domains,
-		Success: true,
+		ConfiguredOauths: idps,
+		Domains:          domains,
+		Success:          true,
 	})
 }
 
@@ -497,7 +500,8 @@ func domainOwnershipVerify(ownerHex models.HexID, domain string) (bool, error) {
 }
 
 func domainsRowScan(s util.Scanner, d *models.Domain) error {
-	return s.Scan(
+	var commento, google, github, gitlab, sso bool
+	err := s.Scan(
 		&d.Domain,
 		&d.OwnerHex,
 		&d.Name,
@@ -509,15 +513,28 @@ func domainsRowScan(s util.Scanner, d *models.Domain) error {
 		&d.RequireIdentification,
 		&d.ModerateAllAnonymous,
 		&d.EmailNotificationPolicy,
-		&d.CommentoProvider,
-		&d.GoogleProvider,
-		&d.GithubProvider,
-		&d.GitlabProvider,
-		&d.SsoProvider,
+		&commento,
+		&google,
+		&github,
+		&gitlab,
+		&sso,
 		&d.SsoSecret,
 		&d.SsoURL,
 		&d.DefaultSortPolicy,
 	)
+	if err != nil {
+		return err
+	}
+
+	// Compile a map of identity providers
+	d.Idps = exmodels.IdentityProviderMap{
+		"commento": commento,
+		"google":   google,
+		"github":   github,
+		"gitlab":   gitlab,
+		"sso":      sso,
+	}
+	return nil
 }
 
 func domainSsoSecretNew(domain string) (models.HexID, error) {
@@ -573,7 +590,7 @@ func domainStatistics(domain string) ([]int64, error) {
 }
 
 func domainUpdate(d *models.Domain) error {
-	if d.SsoProvider && d.SsoURL == "" {
+	if d.Idps["sso"] && d.SsoURL == "" {
 		return util.ErrorMissingField
 	}
 
@@ -606,11 +623,11 @@ func domainUpdate(d *models.Domain) error {
 		d.RequireIdentification,
 		d.ModerateAllAnonymous,
 		d.EmailNotificationPolicy,
-		d.CommentoProvider,
-		d.GoogleProvider,
-		d.GithubProvider,
-		d.GitlabProvider,
-		d.SsoProvider,
+		d.Idps["commento"],
+		d.Idps["google"],
+		d.Idps["github"],
+		d.Idps["gitlab"],
+		d.Idps["sso"],
 		d.SsoURL,
 		d.DefaultSortPolicy)
 	if err != nil {

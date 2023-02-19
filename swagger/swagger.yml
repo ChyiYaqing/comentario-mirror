@@ -126,21 +126,8 @@ definitions:
           $ref: "#/definitions/domainModerator"
       emailNotificationPolicy:
         $ref: "#/definitions/emailNotificationPolicy"
-      commentoProvider:
-        type: boolean
-        x-omitempty: false
-      googleProvider:
-        type: boolean
-        x-omitempty: false
-      githubProvider:
-        type: boolean
-        x-omitempty: false
-      gitlabProvider:
-        type: boolean
-        x-omitempty: false
-      ssoProvider:
-        type: boolean
-        x-omitempty: false
+      idps:
+        $ref: "#/definitions/idpMap"
       ssoSecret:
         type: string
       ssoUrl:
@@ -208,6 +195,15 @@ definitions:
     maxLength: 64
     pattern: '[0-9a-f]{64}'
 
+  idpMap:
+    description: Map of enabled identity providers (name => boolean), including 'commento', 'sso', and all known federated IdPs
+    type: object
+    x-go-type:
+      import:
+        package: "gitlab.com/comentario/comentario/internal/api/exmodels"
+      type: "IdentityProviderMap"
+    x-omitempty: false
+
   owner:
     description: Instance owner
     type: object
@@ -255,6 +251,19 @@ definitions:
       - score-desc
       - creationdate-desc
       - creationdate-asc
+
+parameters:
+
+  federatedIdpId:
+    in: path
+    name: provider
+    required: true
+    description: Federated identity provider ID
+    type: string
+    enum:
+      - github
+      - gitlab
+      - google
 
 paths:
   /_:
@@ -518,7 +527,7 @@ paths:
               attributes:
                 $ref: "#/definitions/page"
               configuredOauths:
-                type: object # map[string]bool
+                $ref: "#/definitions/idpMap"
 
   /comment/new:
     post:
@@ -959,17 +968,7 @@ paths:
                 items:
                   $ref: "#/definitions/domain"
               configuredOauths:
-                type: object
-                properties:
-                  google:
-                    type: boolean
-                    x-omitempty: false
-                  github:
-                    type: boolean
-                    x-omitempty: false
-                  gitlab:
-                    type: boolean
-                    x-omitempty: false
+                $ref: "#/definitions/idpMap"
 
   /domain/moderator/delete:
     post:
@@ -1408,10 +1407,29 @@ paths:
   # OAuth
   #---------------------------------------------------------------------------------------------------------------------
 
-  /oauth/github/callback:
+  /oauth/{provider}:
     get:
-      operationId: OauthGithubCallback
+      operationId: OauthInit
+      summary: Initiate signing in using federated authentication
       parameters:
+        - $ref: "#/parameters/federatedIdpId"
+        - in: query
+          name: commenterToken
+          type: string
+          required: true
+      responses:
+        307:
+          description: Redirecting to authentication provider
+          headers:
+            Location:
+              type: string
+
+  /oauth/{provider}/callback:
+    get:
+      operationId: OauthCallback
+      summary: Endpoint that gets called back by the federated authentication provider
+      parameters:
+        - $ref: "#/parameters/federatedIdpId"
         - in: query
           name: state
           type: string
@@ -1425,87 +1443,6 @@ paths:
           description: Success or failure response (see 'success' property)
           schema:
             $ref: "#/definitions/apiResponseBase"
-
-  /oauth/github/redirect:
-    get:
-      operationId: OauthGithubRedirect
-      parameters:
-        - in: query
-          name: commenterToken
-          type: string
-          required: true
-      responses:
-        302:
-          description: Redirect to authentication provider
-          headers:
-            Location:
-              type: string
-
-  /oauth/gitlab/callback:
-    get:
-      operationId: OauthGitlabCallback
-      parameters:
-        - in: query
-          name: state
-          type: string
-          required: true
-        - in: query
-          name: code
-          type: string
-          required: true
-      responses:
-        200:
-          description: Success or failure response (see 'success' property)
-          schema:
-            $ref: "#/definitions/apiResponseBase"
-
-  /oauth/gitlab/redirect:
-    get:
-      operationId: OauthGitlabRedirect
-      parameters:
-        - in: query
-          name: commenterToken
-          type: string
-          required: true
-      responses:
-        302:
-          description: Redirect to authentication provider
-          headers:
-            Location:
-              type: string
-
-  /oauth/google/callback:
-    get:
-      operationId: OauthGoogleCallback
-      parameters:
-        - in: query
-          name: state
-          type: string
-          required: true
-        - in: query
-          name: code
-          type: string
-          required: true
-      responses:
-        200:
-          description: Success or failure response (see 'success' property)
-          schema:
-            $ref: "#/definitions/apiResponseBase"
-
-  /oauth/google/redirect:
-    get:
-      operationId: OauthGoogleRedirect
-      parameters:
-        - in: query
-          name: commenterToken
-          type: string
-          required: true
-      responses:
-        302:
-          description: Redirect to authentication provider
-          headers:
-            Location:
-              type: string
 
   /oauth/sso/callback:
     get:

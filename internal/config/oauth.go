@@ -1,74 +1,81 @@
 package config
 
 import (
-	"golang.org/x/oauth2"
-	"golang.org/x/oauth2/github"
-	"golang.org/x/oauth2/gitlab"
-	"golang.org/x/oauth2/google"
+	"github.com/markbates/goth"
+	"github.com/markbates/goth/providers/github"
+	"github.com/markbates/goth/providers/gitlab"
+	"github.com/markbates/goth/providers/google"
+	"strings"
 )
 
-var (
-	OAuthGithubConfig *oauth2.Config
-	OAuthGitlabConfig *oauth2.Config
-	OAuthGoogleConfig *oauth2.Config
-)
-
+// oauthConfigure configures federated (OAuth) authentication
 func oauthConfigure() {
 	githubOauthConfigure()
 	gitlabOauthConfigure()
 	googleOauthConfigure()
 }
 
+// githubOauthConfigure configures federated authentication via GitHub
 func githubOauthConfigure() {
 	if !SecretsConfig.IdP.GitHub.Usable() {
 		logger.Debug("GitHub auth isn't configured or enabled")
-		OAuthGithubConfig = nil
+		return
 	}
 
-	OAuthGithubConfig = &oauth2.Config{
-		RedirectURL:  URLForAPI("oauth/github/callback", nil),
-		ClientID:     SecretsConfig.IdP.GitHub.Key,
-		ClientSecret: SecretsConfig.IdP.GitHub.Secret,
-		Scopes:       []string{"read:user", "user:email"},
-		Endpoint:     github.Endpoint,
-	}
-	logger.Infof("Configured GitHub auth for client %s", SecretsConfig.IdP.GitHub.Key)
+	logger.Infof("Registering GitHub OAuth2 provider for client %s", SecretsConfig.IdP.GitHub.Key)
+	goth.UseProviders(
+		github.New(
+			SecretsConfig.IdP.GitHub.Key,
+			SecretsConfig.IdP.GitHub.Secret,
+			URLForAPI("oauth/github/callback", nil),
+			"read:user",
+			"user:email"),
+	)
 }
 
+// gitlabEndpointURL returns a (custom) GitLab URL for the given path (which must start with a '/')
+func gitlabEndpointURL(path string) string {
+	return strings.TrimSuffix(CLIFlags.GitLabURL, "/") + path
+}
+
+// gitlabOauthConfigure configures federated authentication via GitLab
 func gitlabOauthConfigure() {
 	if !SecretsConfig.IdP.GitLab.Usable() {
 		logger.Debug("GitLab auth isn't configured or enabled")
-		OAuthGitlabConfig = nil
+		return
 	}
 
-	OAuthGitlabConfig = &oauth2.Config{
-		RedirectURL:  URLForAPI("oauth/gitlab/callback", nil),
-		ClientID:     SecretsConfig.IdP.GitLab.Key,
-		ClientSecret: SecretsConfig.IdP.GitLab.Secret,
-		Scopes:       []string{"read_user"},
-		Endpoint:     gitlab.Endpoint,
-	}
+	logger.Infof("Registering GitLab OAuth2 provider for client %s", SecretsConfig.IdP.GitLab.Key)
 
 	// Customise the endpoint, if a custom GitLab URL is given
 	if CLIFlags.GitLabURL != "" {
-		OAuthGitlabConfig.Endpoint.AuthURL = CLIFlags.GitLabURL + "/oauth/authorize"
-		OAuthGitlabConfig.Endpoint.TokenURL = CLIFlags.GitLabURL + "/oauth/token"
+		gitlab.AuthURL = gitlabEndpointURL("/oauth/authorize")
+		gitlab.TokenURL = gitlabEndpointURL("/oauth/token")
+		gitlab.ProfileURL = gitlabEndpointURL("/api/v4/user")
 	}
-	logger.Infof("Configured GitLab auth for client %s", SecretsConfig.IdP.GitLab.Key)
+	goth.UseProviders(
+		gitlab.New(
+			SecretsConfig.IdP.GitLab.Key,
+			SecretsConfig.IdP.GitLab.Secret,
+			URLForAPI("oauth/gitlab/callback", nil),
+			"read_user"),
+	)
 }
 
+// googleOauthConfigure configures federated authentication via Google
 func googleOauthConfigure() {
 	if !SecretsConfig.IdP.Google.Usable() {
 		logger.Debug("Google auth isn't configured or enabled")
-		OAuthGoogleConfig = nil
+		return
 	}
 
-	OAuthGoogleConfig = &oauth2.Config{
-		RedirectURL:  URLForAPI("oauth/google/callback", nil),
-		ClientID:     SecretsConfig.IdP.Google.Key,
-		ClientSecret: SecretsConfig.IdP.Google.Secret,
-		Scopes:       []string{"https://www.googleapis.com/auth/userinfo.profile", "https://www.googleapis.com/auth/userinfo.email"},
-		Endpoint:     google.Endpoint,
-	}
-	logger.Infof("Configured Google auth for client %s", SecretsConfig.IdP.Google.Key)
+	logger.Infof("Registering Google OAuth2 provider for client %s", SecretsConfig.IdP.Google.Key)
+	goth.UseProviders(
+		google.New(
+			SecretsConfig.IdP.Google.Key,
+			SecretsConfig.IdP.Google.Secret,
+			URLForAPI("oauth/google/callback", nil),
+			"email",
+			"profile"),
+	)
 }

@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
@@ -9,13 +8,14 @@ import (
 	"fmt"
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/go-openapi/strfmt"
+	"github.com/markbates/goth"
+	"github.com/pkg/errors"
 	"gitlab.com/comentario/comentario/internal/api/models"
 	"gitlab.com/comentario/comentario/internal/api/restapi/operations"
-	"gitlab.com/comentario/comentario/internal/config"
 	"gitlab.com/comentario/comentario/internal/svc"
 	"gitlab.com/comentario/comentario/internal/util"
-	"io"
 	"net/http"
+	"net/url"
 	"time"
 )
 
@@ -28,283 +28,158 @@ type ssoPayload struct {
 	Photo  string `json:"photo"`
 }
 
-func OauthGithubCallback(params operations.OauthGithubCallbackParams) middleware.Responder {
-	commenterToken := models.CommenterHexID(params.State)
+// oauthSessions keeps initiated OAuth (federated authentication) sessions
+var oauthSessions = map[string]string{}
 
-	_, err := commenterGetByCommenterToken(commenterToken)
-	if err != nil && err != util.ErrorNoSuchToken {
+// OauthInit initiates a federated authentication process
+func OauthInit(params operations.OauthInitParams) middleware.Responder {
+	// Get the registered provider instance by its name (coming from the path parameter)
+	provider, err := goth.GetProvider(params.Provider)
+	if err != nil {
+		return operations.NewGenericBadRequest().WithPayload(&operations.GenericBadRequestBody{
+			Details: fmt.Sprintf("%s (%s)", util.ErrorOAuthNotConfigured.Error(), params.Provider),
+		})
+	}
+
+	// Verify the provided commenter token
+	if _, err = commenterGetByCommenterToken(models.CommenterHexID(params.CommenterToken)); err != nil && err != util.ErrorNoSuchToken {
 		return oauthFailure(err)
 	}
 
-	token, err := config.OAuthGithubConfig.Exchange(context.TODO(), params.Code)
+	// Initiate an authentication session
+	sess, err := provider.BeginAuth(params.CommenterToken)
 	if err != nil {
-		return oauthFailure(err)
+		logger.Warningf("OauthInit(): provider.BeginAuth() failed: %v", err)
+		return operations.NewGenericInternalServerError()
 	}
 
-	email, err := githubGetPrimaryEmail(token.AccessToken)
+	// Fetch the redirection URL
+	sessURL, err := sess.GetAuthURL()
 	if err != nil {
-		return oauthFailure(err)
+		logger.Warningf("OauthInit(): sess.GetAuthURL() failed: %v", err)
+		return operations.NewGenericInternalServerError()
 	}
 
-	resp, err := http.Get("https://api.github.com/user?access_token=" + token.AccessToken)
+	// Store the session in memory, to verify it later
+	sessID, _ := util.RandomHex(32)
+	oauthSessions[sessID] = sess.Marshal()
+
+	// Succeeded: redirect the user to the federated identity provider, setting the state cookie
+	return NewCookieResponder(operations.NewOauthInitTemporaryRedirect().WithLocation(sessURL)).
+		WithCookie(
+			util.AuthSessionCookieName,
+			sessID,
+			"/",
+			time.Hour, // One hour must be sufficient to complete authentication
+			true,
+			http.SameSiteLaxMode)
+}
+
+func OauthCallback(params operations.OauthCallbackParams) middleware.Responder {
+	// Get the registered provider instance by its name (coming from the path parameter)
+	provider, err := goth.GetProvider(params.Provider)
 	if err != nil {
-		return oauthFailure(err)
-	}
-	defer resp.Body.Close()
-
-	contents, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return oauthFailure(util.ErrorCannotReadResponse)
+		logger.Debugf("Failed to fetch provider '%s': %v", params.Provider, err)
+		return oauthFailure(fmt.Errorf("unknown provider: %s", params.Provider))
 	}
 
-	user := make(map[string]interface{})
-	if err := json.Unmarshal(contents, &user); err != nil {
-		return oauthFailure(util.ErrorInternal)
-	}
+	// Obtain the auth session ID from the cookie
+	var sess goth.Session
+	if cookie, err := params.HTTPRequest.Cookie(util.AuthSessionCookieName); err != nil {
+		logger.Debugf("Auth session cookie error: %v", err)
+		return oauthFailure(errors.New("auth session cookie missing"))
 
-	if email == "" {
-		if user["email"] == nil {
-			return operations.NewGenericUnauthorized().WithPayload(&operations.GenericUnauthorizedBody{Details: "No email address returned by GitHub"})
+		// Find and delete the session
+	} else if sessData, ok := oauthSessions[cookie.Value]; !ok {
+		logger.Debugf("No auth session found with ID=%v: %v", cookie.Value, err)
+		return oauthFailure(errors.New("auth session not found"))
+
+	} else {
+		// Delete the session
+		delete(oauthSessions, cookie.Value)
+
+		// Recover the original provider session
+		if sess, err = provider.UnmarshalSession(sessData); err != nil {
+			logger.Debugf("provider.UnmarshalSession() failed: %v", err)
+			return oauthFailure(errors.New("auth session unmarshalling"))
 		}
-		email = user["email"].(string)
 	}
 
-	name := user["login"].(string)
-	if user["name"] != nil {
-		name = user["name"].(string)
+	// Validate the session state
+	if err := validateAuthSessionState(sess, params.HTTPRequest); err != nil {
+		return oauthFailure(err)
 	}
 
-	link := "undefined"
-	if user["html_url"] != nil {
-		link = user["html_url"].(string)
+	// Obtain the tokens
+	reqParams := params.HTTPRequest.URL.Query()
+	_, err = sess.Authorize(provider, reqParams)
+	if err != nil {
+		logger.Debugf("sess.Authorize() failed: %v", err)
+		return oauthFailure(errors.New("auth session unauthorised"))
 	}
 
-	photo := "undefined"
-	if user["avatar_url"] != nil {
-		photo = user["avatar_url"].(string)
+	// Fetch the federated user
+	fedUser, err := provider.FetchUser(sess)
+	if err != nil {
+		logger.Debugf("provider.FetchUser() failed: %v", err)
+		return oauthFailure(errors.New("fetching user"))
 	}
 
-	c, err := commenterGetByEmail("github", strfmt.Email(email))
+	// Validate the returned user
+	// -- UserID
+	if fedUser.UserID == "" {
+		return oauthFailure(errors.New("user ID missing"))
+	}
+	// -- Email
+	if fedUser.Email == "" {
+		return oauthFailure(errors.New("user email missing"))
+	}
+	// -- Name
+	if fedUser.Name == "" {
+		return oauthFailure(errors.New("user name missing"))
+	}
+
+	// Try to find the corresponding existing user in the database
+	commenterToken := models.CommenterHexID(reqParams.Get("state"))
+	if _, err = commenterGetByCommenterToken(commenterToken); err != nil && err != util.ErrorNoSuchToken {
+		return oauthFailure(err)
+	}
+
+	commenter, err := commenterGetByEmail(params.Provider, strfmt.Email(fedUser.Email))
 	if err != nil && err != util.ErrorNoSuchCommenter {
 		return oauthFailure(err)
 	}
 
 	var commenterHex models.CommenterHexID
+	avatar := fedUser.AvatarURL
+	if avatar == "" {
+		// TODO get rid of this crap
+		avatar = "undefined"
+	}
+	// No such commenter yet: it's a signup
 	if err == util.ErrorNoSuchCommenter {
-		commenterHex, err = commenterNew(strfmt.Email(email), name, link, photo, "github", "")
-		if err != nil {
+		// Create a new commenter
+		if commenterHex, err = commenterNew(strfmt.Email(fedUser.Email), fedUser.Name, "undefined", avatar, params.Provider, ""); err != nil {
 			return oauthFailure(err)
 		}
+
+		// Commenter already exists: it's a login
 	} else {
-		if err = commenterUpdate(c.CommenterHex, strfmt.Email(email), name, link, photo, "github"); err != nil {
+		// Update commenter's details
+		if err = commenterUpdate(commenter.CommenterHex, strfmt.Email(fedUser.Email), fedUser.Name, "undefined", avatar, params.Provider); err != nil {
 			logger.Warningf("cannot update commenter: %s", err)
-			// not a serious enough to exit with an error
+			// Don't exit as we still can proceed
 		}
-		commenterHex = c.CommenterHex
+		commenterHex = commenter.CommenterHex
 	}
 
+	// Register a commenter session
 	if err := commenterSessionUpdate(models.HexID(commenterToken), commenterHex); err != nil {
 		return oauthFailure(err)
 	}
 
 	// Succeeded: close the parent window
 	return closeParentWindowResponse()
-}
-
-func OauthGithubRedirect(params operations.OauthGithubRedirectParams) middleware.Responder {
-	if config.OAuthGithubConfig == nil {
-		return oauthNotConfigured()
-	}
-
-	_, err := commenterGetByCommenterToken(models.CommenterHexID(params.CommenterToken))
-	if err != nil && err != util.ErrorNoSuchToken {
-		return oauthFailure(err)
-	}
-
-	// Succeeded
-	return operations.NewOauthGithubRedirectFound().WithLocation(config.OAuthGithubConfig.AuthCodeURL(params.CommenterToken))
-}
-
-func OauthGitlabCallback(params operations.OauthGitlabCallbackParams) middleware.Responder {
-	commenterToken := models.CommenterHexID(params.State)
-
-	_, err := commenterGetByCommenterToken(commenterToken)
-	if err != nil && err != util.ErrorNoSuchToken {
-		return oauthFailure(err)
-	}
-
-	token, err := config.OAuthGitlabConfig.Exchange(context.TODO(), params.Code)
-	if err != nil {
-		return oauthFailure(err)
-	}
-
-	resp, err := http.Get(config.CLIFlags.GitLabURL + "/api/v4/user?access_token=" + token.AccessToken)
-	if err != nil {
-		return oauthFailure(err)
-	}
-	logger.Infof("%v", resp.StatusCode)
-	defer resp.Body.Close()
-
-	contents, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return oauthFailure(util.ErrorCannotReadResponse)
-	}
-
-	user := make(map[string]interface{})
-	if err := json.Unmarshal(contents, &user); err != nil {
-		return oauthFailure(util.ErrorInternal)
-	}
-
-	if user["email"] == nil {
-		return operations.NewGenericUnauthorized().WithPayload(&operations.GenericUnauthorizedBody{Details: "No email address returned by GitLab"})
-	}
-
-	email := user["email"].(string)
-
-	if user["name"] == nil {
-		return operations.NewGenericUnauthorized().WithPayload(&operations.GenericUnauthorizedBody{Details: "No name returned by GitLab"})
-	}
-
-	name := user["name"].(string)
-
-	link := "undefined"
-	if user["web_url"] != nil {
-		link = user["web_url"].(string)
-	}
-
-	photo := "undefined"
-	if user["avatar_url"] != nil {
-		photo = user["avatar_url"].(string)
-	}
-
-	c, err := commenterGetByEmail("gitlab", strfmt.Email(email))
-	if err != nil && err != util.ErrorNoSuchCommenter {
-		return oauthFailure(err)
-	}
-
-	var commenterHex models.CommenterHexID
-
-	if err == util.ErrorNoSuchCommenter {
-		commenterHex, err = commenterNew(strfmt.Email(email), name, link, photo, "gitlab", "")
-		if err != nil {
-			return oauthFailure(err)
-		}
-	} else {
-		if err = commenterUpdate(c.CommenterHex, strfmt.Email(email), name, link, photo, "gitlab"); err != nil {
-			logger.Warningf("cannot update commenter: %s", err)
-			// not a serious enough to exit with an error
-		}
-
-		commenterHex = c.CommenterHex
-	}
-
-	if err := commenterSessionUpdate(models.HexID(commenterToken), commenterHex); err != nil {
-		return oauthFailure(err)
-	}
-
-	// Succeeded: close the parent window
-	return closeParentWindowResponse()
-}
-
-func OauthGitlabRedirect(params operations.OauthGitlabRedirectParams) middleware.Responder {
-	if config.OAuthGitlabConfig == nil {
-		return oauthNotConfigured()
-	}
-
-	_, err := commenterGetByCommenterToken(models.CommenterHexID(params.CommenterToken))
-	if err != nil && err != util.ErrorNoSuchToken {
-		return oauthFailure(err)
-	}
-
-	// Succeeded
-	return operations.NewOauthGitlabRedirectFound().WithLocation(config.OAuthGitlabConfig.AuthCodeURL(params.CommenterToken))
-}
-
-func OauthGoogleCallback(params operations.OauthGoogleCallbackParams) middleware.Responder {
-	commenterToken := models.CommenterHexID(params.State)
-
-	_, err := commenterGetByCommenterToken(commenterToken)
-	if err != nil && err != util.ErrorNoSuchToken {
-		return oauthFailure(err)
-	}
-
-	token, err := config.OAuthGoogleConfig.Exchange(context.TODO(), params.Code)
-	if err != nil {
-		return oauthFailure(err)
-	}
-
-	resp, err := http.Get("https://www.googleapis.com/oauth2/v2/userinfo?access_token=" + token.AccessToken)
-	defer resp.Body.Close()
-
-	contents, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return oauthFailure(util.ErrorCannotReadResponse)
-	}
-
-	user := make(map[string]interface{})
-	if err := json.Unmarshal(contents, &user); err != nil {
-		return oauthFailure(util.ErrorInternal)
-	}
-
-	if user["email"] == nil {
-		return operations.NewGenericUnauthorized().WithPayload(&operations.GenericUnauthorizedBody{Details: "No email address returned by Google"})
-	}
-
-	email := user["email"].(string)
-
-	c, err := commenterGetByEmail("google", strfmt.Email(email))
-	if err != nil && err != util.ErrorNoSuchCommenter {
-		return oauthFailure(err)
-	}
-
-	name := user["name"].(string)
-
-	link := "undefined"
-	if user["link"] != nil {
-		link = user["link"].(string)
-	}
-
-	photo := "undefined"
-	if user["picture"] != nil {
-		photo = user["picture"].(string)
-	}
-
-	var commenterHex models.CommenterHexID
-
-	if err == util.ErrorNoSuchCommenter {
-		commenterHex, err = commenterNew(strfmt.Email(email), name, link, photo, "google", "")
-		if err != nil {
-			return oauthFailure(err)
-		}
-	} else {
-		if err = commenterUpdate(c.CommenterHex, strfmt.Email(email), name, link, photo, "google"); err != nil {
-			logger.Warningf("cannot update commenter: %s", err)
-			// not a serious enough to exit with an error
-		}
-
-		commenterHex = c.CommenterHex
-	}
-
-	if err := commenterSessionUpdate(models.HexID(commenterToken), commenterHex); err != nil {
-		return oauthFailure(err)
-	}
-
-	// Succeeded: close the parent window
-	return closeParentWindowResponse()
-}
-
-func OauthGoogleRedirect(params operations.OauthGoogleRedirectParams) middleware.Responder {
-	if config.OAuthGoogleConfig == nil {
-		return oauthNotConfigured()
-	}
-
-	_, err := commenterGetByCommenterToken(models.CommenterHexID(params.CommenterToken))
-	if err != nil && err != util.ErrorNoSuchToken {
-		return oauthFailure(err)
-	}
-
-	// Succeeded
-	return operations.NewOauthGoogleRedirectFound().WithLocation(config.OAuthGoogleConfig.AuthCodeURL(params.CommenterToken))
 }
 
 func OauthSsoCallback(params operations.OauthSsoCallbackParams) middleware.Responder {
@@ -414,7 +289,7 @@ func OauthSsoRedirect(params operations.OauthSsoRedirectParams) middleware.Respo
 	if err != nil {
 		return oauthFailure(util.ErrorNoSuchDomain)
 	}
-	if !d.SsoProvider {
+	if !d.Idps["sso"] {
 		return oauthFailure(fmt.Errorf("SSO not configured for %s", domainName))
 	}
 	if d.SsoSecret == "" || d.SsoURL == "" {
@@ -458,40 +333,9 @@ func OauthSsoRedirect(params operations.OauthSsoRedirectParams) middleware.Respo
 	return operations.NewOauthSsoRedirectFound().WithLocation(ssoURL.String())
 }
 
-func githubGetPrimaryEmail(accessToken string) (string, error) {
-	resp, err := http.Get("https://api.github.com/user/emails?access_token=" + accessToken)
-	defer resp.Body.Close()
-
-	contents, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", util.ErrorCannotReadResponse
-	}
-
-	var user []map[string]interface{}
-	if err := json.Unmarshal(contents, &user); err != nil {
-		logger.Errorf("error unmarshalling github user: %v", err)
-		return "", util.ErrorInternal
-	}
-
-	nonPrimaryEmail := ""
-	for _, email := range user {
-		nonPrimaryEmail = email["email"].(string)
-		if email["primary"].(bool) {
-			return email["email"].(string), nil
-		}
-	}
-
-	return nonPrimaryEmail, nil
-}
-
 // oauthFailure returns a generic "Unauthorized" responder, with the error message in the details
 func oauthFailure(err error) middleware.Responder {
 	return operations.NewGenericUnauthorized().WithPayload(&operations.GenericUnauthorizedBody{Details: err.Error()})
-}
-
-// oauthNotConfigured returns a generic "Bad request" responder, with the not-configured error message in the details
-func oauthNotConfigured() middleware.Responder {
-	return operations.NewGenericBadRequest().WithPayload(&operations.GenericBadRequestBody{Details: util.ErrorOAuthNotConfigured.Error()})
 }
 
 func ssoTokenExtract(token string) (string, models.CommenterHexID, error) {
@@ -535,4 +379,29 @@ func ssoTokenNew(domain string, commenterToken string) (string, error) {
 	}
 
 	return token, nil
+}
+
+// validateAuthSessionState verifies the session token initially submitted, if any, is matching the one returned with
+// the given callback request
+func validateAuthSessionState(sess goth.Session, req *http.Request) error {
+	// Fetch the original session's URL
+	rawAuthURL, err := sess.GetAuthURL()
+	if err != nil {
+		return err
+	}
+
+	// Parse it
+	authURL, err := url.Parse(rawAuthURL)
+	if err != nil {
+		return err
+	}
+
+	// If there was a state initially, the value returned with the request must be the same
+	if originalState := authURL.Query().Get("state"); originalState != "" {
+		if reqState := req.URL.Query().Get("state"); reqState != originalState {
+			logger.Debugf("Auth session state mismatch: want '%s', got '%s'", originalState, reqState)
+			return errors.New("auth session state mismatch")
+		}
+	}
+	return nil
 }

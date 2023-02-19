@@ -10,10 +10,15 @@ const (
 	SwaggerUIPath   = APIPath + "docs" // Root path of the Swagger UI
 
 	DBMaxAttempts = 10 // Max number of attempts to connect to the database
+
+	AuthSessionCookieName = "_comentario-auth-session" // Cookie name to store the federated authentication session ID
 )
 
 var (
 	WrongAuthDelay = 10 * time.Second // Delay to exercise on a wrong email, password etc.
+
+	// FederatedIdProviders contains the IDs of all known federated identity providers
+	FederatedIdProviders = []string{"github", "gitlab", "google"}
 
 	// UIHTMLPaths stores a list of known UI paths, which map to HTML files
 	UIHTMLPaths = map[string]bool{

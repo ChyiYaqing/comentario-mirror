@@ -5,7 +5,9 @@ import (
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/op/go-logging"
 	"gitlab.com/comentario/comentario/internal/api/models"
+	"gitlab.com/comentario/comentario/internal/config"
 	"net/http"
+	"time"
 )
 
 // logger represents a package-wide logger instance
@@ -40,4 +42,50 @@ func (r *HTMLResponder) WriteResponse(w http.ResponseWriter, _ runtime.Producer)
 	w.WriteHeader(r.code)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	_, _ = w.Write([]byte(r.html))
+}
+
+// ----------------------------------------------------------------------------------------------------------------------
+
+// CookieResponder is an implementation of middleware.Responder that wraps another responder and sets the provided
+// cookies before handing over to it
+type CookieResponder struct {
+	responder middleware.Responder
+	cookies   map[string]*http.Cookie
+}
+
+// NewCookieResponder instantiates a new CookieResponder
+func NewCookieResponder(responder middleware.Responder) *CookieResponder {
+	return &CookieResponder{
+		responder: responder,
+		cookies:   make(map[string]*http.Cookie),
+	}
+}
+
+func (r *CookieResponder) WriteResponse(rw http.ResponseWriter, p runtime.Producer) {
+	// Add cookies to the response
+	for _, c := range r.cookies {
+		http.SetCookie(rw, c)
+	}
+	// Hand over to the original responder
+	r.responder.WriteResponse(rw, p)
+}
+
+// WithCookie adds a new cookie to the response
+func (r *CookieResponder) WithCookie(name, value, path string, maxAge time.Duration, httpOnly bool, sameSite http.SameSite) *CookieResponder {
+	r.cookies[name] = &http.Cookie{
+		Name:     name,
+		Value:    value,
+		Path:     path,
+		MaxAge:   int(maxAge.Seconds()),
+		Secure:   config.UseHTTPS,
+		HttpOnly: httpOnly,
+		SameSite: sameSite,
+	}
+	return r
+}
+
+// WithoutCookie removes a cookie in the response by submitting a "pre-expired" cookie
+func (r *CookieResponder) WithoutCookie(name, path string) *CookieResponder {
+	r.cookies[name] = &http.Cookie{Name: name, Path: path, MaxAge: -1}
+	return r
 }

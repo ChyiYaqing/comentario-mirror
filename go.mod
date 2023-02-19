@@ -17,12 +17,13 @@ require (
 	github.com/justinas/alice v1.2.0
 	github.com/lib/pq v1.10.7
 	github.com/lunny/html2md v0.0.0-20181018071239-7d234de44546
+	github.com/markbates/goth v1.74.1
 	github.com/microcosm-cc/bluemonday v1.0.22
 	github.com/op/go-logging v0.0.0-20160315200505-970db520ece7
+	github.com/pkg/errors v0.9.1
 	github.com/russross/blackfriday v1.6.0
 	golang.org/x/crypto v0.6.0
 	golang.org/x/net v0.6.0
-	golang.org/x/oauth2 v0.5.0
 	gopkg.in/gomail.v2 v2.0.0-20160411212932-81ebce5c23df
 	gopkg.in/yaml.v3 v3.0.1
 )
@@ -45,6 +46,7 @@ require (
 	github.com/oklog/ulid v1.3.1 // indirect
 	go.mongodb.org/mongo-driver v1.10.0 // indirect
 	golang.org/x/image v0.4.0 // indirect
+	golang.org/x/oauth2 v0.5.0 // indirect
 	golang.org/x/sys v0.5.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect

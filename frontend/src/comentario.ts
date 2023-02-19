@@ -632,7 +632,7 @@ export class Comentario {
 
         // Open a popup window
         const popup = window.open(
-            `${this.origin}/api/oauth/${idp}/redirect?commenterToken=${r.commenterToken}`,
+            `${this.origin}/api/oauth/${idp}?commenterToken=${r.commenterToken}`,
             '_blank',
             'popup,width=800,height=600');
 

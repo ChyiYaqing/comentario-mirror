@@ -87,12 +87,8 @@ func configureAPI(api *operations.ComentarioAPI) http.Handler {
 	api.EmailModerateHandler = operations.EmailModerateHandlerFunc(handlers.EmailModerate)
 	api.EmailUpdateHandler = operations.EmailUpdateHandlerFunc(handlers.EmailUpdate)
 	// OAuth
-	api.OauthGithubCallbackHandler = operations.OauthGithubCallbackHandlerFunc(handlers.OauthGithubCallback)
-	api.OauthGithubRedirectHandler = operations.OauthGithubRedirectHandlerFunc(handlers.OauthGithubRedirect)
-	api.OauthGitlabCallbackHandler = operations.OauthGitlabCallbackHandlerFunc(handlers.OauthGitlabCallback)
-	api.OauthGitlabRedirectHandler = operations.OauthGitlabRedirectHandlerFunc(handlers.OauthGitlabRedirect)
-	api.OauthGoogleCallbackHandler = operations.OauthGoogleCallbackHandlerFunc(handlers.OauthGoogleCallback)
-	api.OauthGoogleRedirectHandler = operations.OauthGoogleRedirectHandlerFunc(handlers.OauthGoogleRedirect)
+	api.OauthInitHandler = operations.OauthInitHandlerFunc(handlers.OauthInit)
+	api.OauthCallbackHandler = operations.OauthCallbackHandlerFunc(handlers.OauthCallback)
 	api.OauthSsoCallbackHandler = operations.OauthSsoCallbackHandlerFunc(handlers.OauthSsoCallback)
 	api.OauthSsoRedirectHandler = operations.OauthSsoRedirectHandlerFunc(handlers.OauthSsoRedirect)
 	// Owner

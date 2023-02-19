@@ -79,6 +79,7 @@ var (
 
 	BaseURL        *url.URL // The parsed base URL
 	CDNURL         *url.URL // The parsed CDN URL
+	UseHTTPS       bool     // Whether the base URL is a HTTPS one
 	SMTPConfigured bool     // Whether sending emails is properly configured
 )
 
@@ -89,6 +90,7 @@ func CLIParsed() error {
 	if BaseURL, err = util.ParseAbsoluteURL(CLIFlags.BaseURL); err != nil {
 		return fmt.Errorf("invalid Base URL: %v", err)
 	}
+	UseHTTPS = BaseURL.Scheme == "https"
 
 	// Check the CDN URL: if it's empty, use the base URL instead
 	if CLIFlags.CDNURL == "" {

@@ -6,9 +6,9 @@ import (
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/go-openapi/strfmt"
 	"github.com/lib/pq"
+	"github.com/markbates/goth"
 	"gitlab.com/comentario/comentario/internal/api/models"
 	"gitlab.com/comentario/comentario/internal/api/restapi/operations"
-	"gitlab.com/comentario/comentario/internal/config"
 	"gitlab.com/comentario/comentario/internal/svc"
 	"gitlab.com/comentario/comentario/internal/util"
 	"time"
@@ -181,17 +181,17 @@ func CommentList(params operations.CommentListParams) middleware.Responder {
 		_commenters[ch] = cr
 	}
 
+	// Prepare a map of configured identity providers: federated ones should only be enabled when configured
+	idps := domain.Idps.Clone()
+	for _, idp := range util.FederatedIdProviders {
+		idps[idp] = idps[idp] && goth.GetProviders()[idp] != nil
+	}
+
 	return operations.NewCommentListOK().WithPayload(&operations.CommentListOKBody{
-		Attributes: page,
-		Commenters: _commenters,
-		Comments:   comments,
-		ConfiguredOauths: map[string]bool{
-			"commento": domain.CommentoProvider,
-			"google":   domain.GoogleProvider && config.OAuthGoogleConfig != nil,
-			"github":   domain.GithubProvider && config.OAuthGithubConfig != nil,
-			"gitlab":   domain.GitlabProvider && config.OAuthGitlabConfig != nil,
-			"sso":      domain.SsoProvider,
-		},
+		Attributes:            page,
+		Commenters:            _commenters,
+		Comments:              comments,
+		ConfiguredOauths:      idps,
 		DefaultSortPolicy:     domain.DefaultSortPolicy,
 		Domain:                domainName,
 		IsFrozen:              domain.State == models.DomainStateFrozen,
