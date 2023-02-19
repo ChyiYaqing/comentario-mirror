@@ -178,8 +178,8 @@ func OauthCallback(params operations.OauthCallbackParams) middleware.Responder {
 		return oauthFailure(err)
 	}
 
-	// Succeeded: close the parent window
-	return closeParentWindowResponse()
+	// Succeeded: close the parent window, removing the auth session cookie
+	return NewCookieResponder(closeParentWindowResponse()).WithoutCookie(util.AuthSessionCookieName, "/")
 }
 
 func OauthSsoCallback(params operations.OauthSsoCallbackParams) middleware.Responder {
@@ -333,9 +333,13 @@ func OauthSsoRedirect(params operations.OauthSsoRedirectParams) middleware.Respo
 	return operations.NewOauthSsoRedirectFound().WithLocation(ssoURL.String())
 }
 
-// oauthFailure returns a generic "Unauthorized" responder, with the error message in the details
+// oauthFailure returns a generic "Unauthorized" responder, with the error message in the details. Also wipes out any
+// auth session cookie
 func oauthFailure(err error) middleware.Responder {
-	return operations.NewGenericUnauthorized().WithPayload(&operations.GenericUnauthorizedBody{Details: err.Error()})
+	return NewCookieResponder(
+		operations.NewGenericUnauthorized().
+			WithPayload(&operations.GenericUnauthorizedBody{Details: err.Error()})).
+		WithoutCookie(util.AuthSessionCookieName, "/")
 }
 
 func ssoTokenExtract(token string) (string, models.CommenterHexID, error) {
