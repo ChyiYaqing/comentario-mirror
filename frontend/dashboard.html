@@ -288,31 +288,31 @@
                       </div>
 
                       <div class="row no-border comentario-round-check">
-                        <input type="checkbox" v-model="domains[cd].commentoProvider" id="commento-provider">
+                        <input type="checkbox" v-model="domains[cd].idps.commento" id="commento-provider">
                         <label for="commento-provider">Email address login</label>
                       </div>
 
                       <div class="row no-border comentario-round-check" v-if="configuredOauths.google">
-                        <input type="checkbox" v-model="domains[cd].googleProvider" id="google-provider">
+                        <input type="checkbox" v-model="domains[cd].idps.google" id="google-provider">
                         <label for="google-provider">Google login</label>
                       </div>
 
                       <div class="row no-border comentario-round-check" v-if="configuredOauths.github">
-                        <input type="checkbox" v-model="domains[cd].githubProvider" id="github-provider">
+                        <input type="checkbox" v-model="domains[cd].idps.github" id="github-provider">
                         <label for="github-provider">GitHub login</label>
                       </div>
 
                       <div class="row no-border comentario-round-check" v-if="configuredOauths.gitlab">
-                        <input type="checkbox" v-model="domains[cd].gitlabProvider" id="gitlab-provider">
+                        <input type="checkbox" v-model="domains[cd].idps.gitlab" id="gitlab-provider">
                         <label for="gitlab-provider">GitLab login</label>
                       </div>
 
                       <div class="row no-border comentario-round-check">
-                        <input type="checkbox" v-model="domains[cd].ssoProvider" id="sso-provider" @change="window.comentario.ssoProviderChangeHandler()">
+                        <input type="checkbox" v-model="domains[cd].idps.sso" id="sso-provider" @change="window.comentario.ssoProviderChangeHandler()">
                         <label for="sso-provider">Single sign-on</label>
                       </div>
 
-                      <div class="indent" v-if="domains[cd].ssoProvider">
+                      <div class="indent" v-if="domains[cd].idps.sso">
                         <div class="row">
                           <div class="label">HMAC shared secret key</div>
                           <input class="input gray-input monospace" id="sso-secret" readonly type="text" placeholder="Loading..." v-model="domains[cd].ssoSecret">
@@ -330,7 +330,7 @@
                         </div>
                       </div>
 
-                      <div class="warning" v-if="!domains[cd].allowAnonymous && !domains[cd].commentoProvider && (!configuredOauths.google || !domains[cd].googleProvider) && (!configuredOauths.github || !domains[cd].githubProvider) && (!configuredOauths.gitlab || !domains[cd].gitlabProvider) && !domains[cd].ssoProvider">
+                      <div class="warning" v-if="!domains[cd].allowAnonymous && !domains[cd].idps.commento && (!configuredOauths.google || !domains[cd].idps.google) && (!configuredOauths.github || !domains[cd].idps.github) && (!configuredOauths.gitlab || !domains[cd].idps.gitlab) && !domains[cd].idps.sso">
                         You have disabled all authentication options. Your readers will not be able to login, create comments, or vote.
                       </div>
                     </div>
