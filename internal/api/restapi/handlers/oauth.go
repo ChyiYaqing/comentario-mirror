@@ -16,6 +16,7 @@ import (
 	"gitlab.com/comentario/comentario/internal/util"
 	"net/http"
 	"net/url"
+	"sync"
 	"time"
 )
 
@@ -30,11 +31,19 @@ type ssoPayload struct {
 
 // oauthSessions stores initiated OAuth (federated authentication) sessions
 var oauthSessions = map[string]string{}
+var oauthSessionsLock sync.Mutex
 
 // OauthInit initiates a federated authentication process
 func OauthInit(params operations.OauthInitParams) middleware.Responder {
+	// Map the provider to a goth provider
+	gothIdP := util.FederatedIdProviders[params.Provider]
+	if gothIdP == "" {
+		return operations.NewGenericBadRequest().
+			WithPayload(&operations.GenericBadRequestBody{Details: "unknown provider: " + params.Provider})
+	}
+
 	// Get the registered provider instance by its name (coming from the path parameter)
-	provider, err := goth.GetProvider(params.Provider)
+	provider, err := goth.GetProvider(gothIdP)
 	if err != nil {
 		return operations.NewGenericBadRequest().WithPayload(&operations.GenericBadRequestBody{
 			Details: fmt.Sprintf("%s (%s)", util.ErrorOAuthNotConfigured.Error(), params.Provider),
@@ -62,7 +71,7 @@ func OauthInit(params operations.OauthInitParams) middleware.Responder {
 
 	// Store the session in memory, to verify it later
 	sessID, _ := util.RandomHex(32)
-	oauthSessions[sessID] = sess.Marshal()
+	sessionPut(sessID, sess.Marshal())
 
 	// Succeeded: redirect the user to the federated identity provider, setting the state cookie
 	return NewCookieResponder(operations.NewOauthInitTemporaryRedirect().WithLocation(sessURL)).
@@ -76,11 +85,18 @@ func OauthInit(params operations.OauthInitParams) middleware.Responder {
 }
 
 func OauthCallback(params operations.OauthCallbackParams) middleware.Responder {
+	// Map the provider to a goth provider
+	gothIdP := util.FederatedIdProviders[params.Provider]
+	if gothIdP == "" {
+		return operations.NewGenericBadRequest().
+			WithPayload(&operations.GenericBadRequestBody{Details: "unknown provider: " + params.Provider})
+	}
+
 	// Get the registered provider instance by its name (coming from the path parameter)
-	provider, err := goth.GetProvider(params.Provider)
+	provider, err := goth.GetProvider(gothIdP)
 	if err != nil {
 		logger.Debugf("Failed to fetch provider '%s': %v", params.Provider, err)
-		return oauthFailure(fmt.Errorf("unknown provider: %s", params.Provider))
+		return oauthFailure(fmt.Errorf("provider not configured: %s", params.Provider))
 	}
 
 	// Obtain the auth session ID from the cookie
@@ -90,19 +106,14 @@ func OauthCallback(params operations.OauthCallbackParams) middleware.Responder {
 		return oauthFailure(errors.New("auth session cookie missing"))
 
 		// Find and delete the session
-	} else if sessData, ok := oauthSessions[cookie.Value]; !ok {
+	} else if sessData, ok := sessionTake(cookie.Value); !ok {
 		logger.Debugf("No auth session found with ID=%v: %v", cookie.Value, err)
 		return oauthFailure(errors.New("auth session not found"))
 
-	} else {
-		// Delete the locally stored session
-		delete(oauthSessions, cookie.Value)
-
 		// Recover the original provider session
-		if sess, err = provider.UnmarshalSession(sessData); err != nil {
-			logger.Debugf("provider.UnmarshalSession() failed: %v", err)
-			return oauthFailure(errors.New("auth session unmarshalling"))
-		}
+	} else if sess, err = provider.UnmarshalSession(sessData); err != nil {
+		logger.Debugf("provider.UnmarshalSession() failed: %v", err)
+		return oauthFailure(errors.New("auth session unmarshalling"))
 	}
 
 	// Validate the session state
@@ -350,6 +361,22 @@ func oauthFailure(err error) middleware.Responder {
 				</html>`,
 				err.Error()))).
 		WithoutCookie(util.AuthSessionCookieName, "/")
+}
+
+// sessionPut stores session data by its ID, thread-safely
+func sessionPut(id, data string) {
+	oauthSessionsLock.Lock()
+	defer oauthSessionsLock.Unlock()
+	oauthSessions[id] = data
+}
+
+// sessionTake retrieves and deletes session data by its ID, thread-safely
+func sessionTake(id string) (string, bool) {
+	oauthSessionsLock.Lock()
+	defer oauthSessionsLock.Unlock()
+	data, ok := oauthSessions[id]
+	delete(oauthSessions, id)
+	return data, ok
 }
 
 func ssoTokenExtract(token string) (string, models.CommenterHexID, error) {

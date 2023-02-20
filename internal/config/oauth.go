@@ -5,6 +5,7 @@ import (
 	"github.com/markbates/goth/providers/github"
 	"github.com/markbates/goth/providers/gitlab"
 	"github.com/markbates/goth/providers/google"
+	"github.com/markbates/goth/providers/twitter"
 	"strings"
 )
 
@@ -13,6 +14,7 @@ func oauthConfigure() {
 	githubOauthConfigure()
 	gitlabOauthConfigure()
 	googleOauthConfigure()
+	twitterOauthConfigure()
 }
 
 // githubOauthConfigure configures federated authentication via GitHub
@@ -77,5 +79,21 @@ func googleOauthConfigure() {
 			URLForAPI("oauth/google/callback", nil),
 			"email",
 			"profile"),
+	)
+}
+
+// twitterOauthConfigure configures federated authentication via Twitter
+func twitterOauthConfigure() {
+	if !SecretsConfig.IdP.Twitter.Usable() {
+		logger.Debug("Twitter auth isn't configured or enabled")
+		return
+	}
+
+	logger.Infof("Registering Twitter OAuth2 provider for client %s", SecretsConfig.IdP.Twitter.Key)
+	goth.UseProviders(
+		twitter.New(
+			SecretsConfig.IdP.Twitter.Key,
+			SecretsConfig.IdP.Twitter.Secret,
+			URLForAPI("oauth/twitter/callback", nil)),
 	)
 }

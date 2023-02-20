@@ -17,8 +17,13 @@ const (
 var (
 	WrongAuthDelay = 10 * time.Second // Delay to exercise on a wrong email, password etc.
 
-	// FederatedIdProviders contains the IDs of all known federated identity providers
-	FederatedIdProviders = []string{"github", "gitlab", "google"}
+	// FederatedIdProviders maps all known federated identity providers from our IDs to goth IDs
+	FederatedIdProviders = map[string]string{
+		"github":  "github",
+		"gitlab":  "gitlab",
+		"google":  "google",
+		"twitter": "twitter",
+	}
 
 	// UIHTMLPaths stores a list of known UI paths, which map to HTML files
 	UIHTMLPaths = map[string]bool{

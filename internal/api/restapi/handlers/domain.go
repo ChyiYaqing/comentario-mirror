@@ -30,6 +30,7 @@ var domainsRowColumns = `
 	domains.googleProvider,
 	domains.githubProvider,
 	domains.gitlabProvider,
+	domains.twitterProvider,
 	domains.ssoProvider,
 	domains.ssoSecret,
 	domains.ssoUrl,
@@ -93,8 +94,8 @@ func DomainList(params operations.DomainListParams) middleware.Responder {
 
 	// Prepare an IdentityProviderMap
 	idps := exmodels.IdentityProviderMap{}
-	for _, idp := range util.FederatedIdProviders {
-		idps[idp] = goth.GetProviders()[idp] != nil
+	for idp, gothIdP := range util.FederatedIdProviders {
+		idps[idp] = goth.GetProviders()[gothIdP] != nil
 	}
 
 	// Succeeded
@@ -500,7 +501,7 @@ func domainOwnershipVerify(ownerHex models.HexID, domain string) (bool, error) {
 }
 
 func domainsRowScan(s util.Scanner, d *models.Domain) error {
-	var commento, google, github, gitlab, sso bool
+	var commento, google, github, gitlab, twitter, sso bool
 	err := s.Scan(
 		&d.Domain,
 		&d.OwnerHex,
@@ -517,6 +518,7 @@ func domainsRowScan(s util.Scanner, d *models.Domain) error {
 		&google,
 		&github,
 		&gitlab,
+		&twitter,
 		&sso,
 		&d.SsoSecret,
 		&d.SsoURL,
@@ -532,6 +534,7 @@ func domainsRowScan(s util.Scanner, d *models.Domain) error {
 		"google":   google,
 		"github":   github,
 		"gitlab":   gitlab,
+		"twitter":  twitter,
 		"sso":      sso,
 	}
 	return nil
@@ -608,9 +611,10 @@ func domainUpdate(d *models.Domain) error {
 			googleProvider=$10,
 			githubProvider=$11,
 			gitlabProvider=$12,
-			ssoProvider=$13,
-			ssoUrl=$14,
-			defaultSortPolicy=$15
+			twitterProvider=$13,
+			ssoProvider=$14,
+			ssoUrl=$15,
+			defaultSortPolicy=$16
 		where domain=$1;
 	`
 
@@ -627,6 +631,7 @@ func domainUpdate(d *models.Domain) error {
 		d.Idps["google"],
 		d.Idps["github"],
 		d.Idps["gitlab"],
+		d.Idps["twitter"],
 		d.Idps["sso"],
 		d.SsoURL,
 		d.DefaultSortPolicy)

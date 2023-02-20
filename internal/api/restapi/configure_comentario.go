@@ -37,6 +37,7 @@ func configureAPI(api *operations.ComentarioAPI) http.Handler {
 	api.JSONConsumer = runtime.JSONConsumer()
 	api.JSONProducer = runtime.JSONProducer()
 	api.GzipProducer = runtime.ByteStreamProducer()
+	api.HTMLProducer = runtime.TextProducer()
 	api.UrlformConsumer = runtime.DiscardConsumer
 
 	// Use a more strict email validator than the default, RFC5322-compliant one

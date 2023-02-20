@@ -54,7 +54,7 @@ export class LoginDialog extends Dialog {
     override renderContent(): Wrap<any> {
         // Create a login form
         const form = UIToolkit.form(() => this.dismiss(true), () => this.dismiss());
-        const oauthProviders = ['google', 'github', 'gitlab'];
+        const oauthProviders = ['google', 'github', 'gitlab', 'twitter'];
         const hasOAuth = oauthProviders.some(p => this.authMethods[p]);
         const hasLocalAuth = this.authMethods['commento'];
 

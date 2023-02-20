@@ -307,6 +307,11 @@
                         <label for="gitlab-provider">GitLab login</label>
                       </div>
 
+                      <div class="row no-border comentario-round-check" v-if="configuredOauths.twitter">
+                        <input type="checkbox" v-model="domains[cd].idps.twitter" id="twitter-provider">
+                        <label for="twitter-provider">Twitter login</label>
+                      </div>
+
                       <div class="row no-border comentario-round-check">
                         <input type="checkbox" v-model="domains[cd].idps.sso" id="sso-provider" @change="window.comentario.ssoProviderChangeHandler()">
                         <label for="sso-provider">Single sign-on</label>
@@ -330,7 +335,8 @@
                         </div>
                       </div>
 
-                      <div class="warning" v-if="!domains[cd].allowAnonymous && !domains[cd].idps.commento && (!configuredOauths.google || !domains[cd].idps.google) && (!configuredOauths.github || !domains[cd].idps.github) && (!configuredOauths.gitlab || !domains[cd].idps.gitlab) && !domains[cd].idps.sso">
+                      <div class="warning"
+                           v-if="!domains[cd].allowAnonymous && !domains[cd].idps.commento && (!configuredOauths.google || !domains[cd].idps.google) && (!configuredOauths.github || !domains[cd].idps.github) && (!configuredOauths.gitlab || !domains[cd].idps.gitlab) && (!configuredOauths.twitter || !domains[cd].idps.twitter) && !domains[cd].idps.sso">
                         You have disabled all authentication options. Your readers will not be able to login, create comments, or vote.
                       </div>
                     </div>

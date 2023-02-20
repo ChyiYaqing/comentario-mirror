@@ -264,6 +264,7 @@ parameters:
       - github
       - gitlab
       - google
+      - twitter
 
 responses:
 
@@ -1446,14 +1447,6 @@ paths:
         - text/html
       parameters:
         - $ref: "#/parameters/federatedIdpId"
-        - in: query
-          name: state
-          type: string
-          required: true
-        - in: query
-          name: code
-          type: string
-          required: true
       responses:
         200:
           description: Success or failure response (see 'success' property)

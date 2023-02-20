@@ -183,8 +183,8 @@ func CommentList(params operations.CommentListParams) middleware.Responder {
 
 	// Prepare a map of configured identity providers: federated ones should only be enabled when configured
 	idps := domain.Idps.Clone()
-	for _, idp := range util.FederatedIdProviders {
-		idps[idp] = idps[idp] && goth.GetProviders()[idp] != nil
+	for idp, gothIdP := range util.FederatedIdProviders {
+		idps[idp] = idps[idp] && goth.GetProviders()[gothIdP] != nil
 	}
 
 	return operations.NewCommentListOK().WithPayload(&operations.CommentListOKBody{
