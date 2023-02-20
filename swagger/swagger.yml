@@ -265,6 +265,21 @@ parameters:
       - gitlab
       - google
 
+responses:
+
+  # 307
+  OAuthRedirect:
+    description: Redirecting to a federated identity provider
+    headers:
+      Location:
+        type: string
+
+  # 401
+  OAuthFailure:
+    description: Authentication failed
+    schema:
+      type: string
+
 paths:
   /_:
     options:
@@ -1411,6 +1426,8 @@ paths:
     get:
       operationId: OauthInit
       summary: Initiate signing in using federated authentication
+      produces:
+        - text/html # For an error response only, otherwise a redirect is issued
       parameters:
         - $ref: "#/parameters/federatedIdpId"
         - in: query
@@ -1419,15 +1436,16 @@ paths:
           required: true
       responses:
         307:
-          description: Redirecting to authentication provider
-          headers:
-            Location:
-              type: string
+          $ref: "#/responses/OAuthRedirect"
+        401:
+          $ref: "#/responses/OAuthFailure"
 
   /oauth/{provider}/callback:
     get:
       operationId: OauthCallback
       summary: Endpoint that gets called back by the federated authentication provider
+      produces:
+        - text/html
       parameters:
         - $ref: "#/parameters/federatedIdpId"
         - in: query
@@ -1443,10 +1461,14 @@ paths:
           description: Success or failure response (see 'success' property)
           schema:
             $ref: "#/definitions/apiResponseBase"
+        401:
+          $ref: "#/responses/OAuthFailure"
 
   /oauth/sso/callback:
     get:
       operationId: OauthSsoCallback
+      produces:
+        - text/html
       parameters:
         - in: query
           name: payload
@@ -1461,18 +1483,21 @@ paths:
           description: Success or failure response (see 'success' property)
           schema:
             $ref: "#/definitions/apiResponseBase"
+        401:
+          $ref: "#/responses/OAuthFailure"
 
   /oauth/sso/redirect:
     get:
       operationId: OauthSsoRedirect
+      produces:
+        - text/html # For an error response only, otherwise a redirect is issued
       parameters:
         - in: query
           name: commenterToken
           type: string
           required: true
       responses:
-        302:
-          description: Redirect to authentication provider
-          headers:
-            Location:
-              type: string
+        307:
+          $ref: "#/responses/OAuthRedirect"
+        401:
+          $ref: "#/responses/OAuthFailure"

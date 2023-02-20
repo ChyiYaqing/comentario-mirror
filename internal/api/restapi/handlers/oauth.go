@@ -28,7 +28,7 @@ type ssoPayload struct {
 	Photo  string `json:"photo"`
 }
 
-// oauthSessions keeps initiated OAuth (federated authentication) sessions
+// oauthSessions stores initiated OAuth (federated authentication) sessions
 var oauthSessions = map[string]string{}
 
 // OauthInit initiates a federated authentication process
@@ -95,7 +95,7 @@ func OauthCallback(params operations.OauthCallbackParams) middleware.Responder {
 		return oauthFailure(errors.New("auth session not found"))
 
 	} else {
-		// Delete the session
+		// Delete the locally stored session
 		delete(oauthSessions, cookie.Value)
 
 		// Recover the original provider session
@@ -330,15 +330,25 @@ func OauthSsoRedirect(params operations.OauthSsoRedirectParams) middleware.Respo
 	ssoURL.RawQuery = q.Encode()
 
 	// Succeeded
-	return operations.NewOauthSsoRedirectFound().WithLocation(ssoURL.String())
+	return operations.NewOauthSsoRedirectTemporaryRedirect().WithLocation(ssoURL.String())
 }
 
 // oauthFailure returns a generic "Unauthorized" responder, with the error message in the details. Also wipes out any
 // auth session cookie
 func oauthFailure(err error) middleware.Responder {
 	return NewCookieResponder(
-		operations.NewGenericUnauthorized().
-			WithPayload(&operations.GenericUnauthorizedBody{Details: err.Error()})).
+		operations.NewOauthInitUnauthorized().
+			WithPayload(fmt.Sprintf(
+				`<html lang="en">
+				<head>
+					<title>401 Unauthorized</title>
+				</head>
+				<body>
+					<h1>Unauthorized</h1>
+					<p>OAuth authentication failed with the error: %s</p>
+				</body>
+				</html>`,
+				err.Error()))).
 		WithoutCookie(util.AuthSessionCookieName, "/")
 }
 

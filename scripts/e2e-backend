@@ -72,6 +72,11 @@ fi
 echo "Copying assets to $build_dir"
 cp -r "$root_dir/db/" "$root_dir/templates/" "$build_dir"
 
+# Use the (local) ~secrets.yaml file if it's present, otherwise the "stock" secrets.yaml
+secrets="$root_dir/k8s/~secrets.yaml"
+[[ ! -f "$secrets" ]] && secrets="$root_dir/k8s/secrets.yaml"
+echo "Using secrets file: $secrets"
+
 # Start the backend
 echo "Starting $build_dir/comentario"
 "$build_dir/comentario" \
@@ -80,4 +85,4 @@ echo "Starting $build_dir/comentario"
     --static-path="$build_dir" \
     --db-migration-path="$build_dir/db" \
     --template-path="$build_dir/templates" \
-    --secrets="$root_dir/k8s/secrets.yaml"
+    --secrets="$secrets"
