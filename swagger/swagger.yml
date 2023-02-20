@@ -699,8 +699,6 @@ paths:
       operationId: CommenterPhoto
       produces:
         - image/jpeg
-        - image/gif
-        - image/png
       parameters:
         - name: commenterHex
           in: query

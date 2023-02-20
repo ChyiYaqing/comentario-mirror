@@ -12,7 +12,9 @@ import (
 	"gitlab.com/comentario/comentario/internal/svc"
 	"gitlab.com/comentario/comentario/internal/util"
 	"golang.org/x/crypto/bcrypt"
-	"image/jpeg"
+	"image"
+	"image/color"
+	"image/draw"
 	"io"
 	"net/http"
 	"strings"
@@ -80,45 +82,41 @@ func CommenterPhoto(params operations.CommenterPhotoParams) middleware.Responder
 		return operations.NewGenericNotFound()
 	}
 
-	url := c.Photo
-	if c.Provider == "google" {
-		if strings.HasSuffix(url, "photo.jpg") {
-			url += "?sz=38"
-		} else {
-			url += "=s38"
-		}
-	} else if c.Provider == "github" {
-		url += "&s=38"
-	} else if c.Provider == "gitlab" {
-		url += "?width=38"
-	}
-
-	resp, err := http.Get(url)
+	resp, err := http.Get(c.Photo)
 	if err != nil {
 		return operations.NewGenericNotFound()
 	}
 	defer resp.Body.Close()
 
-	// Custom URL avatars need to be resized
-	if c.Provider != "commento" {
-		return operations.NewCommenterPhotoOK().WithPayload(resp.Body)
-	}
+	// Limit the size of the response to 512 KiB to prevent DoS attacks that exhaust memory
+	limitedResp := &io.LimitedReader{R: resp.Body, N: 512 * 1024}
 
-	// Limit the size of the response to 128 KiB to prevent DoS attacks that exhaust memory
-	limitedResp := &io.LimitedReader{R: resp.Body, N: 128 * 1024}
-
-	img, err := jpeg.Decode(limitedResp)
+	// Decode the image
+	img, imgFormat, err := image.Decode(limitedResp)
 	if err != nil {
-		return operations.NewGenericInternalServerError().WithPayload(&operations.GenericInternalServerErrorBody{
-			Details: fmt.Sprintf("JPEG decode failed: %v", err),
-		})
+		return operations.NewGenericInternalServerError().
+			WithPayload(&operations.GenericInternalServerErrorBody{Details: "Failed to decode image"})
+	}
+	logger.Debugf("Loaded commenter avatar: format=%s, dimensions=%s", imgFormat, img.Bounds().Size().String())
+
+	// If it's a PNG, flatten it against a white background
+	if imgFormat == "png" {
+		logger.Debug("Flattening PNG image")
+
+		// Create a new white Image with the same dimension of PNG image
+		bgImage := image.NewRGBA(img.Bounds())
+		draw.Draw(bgImage, bgImage.Bounds(), &image.Uniform{C: color.White}, image.Point{}, draw.Src)
+
+		// Paste the PNG image over the background
+		draw.Draw(bgImage, bgImage.Bounds(), img, img.Bounds().Min, draw.Over)
+		img = bgImage
 	}
 
+	// Resize the image and encode into a JPEG
 	var buf bytes.Buffer
 	if err = imaging.Encode(&buf, imaging.Resize(img, 38, 0, imaging.Lanczos), imaging.JPEG); err != nil {
-		return operations.NewGenericInternalServerError().WithPayload(&operations.GenericInternalServerErrorBody{
-			Details: fmt.Sprintf("Image incoding failed: %v", err),
-		})
+		return operations.NewGenericInternalServerError().
+			WithPayload(&operations.GenericInternalServerErrorBody{Details: "Failed to encode image"})
 	}
 	return operations.NewCommenterPhotoOK().WithPayload(io.NopCloser(&buf))
 }
