@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 // Scanner is a database/sql abstraction interface that can be used with both *sql.Row and *sql.Rows
@@ -177,4 +178,50 @@ func createMarkdownRenderer() {
 	htmlFlags |= blackfriday.HTML_HREF_TARGET_BLANK
 
 	markdownRenderer = blackfriday.HtmlRenderer(htmlFlags, "", "")
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+// SafeStringMap is a thread-safe map[string]string. Its zero value is a usable map
+type SafeStringMap struct {
+	m  map[string]string
+	mu sync.Mutex
+}
+
+// Put stores a value under the given key
+func (m *SafeStringMap) Put(k, v string) {
+	m.mu.Lock()
+	if m.m == nil {
+		m.m = make(map[string]string)
+	}
+	defer m.mu.Unlock()
+	m.m[k] = v
+}
+
+// Take retrieves and deletes a values by its key, thread-safely
+func (m *SafeStringMap) Take(k string) (string, bool) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	// Don't bother if there's no data
+	if m.m == nil {
+		return "", false
+	}
+
+	// Fetch the value
+	v, ok := m.m[k]
+
+	// Remove the entry
+	delete(m.m, k)
+	return v, ok
+}
+
+// Len returns the number of entries in the map
+func (m *SafeStringMap) Len() int {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.m == nil {
+		return 0
+	}
+	return len(m.m)
 }

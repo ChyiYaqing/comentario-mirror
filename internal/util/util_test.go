@@ -1,7 +1,9 @@
 package util
 
 import (
+	"fmt"
 	"strings"
+	"sync"
 	"testing"
 )
 
@@ -226,5 +228,38 @@ func TestMarkdownToHTML(t *testing.T) {
 				t.Errorf("MarkdownToHTML() = %v, want %v", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestSafeStringMap(t *testing.T) {
+	m := SafeStringMap{}
+	var wg sync.WaitGroup
+
+	// Run 500 parallel threads
+	for i := 0; i < 500; i++ {
+		wg.Add(1)
+		go func(idx int) {
+			defer wg.Done()
+			// Insert 500 values into the map
+			for j := 0; j < 500; j++ {
+				m.Put(fmt.Sprintf("v-%d-%d", idx, j), "xyz")
+			}
+			// Now take all those values, in reverse order
+			for j := 499; j >= 0; j-- {
+				if got, ok := m.Take(fmt.Sprintf("v-%d-%d", idx, j)); !ok {
+					t.Errorf("SafeStringMap.Take() misses a value for i = %d, j = %d", idx, j)
+				} else if got != "xyz" {
+					t.Errorf("SafeStringMap.Take() returned %v for i = %d, j = %d (want \"xyz\")", got, idx, j)
+				}
+			}
+		}(i)
+	}
+
+	// Wait for the crunch to finish
+	wg.Wait()
+
+	// Verify the map is empty
+	if got := m.Len(); got != 0 {
+		t.Errorf("SafeStringMap.Len() returned %d, want 0", got)
 	}
 }

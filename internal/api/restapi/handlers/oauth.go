@@ -16,7 +16,6 @@ import (
 	"gitlab.com/comentario/comentario/internal/util"
 	"net/http"
 	"net/url"
-	"sync"
 	"time"
 )
 
@@ -30,8 +29,11 @@ type ssoPayload struct {
 }
 
 // oauthSessions stores initiated OAuth (federated authentication) sessions
-var oauthSessions = map[string]string{}
-var oauthSessionsLock sync.Mutex
+var oauthSessions = &util.SafeStringMap{}
+
+// commenterTokens maps temporary OAuth token to the related CommenterToken. It's required for those nasty identity
+// providers that don't support the state parameter (such as Twitter)
+var commenterTokens = &util.SafeStringMap{}
 
 // OauthInit initiates a federated authentication process
 func OauthInit(params operations.OauthInitParams) middleware.Responder {
@@ -71,7 +73,15 @@ func OauthInit(params operations.OauthInitParams) middleware.Responder {
 
 	// Store the session in memory, to verify it later
 	sessID, _ := util.RandomHex(32)
-	sessionPut(sessID, sess.Marshal())
+	oauthSessions.Put(sessID, sess.Marshal())
+
+	// If the session doesn't have the state param, also store the commenter token locally, for subsequent use
+	if originalState, err := getSessionState(sess); err != nil {
+		logger.Warningf("OauthInit(): failed to extract session state: %v", err)
+		return operations.NewGenericInternalServerError()
+	} else if originalState == "" {
+		commenterTokens.Put(sessID, params.CommenterToken)
+	}
 
 	// Succeeded: redirect the user to the federated identity provider, setting the state cookie
 	return NewCookieResponder(operations.NewOauthInitTemporaryRedirect().WithLocation(sessURL)).
@@ -101,13 +111,17 @@ func OauthCallback(params operations.OauthCallbackParams) middleware.Responder {
 
 	// Obtain the auth session ID from the cookie
 	var sess goth.Session
+	var sessID string
 	if cookie, err := params.HTTPRequest.Cookie(util.AuthSessionCookieName); err != nil {
 		logger.Debugf("Auth session cookie error: %v", err)
 		return oauthFailure(errors.New("auth session cookie missing"))
+	} else {
+		sessID = cookie.Value
+	}
 
-		// Find and delete the session
-	} else if sessData, ok := sessionTake(cookie.Value); !ok {
-		logger.Debugf("No auth session found with ID=%v: %v", cookie.Value, err)
+	// Find and delete the session
+	if sessData, ok := oauthSessions.Take(sessID); !ok {
+		logger.Debugf("No auth session found with ID=%v: %v", sessID, err)
 		return oauthFailure(errors.New("auth session not found"))
 
 		// Recover the original provider session
@@ -136,6 +150,16 @@ func OauthCallback(params operations.OauthCallbackParams) middleware.Responder {
 		return oauthFailure(errors.New("fetching user"))
 	}
 
+	// Obtain the commenter token: if it isn't present in the state param (Twitter doesn't support state), try to find
+	// it in the token store
+	commenterToken := reqParams.Get("state")
+	if commenterToken == "" {
+		commenterToken, _ = commenterTokens.Take(sessID)
+	}
+	if commenterToken == "" {
+		return oauthFailure(errors.New("failed to obtain commenter token"))
+	}
+
 	// Validate the returned user
 	// -- UserID
 	if fedUser.UserID == "" {
@@ -151,8 +175,7 @@ func OauthCallback(params operations.OauthCallbackParams) middleware.Responder {
 	}
 
 	// Try to find the corresponding existing user in the database
-	commenterToken := models.CommenterHexID(reqParams.Get("state"))
-	if _, err = commenterGetByCommenterToken(commenterToken); err != nil && err != util.ErrorNoSuchToken {
+	if _, err = commenterGetByCommenterToken(models.CommenterHexID(commenterToken)); err != nil && err != util.ErrorNoSuchToken {
 		return oauthFailure(err)
 	}
 
@@ -344,6 +367,24 @@ func OauthSsoRedirect(params operations.OauthSsoRedirectParams) middleware.Respo
 	return operations.NewOauthSsoRedirectTemporaryRedirect().WithLocation(ssoURL.String())
 }
 
+// getSessionState extracts the state parameter from the given session's URL
+func getSessionState(sess goth.Session) (string, error) {
+	// Fetch the original session's URL
+	rawAuthURL, err := sess.GetAuthURL()
+	if err != nil {
+		return "", err
+	}
+
+	// Parse it
+	authURL, err := url.Parse(rawAuthURL)
+	if err != nil {
+		return "", err
+	}
+
+	// Extract the state param
+	return authURL.Query().Get("state"), nil
+}
+
 // oauthFailure returns a generic "Unauthorized" responder, with the error message in the details. Also wipes out any
 // auth session cookie
 func oauthFailure(err error) middleware.Responder {
@@ -361,22 +402,6 @@ func oauthFailure(err error) middleware.Responder {
 				</html>`,
 				err.Error()))).
 		WithoutCookie(util.AuthSessionCookieName, "/")
-}
-
-// sessionPut stores session data by its ID, thread-safely
-func sessionPut(id, data string) {
-	oauthSessionsLock.Lock()
-	defer oauthSessionsLock.Unlock()
-	oauthSessions[id] = data
-}
-
-// sessionTake retrieves and deletes session data by its ID, thread-safely
-func sessionTake(id string) (string, bool) {
-	oauthSessionsLock.Lock()
-	defer oauthSessionsLock.Unlock()
-	data, ok := oauthSessions[id]
-	delete(oauthSessions, id)
-	return data, ok
 }
 
 func ssoTokenExtract(token string) (string, models.CommenterHexID, error) {
@@ -425,20 +450,14 @@ func ssoTokenNew(domain string, commenterToken string) (string, error) {
 // validateAuthSessionState verifies the session token initially submitted, if any, is matching the one returned with
 // the given callback request
 func validateAuthSessionState(sess goth.Session, req *http.Request) error {
-	// Fetch the original session's URL
-	rawAuthURL, err := sess.GetAuthURL()
-	if err != nil {
-		return err
-	}
-
-	// Parse it
-	authURL, err := url.Parse(rawAuthURL)
+	// Extract the original session state
+	originalState, err := getSessionState(sess)
 	if err != nil {
 		return err
 	}
 
 	// If there was a state initially, the value returned with the request must be the same
-	if originalState := authURL.Query().Get("state"); originalState != "" {
+	if originalState != "" {
 		if reqState := req.URL.Query().Get("state"); reqState != originalState {
 			logger.Debugf("Auth session state mismatch: want '%s', got '%s'", originalState, reqState)
 			return errors.New("auth session state mismatch")
