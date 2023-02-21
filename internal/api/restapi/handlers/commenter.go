@@ -186,17 +186,17 @@ func commenterGetByCommenterToken(commenterToken models.CommenterHexID) (*models
 			commentersRowColumns),
 		commenterToken)
 
-	var c models.Commenter
-	if err := commentersRowScan(row, &c); err != nil {
+	var commenter models.Commenter
+	if err := commentersRowScan(row, &commenter); err != nil {
 		// TODO: is this the only error?
 		return nil, util.ErrorNoSuchToken
 	}
 
-	if c.CommenterHex == "none" {
+	if commenter.CommenterHex == "none" {
 		return nil, util.ErrorNoSuchToken
 	}
 
-	return &c, nil
+	return &commenter, nil
 }
 
 func commenterGetByEmail(provider string, email strfmt.Email) (*models.Commenter, error) {

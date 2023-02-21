@@ -64,7 +64,7 @@ func (db *Database) Query(query string, args ...any) (*sql.Rows, error) {
 	return db.db.Query(query, args...)
 }
 
-// QueryRow queries a signle row from the database
+// QueryRow queries a single row from the database
 func (db *Database) QueryRow(query string, args ...any) *sql.Row {
 	return db.db.QueryRow(query, args...)
 }

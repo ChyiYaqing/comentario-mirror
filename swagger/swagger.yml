@@ -509,6 +509,7 @@ paths:
                 $ref: "#/definitions/commenterHexId"
               domain:
                 type: string
+                minLength: 1
               path:
                 type: string
       responses:

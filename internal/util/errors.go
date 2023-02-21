@@ -8,7 +8,6 @@ var (
 	ErrorCannotDeleteOwnerWithActiveDomains = errors.New("you cannot delete your account until all domains associated with your account are deleted")
 	ErrorCannotDownloadCommento             = errors.New("we could not download your Comentario export file")
 	ErrorCannotDownloadDisqus               = errors.New("we could not download your Disqus export file")
-	ErrorCannotReadResponse                 = errors.New("cannot read response")
 	ErrorCannotUpdateOauthProfile           = errors.New("you cannot update the profile of an external account managed by third-party log in. Please use the appropriate platform to update your details")
 	ErrorDatabaseMigration                  = errors.New("encountered error applying database migration")
 	ErrorDomainAlreadyExists                = errors.New("that domain has already been registered. Please contact support if you are the true owner")
