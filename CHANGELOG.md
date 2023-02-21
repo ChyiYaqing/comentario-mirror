@@ -1,6 +1,25 @@
 # Comentario changelog
 
+## v2.2.0
+
+* This release features a major backend overhaul: Comentario is now using server code generated with [go-swagger](https://goswagger.io/) based on the [Swagger/OpenAPI spec](swagger/swagger.yml).
+* All available federated authentication options are fully functional again: GitHub, GitLab, Google, Twitter, and SSO.
+* This is the last Comentario version that's fully compatible (meaning, backward- and forward-compatible) with Commento database v1.8.0.
+* It's also *almost* compatible with Commento API, with the exception that it consumes `application/json` instead of `application/x-www-form-urlencoded`.
+
+**Changes:**
+
+* Twitter OAuth re-added (9446502, ab1f244)
+* Fix: avatar handling and resizing for all identity providers (59c8643)
+* Fix: federated auth completion (proper HTML gets served) (a0c4626)
+* OAuth flows refactored (2533eda, af56d81, dc2c9c6)
+* Gzip producer for downloads (4c8df85)
+* Comentario Helm chart and image updates (802dddb, 9d0a645, 4f06183, 968059c, a89a99a)
+* Backend refactoring: OpenAPI code generator used (26e099c, 1b0ab10, 27b9e6f, b127050, f82c1be, 1ae87f4, e57dc4c, fe2306d, 8139ae4, e8ebe29, c84828a, dd03b35, 6c99df9, 90c095c, b3ac79c)
+
 ## v2.1.0
+
+**Changes:**
 
 * Bump ci-tools v2, Go 1.20, Postgres 15-alpine (cf574c1)
 * Restyle error box (f7b2b6b)
