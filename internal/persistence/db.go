@@ -2,14 +2,17 @@ package persistence
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"github.com/op/go-logging"
 	"gitlab.com/comentario/comentario/internal/config"
 	"gitlab.com/comentario/comentario/internal/util"
 	"os"
+	"os/signal"
 	"path"
 	"sort"
 	"strings"
+	"sync/atomic"
 	"time"
 )
 
@@ -22,7 +25,9 @@ var goMigrations = map[string]func(db *Database) error{
 
 // Database is an opaque structure providing database operations
 type Database struct {
-	db *sql.DB // Internal SQL database instance
+	db          *sql.DB     // Internal SQL database instance
+	doneConn    chan bool   // Receives a true when the connection process has been finished (successfully or not)
+	interrupted atomic.Bool // Whether the connection process has been interrupted (because of a requested shutdown)
 }
 
 // InitDB establishes a database connection
@@ -33,7 +38,7 @@ func InitDB() (*Database, error) {
 	}
 
 	// Create a new database instance
-	db := &Database{}
+	db := &Database{doneConn: make(chan bool, 1)}
 
 	// Try to connect
 	if err := db.connect(); err != nil {
@@ -88,9 +93,34 @@ func (db *Database) connect() error {
 		config.SecretsConfig.Postgres.Host,
 		config.SecretsConfig.Postgres.Port)
 
+	// Set up an interrupt handler
+	cInt := make(chan os.Signal, 1)
+	signal.Notify(cInt, os.Interrupt)
+	go func() {
+		select {
+		// Done connecting, stop monitoring the SIGINT
+		case <-db.doneConn:
+			signal.Stop(cInt)
+			return
+
+		// SIGINT received, interrupt the connect loop
+		case <-cInt:
+			logger.Warning("Interrupting database connection process...")
+			db.interrupted.Store(true)
+		}
+	}()
+
+	// Signal the monitoring process whenever this function is done
+	defer func() { db.doneConn <- true }()
+
 	var err error
 	var retryDelay = time.Second // Start with a delay of one second
 	for attempt := 1; attempt <= util.DBMaxAttempts; attempt++ {
+		// Exit when terminated
+		if db.interrupted.Load() {
+			return errors.New("connecting to database is cancelled")
+		}
+
 		// Try to establish a connection
 		if err = db.tryConnect(attempt, util.DBMaxAttempts); err == nil {
 			break // Succeeded
@@ -257,24 +287,24 @@ func (db *Database) tryConnect(num, total int) error {
 
 // validateConfig verifies the database configuration is valid
 func validateConfig() error {
-	var errors []string
+	var e []string
 	if config.SecretsConfig.Postgres.Host == "" {
-		errors = append(errors, "host is not specified")
+		e = append(e, "host is not specified")
 	}
 	if config.SecretsConfig.Postgres.Port == 0 {
 		config.SecretsConfig.Postgres.Port = 5432 // PostgreSQL default
 	}
 	if config.SecretsConfig.Postgres.Database == "" {
-		errors = append(errors, "DB name is not specified")
+		e = append(e, "DB name is not specified")
 	}
 	if config.SecretsConfig.Postgres.Username == "" {
-		errors = append(errors, "username is not specified")
+		e = append(e, "username is not specified")
 	}
 	if config.SecretsConfig.Postgres.Password == "" {
-		errors = append(errors, "password is not specified")
+		e = append(e, "password is not specified")
 	}
-	if len(errors) > 0 {
-		return fmt.Errorf("database misconfigured: %s", strings.Join(errors, "; "))
+	if len(e) > 0 {
+		return fmt.Errorf("database misconfigured: %s", strings.Join(e, "; "))
 	}
 	return nil
 }
