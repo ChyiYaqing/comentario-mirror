@@ -191,10 +191,10 @@ type SafeStringMap struct {
 // Put stores a value under the given key
 func (m *SafeStringMap) Put(k, v string) {
 	m.mu.Lock()
+	defer m.mu.Unlock()
 	if m.m == nil {
 		m.m = make(map[string]string)
 	}
-	defer m.mu.Unlock()
 	m.m[k] = v
 }
 
