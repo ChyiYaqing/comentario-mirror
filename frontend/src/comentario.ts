@@ -803,7 +803,7 @@ export class Comentario {
         }
 
         // Update the vote and the score
-        card.comment.score += direction - card.comment.direction;
+        card.comment.score += direction - (card.comment.direction || 0);
         card.comment.direction = direction;
 
         // Update the card

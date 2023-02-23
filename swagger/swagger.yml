@@ -44,6 +44,7 @@ definitions:
         x-omitempty: false
       direction:
         type: integer
+        x-omitempty: false
       score:
         type: integer
         x-omitempty: false
