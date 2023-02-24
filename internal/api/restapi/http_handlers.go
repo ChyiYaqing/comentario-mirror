@@ -1,7 +1,6 @@
 package restapi
 
 import (
-	"fmt"
 	"github.com/gorilla/handlers"
 	"github.com/justinas/alice"
 	"gitlab.com/comentario/comentario/internal/config"
@@ -125,7 +124,7 @@ func rootHandler(next http.Handler) http.Handler {
 
 // serveFileWithPlaceholders serves out files that contain placeholders, ie. HTML, CSS, and JS files
 func serveFileWithPlaceholders(filePath string, w http.ResponseWriter) {
-	logger.Debugf("Serving file %s replacing placeholders", filePath)
+	logger.Debugf("Serving file /%s replacing placeholders", filePath)
 
 	// Read in the file
 	filename := path.Join(config.CLIFlags.StaticPath, filePath)
@@ -165,46 +164,51 @@ func serveFileWithPlaceholders(filePath string, w http.ResponseWriter) {
 	_, _ = w.Write(b)
 }
 
-// staticHandler returns a middleware that serves the static content of the app, which includes the stuff listed in
-// UIHTMLPaths[] and UIStaticPaths[] (favicon, scripts and such)
+// staticHandler returns a middleware that serves the static content of the app, ie. the stuff listed in UIStaticPaths[]
+// (favicon, scripts and such)
 func staticHandler(next http.Handler) http.Handler {
 	// Instantiate a file server for static content
 	fileHandler := http.FileServer(http.Dir(config.CLIFlags.StaticPath))
 
 	// Make a middleware handler
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if ok, p := config.PathOfBaseURL(r.URL.Path); ok && r.Method == "GET" {
-			// Check if it's an HTML page
-			if util.UIHTMLPaths[p] {
-				serveFileWithPlaceholders(fmt.Sprintf("/html/%s.html", p), w)
-				return
-			}
+		// Resources are only served out via GET. Do not allow directory browsing (ie. paths ending with a '/')
+		if r.Method == "GET" && !strings.HasSuffix(r.URL.Path, "/") {
+			// If it's a path under the base URL
+			if ok, p := config.PathOfBaseURL(r.URL.Path); ok {
+				// Check if it's a static file
+				if entry, ok := util.UIStaticPaths[p]; ok {
+					// Calculate the source file path: if it isn't specified, it equals to the requested path
+					srcPath := p
+					if entry.Src != "" {
+						srcPath = strings.ReplaceAll(entry.Src, "$", path.Base(p))
+					}
 
-			// Check if it's an other file with placeholders
-			if util.UIPlaceholderPaths[p] {
-				serveFileWithPlaceholders(p, w)
-				return
-			}
+					// If replacement is required
+					if entry.Repl {
+						serveFileWithPlaceholders(srcPath, w)
+						return
+					}
 
-			// Check if it's a static file. Do not allow directory browsing (ie. paths ending with a '/')
-			if util.UIStaticPaths[p] && !strings.HasSuffix(p, "/") {
-				logger.Debugf("Serving static file /%s", p)
+					// Otherwise it a "real" static file
+					logger.Debugf("Serving /%s from static file /%s", p, srcPath)
 
-				// Make a "fake" (bypassing) response writer
-				bypassWriter := &notFoundBypassWriter{ResponseWriter: w}
+					// Make a "fake" (bypassing) response writer
+					bypassWriter := &notFoundBypassWriter{ResponseWriter: w}
 
-				// Try to serve the requested static content
-				r.URL.Path = "/" + p
-				fileHandler.ServeHTTP(bypassWriter, r)
+					// Try to serve the requested static content: rewrite the path to the srcDir
+					r.URL.Path = "/" + srcPath
+					fileHandler.ServeHTTP(bypassWriter, r)
 
-				// If the content was found, we're done
-				if bypassWriter.status != http.StatusNotFound {
-					return
+					// If the content was found, we're done
+					if bypassWriter.status != http.StatusNotFound {
+						return
+					}
 				}
-			}
 
-			// Remove any existing header to allow automatic MIME type detection
-			delete(w.Header(), "Content-Type")
+				// Remove any existing header to allow automatic MIME type detection
+				delete(w.Header(), "Content-Type")
+			}
 		}
 
 		// Pass on to the next handler otherwise

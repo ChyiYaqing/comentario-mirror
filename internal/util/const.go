@@ -14,6 +14,12 @@ const (
 	AuthSessionCookieName = "_comentario-auth-session" // Cookie name to store the federated authentication session ID
 )
 
+// StaticEntry holds the information about a static resource served over HTTP
+type StaticEntry struct {
+	Src  string // Source file pattern, using '$' for the base name (last path element). If empty, the original path is used
+	Repl bool   // Whether to replace placeholders ('[[[.xxx]]]') in the file
+}
+
 var (
 	WrongAuthDelay = 10 * time.Second // Delay to exercise on a wrong email, password etc.
 
@@ -25,87 +31,84 @@ var (
 		"twitter": "twitter",
 	}
 
-	// UIHTMLPaths stores a list of known UI paths, which map to HTML files
-	UIHTMLPaths = map[string]bool{
-		"confirm-email": true,
-		"dashboard":     true,
-		"footer":        true,
-		"forgot":        true,
-		"login":         true,
-		"logout":        true,
-		"profile":       true,
-		"reset":         true,
-		"settings":      true,
-		"signup":        true,
-		"unsubscribe":   true,
-	}
+	// UIStaticPaths stores a map of known UI static paths to their info entries
+	UIStaticPaths = map[string]StaticEntry{
+		// Root
+		"favicon.ico": {Src: "images/$"},
 
-	// UIPlaceholderPaths stores a list of known JS/CSS files
-	UIPlaceholderPaths = map[string]bool{
-		// JS
-		"js/chartist.js":    true,
-		"js/comentario.js":  true,
-		"js/count.js":       true,
-		"js/dashboard.js":   true,
-		"js/forgot.js":      true,
-		"js/highlight.js":   true,
-		"js/jquery.js":      true,
-		"js/login.js":       true,
-		"js/logout.js":      true,
-		"js/profile.js":     true,
-		"js/reset.js":       true,
-		"js/settings.js":    true,
-		"js/signup.js":      true,
-		"js/unsubscribe.js": true,
-		"js/vue.js":         true,
-
-		// CSS
-		"css/auth.css":             true,
-		"css/auth-main.css":        true,
-		"css/button.css":           true,
-		"css/chartist.css":         true,
-		"css/checkbox.css":         true,
-		"css/comentario.css":       true,
-		"css/common-main.css":      true,
-		"css/dashboard.css":        true,
-		"css/dashboard-main.css":   true,
-		"css/email-main.css":       true,
-		"css/navbar-main.css":      true,
-		"css/source-sans.css":      true,
-		"css/tomorrow.css":         true,
-		"css/unsubscribe.css":      true,
-		"css/unsubscribe-main.css": true,
-	}
-
-	// UIStaticPaths stores a list of known UI non-HTML static paths
-	UIStaticPaths = map[string]bool{
 		// Fonts
-		"fonts/source-sans-300-cyrillic.woff2":     true,
-		"fonts/source-sans-300-cyrillic-ext.woff2": true,
-		"fonts/source-sans-300-greek.woff2":        true,
-		"fonts/source-sans-300-greek-ext.woff2":    true,
-		"fonts/source-sans-300-latin.woff2":        true,
-		"fonts/source-sans-300-latin-ext.woff2":    true,
-		"fonts/source-sans-300-vietnamese.woff2":   true,
-		"fonts/source-sans-400-cyrillic.woff2":     true,
-		"fonts/source-sans-400-cyrillic-ext.woff2": true,
-		"fonts/source-sans-400-greek.woff2":        true,
-		"fonts/source-sans-400-greek-ext.woff2":    true,
-		"fonts/source-sans-400-latin.woff2":        true,
-		"fonts/source-sans-400-latin-ext.woff2":    true,
-		"fonts/source-sans-400-vietnamese.woff2":   true,
-		"fonts/source-sans-700-cyrillic.woff2":     true,
-		"fonts/source-sans-700-cyrillic-ext.woff2": true,
-		"fonts/source-sans-700-greek.woff2":        true,
-		"fonts/source-sans-700-greek-ext.woff2":    true,
-		"fonts/source-sans-700-latin.woff2":        true,
-		"fonts/source-sans-700-latin-ext.woff2":    true,
-		"fonts/source-sans-700-vietnamese.woff2":   true,
+		"fonts/source-sans-300-cyrillic.woff2":     {},
+		"fonts/source-sans-300-cyrillic-ext.woff2": {},
+		"fonts/source-sans-300-greek.woff2":        {},
+		"fonts/source-sans-300-greek-ext.woff2":    {},
+		"fonts/source-sans-300-latin.woff2":        {},
+		"fonts/source-sans-300-latin-ext.woff2":    {},
+		"fonts/source-sans-300-vietnamese.woff2":   {},
+		"fonts/source-sans-400-cyrillic.woff2":     {},
+		"fonts/source-sans-400-cyrillic-ext.woff2": {},
+		"fonts/source-sans-400-greek.woff2":        {},
+		"fonts/source-sans-400-greek-ext.woff2":    {},
+		"fonts/source-sans-400-latin.woff2":        {},
+		"fonts/source-sans-400-latin-ext.woff2":    {},
+		"fonts/source-sans-400-vietnamese.woff2":   {},
+		"fonts/source-sans-700-cyrillic.woff2":     {},
+		"fonts/source-sans-700-cyrillic-ext.woff2": {},
+		"fonts/source-sans-700-greek.woff2":        {},
+		"fonts/source-sans-700-greek-ext.woff2":    {},
+		"fonts/source-sans-700-latin.woff2":        {},
+		"fonts/source-sans-700-latin-ext.woff2":    {},
+		"fonts/source-sans-700-vietnamese.woff2":   {},
 
 		// Images
-		"images/banner.png":  true,
-		"images/favicon.ico": true,
-		"images/logo.svg":    true,
-		"images/tree.svg":    true,
+		"images/banner.png": {},
+		"images/logo.svg":   {},
+		"images/tree.svg":   {},
+
+		// HTML
+		"confirm-email": {Src: "html/$.html", Repl: true},
+		"dashboard":     {Src: "html/$.html", Repl: true},
+		"footer":        {Src: "html/$.html", Repl: true},
+		"forgot":        {Src: "html/$.html", Repl: true},
+		"login":         {Src: "html/$.html", Repl: true},
+		"logout":        {Src: "html/$.html", Repl: true},
+		"profile":       {Src: "html/$.html", Repl: true},
+		"reset":         {Src: "html/$.html", Repl: true},
+		"settings":      {Src: "html/$.html", Repl: true},
+		"signup":        {Src: "html/$.html", Repl: true},
+		"unsubscribe":   {Src: "html/$.html", Repl: true},
+
+		// JS
+		"js/chartist.js":    {Repl: true},
+		"js/comentario.js":  {Repl: true},
+		"js/count.js":       {Repl: true},
+		"js/dashboard.js":   {Repl: true},
+		"js/forgot.js":      {Repl: true},
+		"js/highlight.js":   {Repl: true},
+		"js/jquery.js":      {Repl: true},
+		"js/login.js":       {Repl: true},
+		"js/logout.js":      {Repl: true},
+		"js/profile.js":     {Repl: true},
+		"js/reset.js":       {Repl: true},
+		"js/settings.js":    {Repl: true},
+		"js/signup.js":      {Repl: true},
+		"js/unsubscribe.js": {Repl: true},
+		"js/vue.js":         {Repl: true},
+
+		// CSS
+		"css/auth.css":             {Repl: true},
+		"css/auth-main.css":        {Repl: true},
+		"css/button.css":           {Repl: true},
+		"css/chartist.css":         {Repl: true},
+		"css/checkbox.css":         {Repl: true},
+		"css/comentario.css":       {Repl: true},
+		"css/common-main.css":      {Repl: true},
+		"css/dashboard.css":        {Repl: true},
+		"css/dashboard-main.css":   {Repl: true},
+		"css/email-main.css":       {Repl: true},
+		"css/navbar-main.css":      {Repl: true},
+		"css/source-sans.css":      {Repl: true},
+		"css/tomorrow.css":         {Repl: true},
+		"css/unsubscribe.css":      {Repl: true},
+		"css/unsubscribe-main.css": {Repl: true},
 	}
 )
