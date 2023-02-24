@@ -36,6 +36,12 @@ spec:
           volumeMounts:
             - name: secrets-volume
               mountPath: /comentario-secrets
+            {{- if .Values.comentario.indexHtmlConfigMapName }}
+            - name: index-configmap-volume
+              mountPath: /comentario/html/index.html
+              readOnly: true
+              subPath: index.html
+            {{- end }}
           env:
             - name: PORT
               value: '80'
@@ -65,6 +71,12 @@ spec:
         - name: secrets-volume
           secret:
             secretName: {{ .Values.comentario.secretName }}
+        {{- with .Values.comentario.indexHtmlConfigMapName }}
+        - name: index-configmap-volume
+          configMap:
+            defaultMode: 0700
+            name: "{{ . }}"
+        {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

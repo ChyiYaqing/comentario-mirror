@@ -51,6 +51,10 @@ comentario:
   emailFrom: 'noreply@example.com'
   secretName: comentario-secrets
 
+  # Optional name of the ConfigMap containing the index.html file, to be served at the root path. If not provided, the
+  # root path will redirect to login instead
+  indexHtmlConfigMapName:
+
 resources:
    limits:
      cpu: 500m

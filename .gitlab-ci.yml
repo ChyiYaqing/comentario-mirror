@@ -144,6 +144,7 @@ deploy-tag:
         --set "image.tag=$VERSION"
         --set "comentario.emailFrom=noreply@yktoo.com"
         --set "comentario.secretName=comentario-app-secrets"
+        --set "comentario.indexHtmlConfigMapName=comentario-app-statics-configmap"
         --set "ingress.host=comentario.app"
         --wait
         --timeout 2m
