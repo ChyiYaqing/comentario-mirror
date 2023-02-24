@@ -1,5 +1,14 @@
 # Comentario changelog
 
+## v2.2.2
+
+**Changes:**
+
+* Helm chart: add `comentario.indexHtmlConfigMapName` config value (073c0b8)
+* Serve favicon at root (a56ea0f)
+* Tie style to Comentario colours (e1b21f4)
+* Fix: Vue error in dashboard (ac4993f)
+
 ## v2.2.1
 
 **Changes:**
