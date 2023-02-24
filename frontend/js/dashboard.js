@@ -71,6 +71,7 @@
             // list of domains dynamically loaded; obviously mutable
             domains: [{
                 show: false,
+                idps: {},
                 viewsLast30Days: global.numberify(0),
                 commentsLast30Days: global.numberify(0),
                 moderators: []
