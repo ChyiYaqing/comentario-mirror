@@ -42,17 +42,17 @@ body {
             cursor: pointer;
             transition: all 0.1s;
             border-bottom: 1px solid transparent;
-        }
 
-        li.current {
-            transition: all 0.1s;
-            background: $gray-1;
-            color: $blue-7;
-        }
+            &.current {
+                transition: all 0.1s;
+                background: $gray-1;
+                color: $primary;
 
-        li.current:hover {
-            background: $gray-1;
-            color: $blue-7;
+                &:hover {
+                    background: $gray-1;
+                    color: $blue-6;
+                }
+            }
         }
     }
 
@@ -312,13 +312,13 @@ body {
     }
 
     .selected {
-        color: $blue-7;
+        color: $primary;
         background: $gray-2;
-    }
 
-    .selected:hover {
-        color: $blue-7;
-        background: $gray-2;
+        &:hover {
+            color: $blue-6;
+            background: $gray-2;
+        }
     }
 }
 

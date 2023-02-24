@@ -13,22 +13,16 @@
     text-transform: uppercase;
     text-align: center;
     font-weight: bold;
-    color: $blue-7;
+    color: $primary;
     cursor: pointer;
     transition: all 0.2s;
-}
 
-.button:hover {
-    color: $blue-6;
-}
+    &:hover {
+        color: $blue-6;
+    }
 
-.button:disabled {
-    cursor: default;
-    color: $gray-6;
-}
-
-.short-button {
-    width: 80px;
-    position: absolute;
-    top: 10px;
+    &:disabled {
+        cursor: default;
+        color: $gray-6;
+    }
 }

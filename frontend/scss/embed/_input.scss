@@ -81,8 +81,8 @@ textarea {
         appearance: none;
 
         &:checked {
-            background-color: $blue-7;
-            border-color: $blue-7;
+            background-color: $primary;
+            border-color: $primary;
         }
         &:disabled {
             pointer-events: none;

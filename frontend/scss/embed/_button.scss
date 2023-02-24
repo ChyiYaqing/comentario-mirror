@@ -24,7 +24,7 @@
 
 .comentario-submit-button {
     color: $white;
-    background-color: $blue-8;
+    background-color: $primary;
     font-weight: bold;
     transition: background-color 0.2s;
 
@@ -32,7 +32,7 @@
 
     &.comentario-submit-glyph {
         background:
-            $blue-8 no-repeat center/40%
+            $primary no-repeat center/40%
             url("data:image/svg+xml,%3Csvg viewBox='0 0 128 115.25' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='m102.53 52.839c-0.82333 5.8731-5.7084 10.612-11.819 11.234h-39.52v-25.633l-51.193 38.404 51.193 38.404v-25.505h51.138v-0.14637c14.161-0.036593 25.596-11.362 25.651-25.541h0.0183v-64.055h-25.468z' fill='%23fff'/%3E%3C/svg%3E");
     }
 
