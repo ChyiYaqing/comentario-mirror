@@ -130,12 +130,12 @@ deploy-tag:
     - if: $CI_COMMIT_TAG
   image: alpine/k8s:1.25.6
   environment:
-    name: comment.yktoo.com
+    name: comentario.app
   script:
     # Use the Kubernetes context from GitLab agent
     - kubectl config use-context comentario/comentario-ci-tools:ys-comentario
 
-    # Perform chart installation/upgrade (comment.yktoo.com), waiting for it to complete (up to two minutes)
+    # Perform chart installation/upgrade (comentario.app), waiting for it to complete (up to two minutes)
     - helm upgrade
         --namespace $NAMESPACE
         --install
@@ -143,9 +143,9 @@ deploy-tag:
         --set "image.repository=$CI_REGISTRY_IMAGE"
         --set "image.tag=$VERSION"
         --set "comentario.emailFrom=noreply@yktoo.com"
-        --set "comentario.secretName=comentario-yktoo-com-secrets"
-        --set "ingress.host=comment.yktoo.com"
+        --set "comentario.secretName=comentario-app-secrets"
+        --set "ingress.host=comentario.app"
         --wait
         --timeout 2m
-        comentario-yktoo-com
+        comentario-app
         helm/comentario
