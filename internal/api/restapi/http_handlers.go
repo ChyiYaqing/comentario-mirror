@@ -90,13 +90,31 @@ func makeAPIHandler(apiHandler http.Handler) alice.Constructor {
 	}
 }
 
-// rootRedirectHandler returns a middleware that redirects to login from the root path ("/")
-func rootRedirectHandler(next http.Handler) http.Handler {
+// rootHandler returns a middleware that handles the root path ("/")
+func rootHandler(next http.Handler) http.Handler {
+	// Check for the presence of the index.html file
+	indexFilename := path.Join(config.CLIFlags.StaticPath, "html", "index.html")
+	indexAvail := false
+	if _, err := os.Stat(indexFilename); os.IsNotExist(err) {
+		logger.Infof("No %s file present, '/' will redirect to login", indexFilename)
+	} else if err != nil {
+		logger.Warningf("Failed to read %s, '/' will redirect to login: %v", indexFilename, err)
+	} else {
+		indexAvail = true
+	}
+
+	// Return a root handler function
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// If it's 'GET <root>', redirect to login
+		// If it's 'GET <root>'
 		if ok, p := config.PathOfBaseURL(r.URL.Path); ok && p == "" && r.Method == "GET" {
-			logger.Debug("Redirecting to login")
-			http.Redirect(w, r, config.URLFor("login", nil), 301)
+			// If there's an index page, serve that out
+			if indexAvail {
+				serveFileWithPlaceholders("/html/index.html", w)
+			} else {
+				// No usable index page, redirect to login instead
+				logger.Debug("Redirecting to login")
+				http.Redirect(w, r, config.URLFor("login", nil), 301)
+			}
 			return
 		}
 
@@ -105,7 +123,7 @@ func rootRedirectHandler(next http.Handler) http.Handler {
 	})
 }
 
-// serveFileWithPlaceholders serves out files that contain placeholders, ie. HTML and JS files
+// serveFileWithPlaceholders serves out files that contain placeholders, ie. HTML, CSS, and JS files
 func serveFileWithPlaceholders(filePath string, w http.ResponseWriter) {
 	logger.Debugf("Serving file %s replacing placeholders", filePath)
 
