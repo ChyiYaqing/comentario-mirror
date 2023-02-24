@@ -25,9 +25,8 @@ var goMigrations = map[string]func(db *Database) error{
 
 // Database is an opaque structure providing database operations
 type Database struct {
-	db          *sql.DB     // Internal SQL database instance
-	doneConn    chan bool   // Receives a true when the connection process has been finished (successfully or not)
-	interrupted atomic.Bool // Whether the connection process has been interrupted (because of a requested shutdown)
+	db       *sql.DB   // Internal SQL database instance
+	doneConn chan bool // Receives a true when the connection process has been finished (successfully or not)
 }
 
 // InitDB establishes a database connection
@@ -93,20 +92,24 @@ func (db *Database) connect() error {
 		config.SecretsConfig.Postgres.Host,
 		config.SecretsConfig.Postgres.Port)
 
+	var interrupted atomic.Bool // Whether the connection process has been interrupted (because of a requested shutdown)
+
 	// Set up an interrupt handler
-	cInt := make(chan os.Signal, 1)
-	signal.Notify(cInt, os.Interrupt)
+	cIntLoop := make(chan os.Signal, 1)
+	cIntSleep := make(chan bool, 1)
+	signal.Notify(cIntLoop, os.Interrupt)
 	go func() {
 		select {
 		// Done connecting, stop monitoring the SIGINT
 		case <-db.doneConn:
-			signal.Stop(cInt)
+			signal.Stop(cIntLoop)
 			return
 
-		// SIGINT received, interrupt the connect loop
-		case <-cInt:
+		// SIGINT received, interrupt the connect loop and signal to interrupt a possible sleep
+		case <-cIntLoop:
 			logger.Warning("Interrupting database connection process...")
-			db.interrupted.Store(true)
+			interrupted.Store(true)
+			cIntSleep <- true
 		}
 	}()
 
@@ -117,8 +120,8 @@ func (db *Database) connect() error {
 	var retryDelay = time.Second // Start with a delay of one second
 	for attempt := 1; attempt <= util.DBMaxAttempts; attempt++ {
 		// Exit when terminated
-		if db.interrupted.Load() {
-			return errors.New("connecting to database is cancelled")
+		if interrupted.Load() {
+			return errors.New("interrupted")
 		}
 
 		// Try to establish a connection
@@ -126,8 +129,15 @@ func (db *Database) connect() error {
 			break // Succeeded
 		}
 
-		// Failed to connect. Wait a progressively doubling period of time before the next attempt
-		time.Sleep(retryDelay)
+		// Failed to connect
+		select {
+		// Wait a progressively doubling period of time before the next attempt
+		case <-time.After(retryDelay):
+			break
+		// Interrupt the sleep
+		case <-cIntSleep:
+			break
+		}
 		retryDelay *= 2
 	}
 
