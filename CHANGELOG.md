@@ -1,5 +1,14 @@
 # Comentario changelog
 
+## v2.2.1
+
+**Changes:**
+
+* Allow serving `index.html` at root when present (20bb3db)
+* Fix: comment voting turned score into `NaN` for zero-score comment (bca19a3)
+* Allow moderator edit others' comments (resolves #2) (84c5ec1)
+* Allow interrupting connection process with `SIGINT` (0a0e83e, 40c13b8)
+
 ## v2.2.0
 
 * This release features a major backend overhaul: Comentario is now using server code generated with [go-swagger](https://goswagger.io/) based on the [Swagger/OpenAPI spec](swagger/swagger.yml).
