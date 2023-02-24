@@ -700,7 +700,7 @@ export class Comentario {
         this.profileBar.authMethods = this.authMethods;
 
         // Build a map by grouping all comments by their parentHex value
-        this.parentHexMap = r.comments.reduce(
+        this.parentHexMap = r.comments?.reduce(
             (m, c) => {
                 // Also calculate each comment's creation time in milliseconds
                 c.creationMs = new Date(c.creationDate).getTime();
@@ -712,7 +712,7 @@ export class Comentario {
                 }
                 return m;
             },
-            {} as CommentsGroupedByHex);
+            {} as CommentsGroupedByHex) || {};
 
         // Store all known commenters
         Object.assign(this.commenters, r.commenters);
