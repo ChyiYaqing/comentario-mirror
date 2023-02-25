@@ -1,29 +1,64 @@
-# backend build (api server)
-FROM golang:1.19-alpine AS api-build
-RUN apk add --no-cache --update bash git curl g++
+#=======================================================================================================================
+# Dockerfile to build both Comentario frontend and backend at once.
+#
+# Build with:
+#     docker build -f Dockerfile.build-all -t my-comentario .
+#
+# By default, backend in the container will listen on port 80; you'll also need to copy or mount the secrets file and
+# provide a database connection.
+#
+# The below example assumes you have a local PostgreSQL instance started with 'docker-compose up', a local secrets file,
+# and the backend will listen on port 8080 (instead of the default 80):#
+#     docker run -v $PWD/k8s/secrets.yaml:/comentario/secrets.yaml:ro --network=host --rm my-comentario \
+#         --host=0.0.0.0 \
+#         --port=8080 \
+#         --static-path=/comentario \
+#         --db-migration-path=/comentario/db \
+#         --template-path=/comentario/templates \
+#         -vv
+#=======================================================================================================================
+
+# Backend build (server)
+FROM golang:1.20-alpine AS backend-build
+RUN apk add --no-cache --update git curl
 
 COPY . /go/src/comentario/
-WORKDIR /go/src/comentario/api
-RUN go mod tidy && \
-    CGO_ENABLED=0 go build -a -v -o "comentario" -ldflags "-w -s -X main.version=$(git describe --tags) -X main.date=$(date --iso-8601=seconds)"
+WORKDIR /go/src/comentario/
 
-# frontend build (html, js, css, images, fonts)
+RUN \
+    # Install go-swagger \
+    GOSWAGGER_VERSION=0.30.4 && \
+    echo 'Installing go-swagger' && \
+    curl -fsSL -o /usr/local/bin/swagger \
+        "https://github.com/go-swagger/go-swagger/releases/download/v${GOSWAGGER_VERSION}/swagger_linux_amd64" && \
+    chmod +x /usr/local/bin/swagger && \
+    \
+    # Remove any build leftovers copied over
+    rm -rf build && \
+    # Generate the server code
+    go generate && \
+    # Clean up modules
+    go mod tidy && \
+    # Build a binary
+    v=$(git describe --tags) && \
+    d=$(date -I'seconds') && \
+    CGO_ENABLED=0 go build -a -v -o 'comentario' -ldflags "-w -s -X main.version=$v -X main.date=$d"
+
+# Frontend build (HTML, JS, CSS, images, fonts)
 FROM node:18-alpine AS frontend-build
-RUN apk add --no-cache --update bash g++
-
 COPY . /comentario
 WORKDIR /comentario
-RUN yarn install && yarn run build:prod
+RUN rm -rf build && yarn install && yarn run build:prod
 
-# final image
-FROM alpine:3
+# Final image
+FROM alpine:3.17
 RUN apk add --no-cache --update ca-certificates
 
-COPY --from=api-build /go/src/comentario/api/comentario /comentario/comentario
+COPY --from=backend-build /go/src/comentario/comentario /comentario/
 COPY --from=frontend-build /comentario/build/ /comentario/
 COPY ./templates/ /comentario/templates/
 COPY ./db/ /comentario/db/
 
-EXPOSE 8080
 WORKDIR /comentario/
 ENTRYPOINT ["/comentario/comentario"]
+CMD ["--host=0.0.0.0", "--port=80", "--static-path=/comentario", "--db-migration-path=/comentario/db", "--template-path=/comentario/templates", "-v"]
