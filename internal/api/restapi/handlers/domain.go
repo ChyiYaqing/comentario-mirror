@@ -8,8 +8,10 @@ import (
 	"gitlab.com/comentario/comentario/internal/api/exmodels"
 	"gitlab.com/comentario/comentario/internal/api/models"
 	"gitlab.com/comentario/comentario/internal/api/restapi/operations"
+	"gitlab.com/comentario/comentario/internal/data"
 	"gitlab.com/comentario/comentario/internal/svc"
 	"gitlab.com/comentario/comentario/internal/util"
+	"net/url"
 	"strings"
 	"time"
 )
@@ -158,11 +160,33 @@ func DomainNew(params operations.DomainNewParams) middleware.Responder {
 		return operations.NewDomainNewOK().WithPayload(&operations.DomainNewOKBody{Message: err.Error()})
 	}
 
-	domainName := *params.Body.Domain
+	// If the domain name contains a non-hostname char, parse the passed domain as a URL to only keep the host part
+	domainName := data.TrimmedString(params.Body.Domain)
+	if strings.ContainsAny(domainName, "/:?&") {
+		if u, err := url.Parse(domainName); err != nil {
+			logger.Warningf("DomainNew(): url.Parse() failed for '%s': %v", domainName, err)
+			return operations.NewDomainNewOK().WithPayload(&operations.DomainNewOKBody{Message: util.ErrorInvalidDomainURL.Error()})
+		} else if u.Host == "" {
+			logger.Warningf("DomainNew(): '%s' parses into an empty host", domainName)
+			return operations.NewDomainNewOK().WithPayload(&operations.DomainNewOKBody{Message: util.ErrorInvalidDomainURL.Error()})
+		} else {
+			// Domain can be 'host' or 'host:port'
+			domainName = u.Host
+		}
+	}
+
+	// Validate what's left
+	if ok, _, _ := util.IsValidHostPort(domainName); !ok {
+		logger.Warningf("DomainNew(): '%s' is not a valid host[:port]", domainName)
+		return operations.NewDomainNewOK().WithPayload(&operations.DomainNewOKBody{Message: util.ErrorInvalidDomainHost.Error()})
+	}
+
+	// Persist a new domain record in the database
 	if err = domainNew(owner.OwnerHex, *params.Body.Name, domainName); err != nil {
 		return operations.NewDomainNewOK().WithPayload(&operations.DomainNewOKBody{Message: err.Error()})
 	}
 
+	// Register the current owner as a domain moderator
 	if err = domainModeratorNew(domainName, owner.Email); err != nil {
 		return operations.NewDomainNewOK().WithPayload(&operations.DomainNewOKBody{Message: err.Error()})
 	}
@@ -443,17 +467,16 @@ func domainModeratorList(domain string) ([]*models.DomainModerator, error) {
 }
 
 func domainModeratorNew(domain string, email strfmt.Email) error {
-	if domain == "" || email == "" {
-		return util.ErrorMissingField
-	}
-
 	if err := EmailNew(email); err != nil {
 		logger.Errorf("cannot create email when creating moderator: %v", err)
 		return util.ErrorInternal
 	}
 
-	statement := `insert into moderators(domain, email, addDate) values($1, $2, $3);`
-	_, err := svc.DB.Exec(statement, domain, email, time.Now().UTC())
+	_, err := svc.DB.Exec(
+		"insert into moderators(domain, email, addDate) values($1, $2, $3);",
+		domain,
+		email,
+		time.Now().UTC())
 	if err != nil {
 		logger.Errorf("cannot insert new moderator: %v", err)
 		return util.ErrorInternal
@@ -463,14 +486,6 @@ func domainModeratorNew(domain string, email strfmt.Email) error {
 }
 
 func domainNew(ownerHex models.HexID, name string, domain string) error {
-	if ownerHex == "" || name == "" || domain == "" {
-		return util.ErrorMissingField
-	}
-
-	if strings.Contains(domain, "/") {
-		return util.ErrorInvalidDomain
-	}
-
 	_, err := svc.DB.Exec(
 		"insert into domains(ownerHex, name, domain, creationDate) values($1, $2, $3, $4);",
 		ownerHex,
@@ -489,8 +504,7 @@ func domainOwnershipVerify(ownerHex models.HexID, domain string) (bool, error) {
 		return false, util.ErrorMissingField
 	}
 
-	statement := `select EXISTS (select 1 from domains where ownerHex=$1 and domain=$2);`
-	row := svc.DB.QueryRow(statement, ownerHex, domain)
+	row := svc.DB.QueryRow("select exists(select 1 from domains where ownerHex=$1 and domain=$2);", ownerHex, domain)
 	var exists bool
 	if err := row.Scan(&exists); err != nil {
 		logger.Errorf("cannot query if domain owner: %v", err)
@@ -655,7 +669,7 @@ func domainViewRecord(domain string, commenter *models.Commenter) {
 
 func isDomainModerator(domain string, email strfmt.Email) (bool, error) {
 	row := svc.DB.QueryRow(
-		"select EXISTS(select 1 from moderators where domain=$1 and email=$2);",
+		"select exists(select 1 from moderators where domain=$1 and email=$2);",
 		domain,
 		email)
 	var exists bool

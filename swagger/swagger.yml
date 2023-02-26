@@ -1058,8 +1058,11 @@ paths:
                 $ref: "#/definitions/hexId"
               name:
                 type: string
+                minLength: 1
               domain:
                 type: string
+                minLength: 1
+                maxLength: 253 # Maximum length of a valid DNS entry
       responses:
         200:
           description: Success or failure response (see 'success' property)

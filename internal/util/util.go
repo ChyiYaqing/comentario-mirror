@@ -34,8 +34,8 @@ type Mailer interface {
 var logger = logging.MustGetLogger("persistence")
 
 var (
-	reDNSHostname  = regexp.MustCompile(`^([a-z\d][-a-z\d]{0,62})(\.[a-z\d][-a-z\d]{0,62})*(\.[a-z]{2,63})$`) // Minimum 2 parts
-	reEmailAddress = regexp.MustCompile(`^[^<>()[\]\\.,;:\s@"%]+(\.[^<>()[\]\\.,;:\s@"%]+)*@`)                // Only the part up to the '@'
+	reDNSHostname  = regexp.MustCompile(`^([a-z\d][-a-z\d]{0,62})(\.[a-z\d][-a-z\d]{0,62})*$`) // Minimum one part
+	reEmailAddress = regexp.MustCompile(`^[^<>()[\]\\.,;:\s@"%]+(\.[^<>()[\]\\.,;:\s@"%]+)*@`) // Only the part up to the '@'
 
 	// AppMailer is a Mailer implementation available application-wide. Defaults to a mailer that doesn't do anything
 	AppMailer Mailer = &noOpMailer{}
