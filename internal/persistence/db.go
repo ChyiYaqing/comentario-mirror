@@ -45,7 +45,7 @@ func InitDB() (*Database, error) {
 	}
 
 	// Run migrations
-	if err := db.migrate(); err != nil {
+	if err := db.Migrate(); err != nil {
 		return nil, err
 	}
 
@@ -56,6 +56,73 @@ func InitDB() (*Database, error) {
 // Exec executes the provided statement against the database
 func (db *Database) Exec(query string, args ...any) (sql.Result, error) {
 	return db.db.Exec(query, args...)
+}
+
+// Migrate installs necessary migrations
+func (db *Database) Migrate() error {
+	// Make sure the migrations table exists
+	_, err := db.db.Exec(`create table if not exists migrations (filename text not null unique);`)
+	if err != nil {
+		logger.Errorf("Failed to create table 'migrations': %v", err)
+		return err
+	}
+
+	// Read available migrations
+	available, err := db.getAvailableMigrations()
+
+	// Query already installed migrations
+	installed, err := db.getInstalledMigrations()
+	if err != nil {
+		return err
+	}
+	logger.Infof("%d migrations already installed", len(installed))
+
+	cntOK := 0
+	for _, filename := range available {
+		// Skip migrations that are already installed
+		if installed[filename] {
+			logger.Debugf("Migration '%s' is already installed", filename)
+			continue
+		}
+
+		// Read in the content of the file
+		logger.Debugf("Installing migration '%s'", filename)
+		fullName := path.Join(config.CLIFlags.DBMigrationPath, filename)
+		contents, err := os.ReadFile(fullName)
+		if err != nil {
+			logger.Errorf("Failed to read file '%s': %v", fullName, err)
+			return err
+		}
+
+		// Run the content of the file
+		if _, err = db.db.Exec(string(contents)); err != nil {
+			logger.Errorf("Failed to execute SQL in '%s': %v", fullName, err)
+			return err
+		}
+
+		// Register the migration in the database
+		if _, err = db.db.Exec("insert into migrations (filename) values ($1);", filename); err != nil {
+			logger.Errorf("Failed to register migration '%s': %v", filename, err)
+			return err
+		}
+
+		// Run the necessary code migrations
+		if fn, ok := goMigrations[filename]; ok {
+			if err = fn(db); err != nil {
+				logger.Errorf("Failed to execute Go migration for '%s': %v", fullName, err)
+				return err
+			}
+		}
+
+		cntOK++
+	}
+
+	if cntOK > 0 {
+		logger.Infof("Successfully installed %d new migrations", cntOK)
+	} else {
+		logger.Infof("No new migrations found")
+	}
+	return nil
 }
 
 // Query executes the provided query against the database
@@ -198,73 +265,6 @@ func (db *Database) getInstalledMigrations() (map[string]bool, error) {
 		m[s] = true
 	}
 	return m, nil
-}
-
-// migrate runs all known database migrations
-func (db *Database) migrate() error {
-	// Make sure the migrations table exists
-	_, err := db.db.Exec(`create table if not exists migrations (filename text not null unique);`)
-	if err != nil {
-		logger.Errorf("Failed to create table 'migrations': %v", err)
-		return err
-	}
-
-	// Read available migrations
-	available, err := db.getAvailableMigrations()
-
-	// Query already installed migrations
-	installed, err := db.getInstalledMigrations()
-	if err != nil {
-		return err
-	}
-	logger.Infof("%d migrations already installed", len(installed))
-
-	cntOK := 0
-	for _, filename := range available {
-		// Skip migrations that are already installed
-		if installed[filename] {
-			logger.Debugf("Migration '%s' is already installed", filename)
-			continue
-		}
-
-		// Read in the content of the file
-		logger.Debugf("Installing migration '%s'", filename)
-		fullName := path.Join(config.CLIFlags.DBMigrationPath, filename)
-		contents, err := os.ReadFile(fullName)
-		if err != nil {
-			logger.Errorf("Failed to read file '%s': %v", fullName, err)
-			return err
-		}
-
-		// Run the content of the file
-		if _, err = db.db.Exec(string(contents)); err != nil {
-			logger.Errorf("Failed to execute SQL in '%s': %v", fullName, err)
-			return err
-		}
-
-		// Register the migration in the database
-		if _, err = db.db.Exec("insert into migrations (filename) values ($1);", filename); err != nil {
-			logger.Errorf("Failed to register migration '%s': %v", filename, err)
-			return err
-		}
-
-		// Run the necessary code migrations
-		if fn, ok := goMigrations[filename]; ok {
-			if err = fn(db); err != nil {
-				logger.Errorf("Failed to execute Go migration for '%s': %v", fullName, err)
-				return err
-			}
-		}
-
-		cntOK++
-	}
-
-	if cntOK > 0 {
-		logger.Infof("Successfully installed %d new migrations", cntOK)
-	} else {
-		logger.Infof("No new migrations found")
-	}
-	return nil
 }
 
 // tryConnect tries to establish a database connection, once

@@ -74,6 +74,7 @@ var (
 		SecretsFile     string `long:"secrets"           description:"Path to YAML file with secrets"             default:"secrets.yaml"           env:"SECRETS_FILE"`
 		AllowNewOwners  bool   `long:"allow-new-owners"  description:"Allow new owner signups"                                                     env:"ALLOW_NEW_OWNERS"`
 		GitLabURL       string `long:"gitlab-url"        description:"Custom GitLab URL for authentication"       default:""                       env:"GITLAB_URL"`
+		E2e             bool   `long:"e2e"               description:"End-2-end testing mode"`
 	}{}
 
 	// Derived values

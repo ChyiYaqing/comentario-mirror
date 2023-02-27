@@ -1497,3 +1497,17 @@ paths:
           $ref: "#/responses/OAuthRedirect"
         401:
           $ref: "#/responses/OAuthFailure"
+
+  #---------------------------------------------------------------------------------------------------------------------
+  # Testing endpoints
+  # These endpoints are only available during the test cycle and never in production
+  #---------------------------------------------------------------------------------------------------------------------
+
+  /e2e/reset:
+    post:
+      operationId: E2eReset
+      summary: Reset the backend (all settings and database) to testing defaults
+      security: []
+      responses:
+        204:
+          description: The backend has been successfully reset
