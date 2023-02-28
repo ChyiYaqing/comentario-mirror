@@ -79,7 +79,7 @@ build:
     - go test -v ./...
 
     # Build the backend and the e2e plugin
-    - CGO_ENABLED=0 go build -a -v -o "./build/comentario" -ldflags "-w -s -X main.version=$(git describe --tags) -X main.date=$(date --iso-8601=seconds)"
+    - go build -v -o "./build/comentario" -ldflags "-X main.version=$(git describe --tags) -X main.date=$(date --iso-8601=seconds)"
     - go build -buildmode=plugin -o "./build/comentario-e2e.so" "./e2e/plugin/"
 
     # Build the frontend
@@ -106,6 +106,9 @@ build:
     # Run the e2e tests
     - npx cypress install
     - npx cypress run
+
+    # Rebuild the backend in the production mode
+    - CGO_ENABLED=0 go build -a -v -o "./build/comentario" -ldflags "-w -s -X main.version=$(git describe --tags) -X main.date=$(date --iso-8601=seconds)"
 
 package:
   stage: package
