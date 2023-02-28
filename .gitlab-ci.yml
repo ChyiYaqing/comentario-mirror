@@ -27,6 +27,7 @@ build:
     expire_in: 1 days  # Only keep the last batch
     paths:
       - build/
+      - tmp/logs
   variables:
     # We want to store downloaded packages under the project dir, so we can cache them
     GOPATH: $CI_PROJECT_DIR/.go
@@ -46,7 +47,7 @@ build:
       - .yarn-cache/
   before_script:
     # Create the required dirs
-    - mkdir -p .go
+    - mkdir -p .go tmp/logs
   script:
     #-------------------------------------------------------------------------------------------------------------------
     # Build the app
@@ -63,8 +64,9 @@ build:
     # Run backend tests
     - go test -v ./...
 
-    # Build the backend
+    # Build the backend and the e2e plugin
     - CGO_ENABLED=0 go build -a -v -o "./build/comentario" -ldflags "-w -s -X main.version=$(git describe --tags) -X main.date=$(date --iso-8601=seconds)"
+    - go build -buildmode=plugin -o "./build/comentario-e2e.so" "./e2e/plugin/"
 
     # Build the frontend
     - yarn install --frozen-lockfile --no-progress --cache-folder .yarn-cache
@@ -72,6 +74,23 @@ build:
 
     # Copy static assets
     - cp -r db/ templates/ build/
+
+    # Start the backend
+    - ./build_dir/comentario -vv
+      --e2e
+      --port=8080
+      --static-path=build
+      --db-migration-path=build/db
+      --template-path=build/templates
+      --secrets=k8s/secrets.yaml &> ./tmp/logs/comentario-server.log &
+    - sleep 2
+
+    # Test the server is up and running
+    - curl -vs http://localhost:8080/
+    - curl -vs http://localhost:8080/login
+
+    # Run the e2e test
+    # TODO
 
 package:
   stage: package
@@ -86,6 +105,9 @@ package:
   script:
     # Login to the Container Registry
     - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+
+    # Remove the e2e plugin (it isn't supposed to be in the image)
+    - rm build/comentario-e2e.so
 
     # Build and push the image
     - docker build -t "$IMG_TAG_CURRENT" .
