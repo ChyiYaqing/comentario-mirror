@@ -83,9 +83,9 @@ After this, a new release called `comentario-postgres` will be installed, with P
 
 #### Deployment
 
-2. Edit the values in `k8s/comentario-secrets.yaml` as required and copy-paste its contents into `comentario-secrets.yaml` (indent with 4 spaces)
-3. Create the secret: `kubectl create -f k8s/comentario-secrets.yaml -n $NAMESPACE`
-4. Install Comentario using Helm (adjust the values as you see fit):
+1. Edit the values in `k8s/comentario-secrets.yaml` as required and copy-paste its contents into `comentario-secrets.yaml` (indent with 4 spaces)
+2. Create the secret: `kubectl create -f k8s/comentario-secrets.yaml -n $NAMESPACE`
+3. Install Comentario using Helm (adjust the values as you see fit):
 ```bash
 helm upgrade --install \
     --namespace $NAMESPACE \                            # The same namespace value as above

@@ -13,8 +13,6 @@ services:
       # Transient data volume
       - type: tmpfs
         target: /var/lib/postgresql/data
-      # Initial DB seed
-      - $PWD/etc/db-seed:/docker-entrypoint-initdb.d:ro
 
   http:
     image: nginx
