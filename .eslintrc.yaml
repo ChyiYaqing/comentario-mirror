@@ -56,6 +56,7 @@ overrides:
 
   # TypeScript files
   - files: '*.ts'
+    excludedFiles: 'cypress/**'
     parser: '@typescript-eslint/parser'
     plugins:
       - '@typescript-eslint'
@@ -70,3 +71,9 @@ overrides:
       '@typescript-eslint/no-explicit-any': off
       no-use-before-define: off # Replaced by @typescript-eslint/no-use-before-define
       object-shorthand: error
+
+  # Cypress Typescript
+  - files: cypress/**/*.ts
+    extends:
+      - 'plugin:cypress/recommended'
+    rules: {}

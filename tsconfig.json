@@ -8,5 +8,9 @@
         "target": "ES6",
         "allowJs": true,
         "moduleResolution": "node"
-    }
+    },
+    "exclude": [
+        "cypress",
+        "./cypress.config.ts"
+    ]
 }

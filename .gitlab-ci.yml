@@ -14,7 +14,7 @@ stages:
   - deploy
 
 variables:
-  CI_TOOLS_VERSION: "v3"
+  CI_TOOLS_VERSION: "v5"
   # Namespace to deploy Kubernetes objects into
   NAMESPACE: ys-comentario
 
@@ -27,12 +27,26 @@ build:
     expire_in: 1 days  # Only keep the last batch
     paths:
       - build/
+      - cypress/screenshots
+      - cypress/videos
       - tmp/logs
   variables:
     # We want to store downloaded packages under the project dir, so we can cache them
     GOPATH: $CI_PROJECT_DIR/.go
     # Statically link the executable so that we can run that in Alpine
     CGO_ENABLED: 0
+  services:
+    - name: postgres:15-alpine
+      variables:
+        POSTGRES_DB: comentario
+        POSTGRES_USER: postgres
+        POSTGRES_PASSWORD: postgres
+    - name: nginx:alpine
+      entrypoint:
+        - sh
+        - -c
+        # Copy the test site files into nginx serve dir
+        - "cp -r $CI_PROJECT_DIR/etc/comment-test/* /usr/share/nginx/html/ && exec nginx -g daemon off;"
   cache:
     key:
       files:
@@ -76,21 +90,22 @@ build:
     - cp -r db/ templates/ build/
 
     # Start the backend
-    - ./build_dir/comentario -vv
-      --e2e
-      --port=8080
-      --static-path=build
-      --db-migration-path=build/db
-      --template-path=build/templates
-      --secrets=k8s/secrets.yaml &> ./tmp/logs/comentario-server.log &
+    - ./build/comentario -vv
+        --e2e
+        --port=8080
+        --static-path=build
+        --db-migration-path=build/db
+        --template-path=build/templates
+        --secrets=k8s/secrets.yaml &> ./tmp/logs/comentario-server.log &
     - sleep 2
 
     # Test the server is up and running
     - curl -vs http://localhost:8080/
     - curl -vs http://localhost:8080/login
 
-    # Run the e2e test
-    # TODO
+    # Run the e2e tests
+    - npx cypress install
+    - npx cypress run
 
 package:
   stage: package
