@@ -44,7 +44,7 @@ build:
         - sh
         - -c
         # Copy the test site files into nginx serve dir
-        - "ls -lr $CI_PROJECT_DIR; cp -r $CI_PROJECT_DIR/etc/comment-test/* /usr/share/nginx/html/ && exec nginx -g daemon off;"
+        - "ls -lR /builds; cp -r $CI_PROJECT_DIR/etc/comment-test/* /usr/share/nginx/html/ && exec nginx -g daemon off;"
   cache:
     key:
       files:
