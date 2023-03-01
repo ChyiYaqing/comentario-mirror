@@ -33,8 +33,6 @@ build:
   variables:
     # We want to store downloaded packages under the project dir, so we can cache them
     GOPATH: $CI_PROJECT_DIR/.go
-    # Statically link the executable so that we can run that in Alpine
-    CGO_ENABLED: 0
   services:
     - name: postgres:15-alpine
       variables:
@@ -46,7 +44,7 @@ build:
         - sh
         - -c
         # Copy the test site files into nginx serve dir
-        - "cp -r $CI_PROJECT_DIR/etc/comment-test/* /usr/share/nginx/html/ && exec nginx -g daemon off;"
+        - "ls -lr $CI_PROJECT_DIR; cp -r $CI_PROJECT_DIR/etc/comment-test/* /usr/share/nginx/html/ && exec nginx -g daemon off;"
   cache:
     key:
       files:
@@ -79,8 +77,6 @@ build:
     - go test -v ./...
 
     # Build the backend and the e2e plugin
-    - apt-get update
-    - apt-get install -y g++
     - go build -v -o "./build/comentario" -ldflags "-X main.version=$(git describe --tags) -X main.date=$(date --iso-8601=seconds)"
     - go build -buildmode=plugin -o "./build/comentario-e2e.so" "./e2e/plugin/"
 
@@ -109,7 +105,8 @@ build:
     - npx cypress install
     - npx cypress run
 
-    # Rebuild the backend in the production mode
+    # Rebuild the backend in the production mode. Disable CGO to statically link the executable so that we can run that
+    # in Alpine
     - CGO_ENABLED=0 go build -a -v -o "./build/comentario" -ldflags "-w -s -X main.version=$(git describe --tags) -X main.date=$(date --iso-8601=seconds)"
 
 package:
