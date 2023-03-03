@@ -43,8 +43,16 @@ build:
       entrypoint:
         - sh
         - -c
-        # Copy the test site files into nginx serve dir
-        - "ls -lR /builds; cp -r $CI_PROJECT_DIR/etc/comment-test/* /usr/share/nginx/html/ && exec nginx -g daemon off;"
+        - |
+          # We need to wait for project checkout
+          while [ ! -f "$CI_PROJECT_DIR/.git/index" -o -f "$CI_PROJECT_DIR/.git/index.lock" ]; do
+              echo "Checkout not ready yet in $CI_PROJECT_DIR"
+              sleep 2
+          done
+          # Copy the test site files into nginx HTML dir
+          cp -rv $CI_PROJECT_DIR/etc/comment-test/* /usr/share/nginx/html/
+          # Run nginx normally
+          exec nginx -g 'daemon off;'
   cache:
     key:
       files:
