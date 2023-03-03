@@ -7,8 +7,8 @@ context('Comments', () => {
 
     before(cy.backendReset);
 
-    it('displays comments', {baseUrl}, () => {
-        cy.visit('/');
+    it('displays comments', () => {
+        cy.visit(baseUrl);
         cy.get('h1').should('have.text', 'This page has comments');
     });
 });
