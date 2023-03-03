@@ -14,7 +14,7 @@ stages:
   - deploy
 
 variables:
-  CI_TOOLS_VERSION: "v5"
+  CI_TOOLS_VERSION: "v6"
   # Namespace to deploy Kubernetes objects into
   NAMESPACE: ys-comentario
 
@@ -33,26 +33,17 @@ build:
   variables:
     # We want to store downloaded packages under the project dir, so we can cache them
     GOPATH: $CI_PROJECT_DIR/.go
+    # URL the test-site service is available at
+    CYPRESS_TEST_SITE_URL: http://test-site
   services:
     - name: postgres:15-alpine
       variables:
         POSTGRES_DB: comentario
         POSTGRES_USER: postgres
         POSTGRES_PASSWORD: postgres
-    - name: nginx:alpine
-      entrypoint:
-        - sh
-        - -c
-        - |
-          # We need to wait for project checkout
-          while [ ! -f "$CI_PROJECT_DIR/.git/index" -o -f "$CI_PROJECT_DIR/.git/index.lock" ]; do
-              echo "Checkout not ready yet in $CI_PROJECT_DIR"
-              sleep 2
-          done
-          # Copy the test site files into nginx HTML dir
-          cp -rv $CI_PROJECT_DIR/etc/comment-test/* /usr/share/nginx/html/
-          # Run nginx normally
-          exec nginx -g 'daemon off;'
+    # The test-site service. Its URL (mentioned in CYPRESS_TEST_SITE_URL) must match the host (alias)
+    - name: registry.gitlab.com/comentario/comentario-ci-tools/test-site:$CI_TOOLS_VERSION
+      alias: test-site
   cache:
     key:
       files:

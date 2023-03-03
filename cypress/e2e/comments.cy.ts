@@ -1,6 +1,9 @@
 /// <reference types="cypress" />
 
-context('Comments', {baseUrl: 'http://localhost:8000/'}, () => {
+/** The base URL for the test site. */
+const baseUrl = Cypress.env('TEST_SITE_URL') || 'http://localhost:8000';
+
+context('Comments', {baseUrl}, () => {
 
     before(cy.backendReset);
 
