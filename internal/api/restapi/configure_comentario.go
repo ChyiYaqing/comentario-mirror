@@ -152,9 +152,11 @@ func configureServer(_ *http.Server, scheme, _ string) {
 	// Initialise the services
 	svc.TheServiceManager.Initialise()
 
-	// Init the e2e handler
-	if err := e2eHandler.Init(&e2eApp{logger: logging.MustGetLogger("e2e")}); err != nil {
-		logger.Fatalf("e2e handler init failed: %v", err)
+	// Init the e2e handler, if in the e2e testing mode
+	if e2eHandler != nil {
+		if err := e2eHandler.Init(&e2eApp{logger: logging.MustGetLogger("e2e")}); err != nil {
+			logger.Fatalf("e2e handler init failed: %v", err)
+		}
 	}
 }
 
