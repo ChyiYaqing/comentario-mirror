@@ -18,5 +18,3 @@ services:
     image: registry.gitlab.com/comentario/comentario-ci-tools/test-site:v6
     ports:
       - '8000:80'
-    volumes:
-      - $PWD/etc/comment-test:/usr/share/nginx/html:ro
