@@ -144,8 +144,7 @@ package:
     - tar_name="comentario-$VERSION-linux-amd64"
     - mkdir -p "dist/$tar_name"
     - cp -r build/* "dist/$tar_name/"
-    - tar -czvf "dist/$tar_name.tar.gz" "dist/$tar_name"
-    - rm -rf "dist/$tar_name"
+    - (cd dist && tar -czvf "$tar_name.tar.gz" "$tar_name" && rm -rf "$tar_name")
 
 deploy-dev:
   stage: deploy
@@ -217,7 +216,7 @@ release:
     - tarball="comentario-$VERSION-linux-amd64.tar.gz"
 
     # Upload the tarball
-    - echo "Uploading artifacts for version '$ver_num'"
+    - echo "Uploading artifacts for version $ver_num to $package_registry_url"
     - >
       curl
         --header "JOB-TOKEN: $CI_JOB_TOKEN"
