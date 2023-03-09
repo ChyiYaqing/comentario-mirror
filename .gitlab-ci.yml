@@ -220,6 +220,14 @@ release:
     - |
       curl -fs --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file "dist/$tarball" "$package_registry_url/$tarball"
 
+    # Extract the release text from CHANGELOG.md
+    - awk "/^##\s*$VERSION/{flag=1; next} /^##/{flag=0} flag" CHANGELOG.md > release-text
+    - |
+      if [ ! -s release-text ]; then
+        echo "Failed to extract release text for $VERSION from CHANGELOG.md"
+        exit 1
+      fi
+
     # Create a release
     - echo "Creating release $CI_COMMIT_TAG"
-    - release-cli create --name "$CI_COMMIT_TAG" --tag-name "$CI_COMMIT_TAG" --description CHANGELOG.md --assets-link "{\"name\":\"$tarball\",\"url\":\"$package_registry_url/$tarball\"}"
+    - release-cli create --name "$CI_COMMIT_TAG" --tag-name "$CI_COMMIT_TAG" --description release-text --assets-link "{\"name\":\"$tarball\",\"url\":\"$package_registry_url/$tarball\"}"
