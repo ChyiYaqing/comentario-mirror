@@ -71,7 +71,7 @@ rm -rf "$build_dir/db" "$build_dir/templates"
 # (Re)start the database
 if ((do_db)); then
     docker compose -f "$root_dir/docker-compose.yml" down -v
-    docker compose -f "$root_dir/docker-compose.yml" up -d -- db http
+    docker compose -f "$root_dir/docker-compose.yml" up -d
 fi
 
 # Copy required assets
