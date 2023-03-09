@@ -141,9 +141,11 @@ package:
       fi
 
     # Make a tarball with the binary and all related static files
-    - mkdir dist
     - tar_name="comentario_$VERSION_linux-amd64"
-    - tar -czvf "dist/$tar_name.tar.gz" --transform="s/^build/$tar_name/" build/*
+    - mkdir -p "dist/$tar_name"
+    - cp -r build/* "dist/$tar_name/"
+    - tar -czvf "dist/$tar_name.tar.gz" "dist/$tar_name"
+    - rm -rf "dist/$tar_name"
 
 deploy-dev:
   stage: deploy
