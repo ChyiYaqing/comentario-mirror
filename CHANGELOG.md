@@ -1,5 +1,11 @@
 # Comentario changelog
 
+## v2.2.3
+
+This release brings no extra functionality to Comentario, but rather concentrates on the automated build pipeline, stability, and [documentation](https://docs.comentario.app/).
+
+We're now using Cypress for end-to-end (e2e) tests (the proper tests will follow).
+
 ## v2.2.2
 
 **Changes:**
