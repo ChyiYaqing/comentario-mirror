@@ -141,7 +141,7 @@ package:
       fi
 
     # Make a tarball with the binary and all related static files
-    - tar_name="comentario_$VERSION_linux-amd64"
+    - tar_name="comentario-$VERSION-linux-amd64"
     - mkdir -p "dist/$tar_name"
     - cp -r build/* "dist/$tar_name/"
     - tar -czvf "dist/$tar_name.tar.gz" "dist/$tar_name"
@@ -214,7 +214,7 @@ release:
     # Strip the 'v' prefix from the version number
     - ver_num="${VERSION#v}"
     - package_registry_url="$CI_API_V4_URL/projects/$CI_PROJECT_ID/packages/generic/comentario/$ver_num"
-    - tarball="comentario_$VERSION_linux-amd64.tar.gz"
+    - tarball="comentario-$VERSION-linux-amd64.tar.gz"
 
     # Upload the tarball
     - echo "Uploading artifacts for version '$ver_num'"
