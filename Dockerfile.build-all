@@ -8,13 +8,10 @@
 # provide a database connection.
 #
 # The below example assumes you have a local PostgreSQL instance started with 'docker-compose up', a local secrets file,
-# and the backend will listen on port 8080 (instead of the default 80):#
+# and the backend will listen on port 8080 (instead of the default 80):
 #     docker run -v $PWD/k8s/secrets.yaml:/comentario/secrets.yaml:ro --network=host --rm my-comentario \
 #         --host=0.0.0.0 \
 #         --port=8080 \
-#         --static-path=/comentario \
-#         --db-migration-path=/comentario/db \
-#         --template-path=/comentario/templates \
 #         -vv
 #=======================================================================================================================
 
@@ -44,21 +41,21 @@ RUN \
     d=$(date -I'seconds') && \
     CGO_ENABLED=0 go build -a -v -o 'comentario' -ldflags "-w -s -X main.version=$v -X main.date=$d"
 
-# Frontend build (HTML, JS, CSS, images, fonts)
+# Frontend and embed build
 FROM node:18-alpine AS frontend-build
 COPY . /comentario
 WORKDIR /comentario
-RUN rm -rf build && yarn install && yarn run build:prod
+RUN rm -rf build && yarn install --frozen-lockfile && yarn run build:prod
 
 # Final image
 FROM alpine:3.17
 RUN apk add --no-cache --update ca-certificates
 
 COPY --from=backend-build /go/src/comentario/comentario /comentario/
-COPY --from=frontend-build /comentario/build/ /comentario/
+COPY --from=frontend-build /comentario/build/frontend/ /comentario/frontend/
 COPY ./templates/ /comentario/templates/
 COPY ./db/ /comentario/db/
 
 WORKDIR /comentario/
 ENTRYPOINT ["/comentario/comentario"]
-CMD ["--host=0.0.0.0", "--port=80", "--static-path=/comentario", "--db-migration-path=/comentario/db", "--template-path=/comentario/templates", "-v"]
+CMD ["--host=0.0.0.0", "--port=80", "-v"]

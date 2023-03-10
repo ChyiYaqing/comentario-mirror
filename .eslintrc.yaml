@@ -4,42 +4,6 @@ root: true
 env:
   es6: true
 
-rules:
-  no-bitwise: 2
-  camelcase: 2
-  brace-style:
-    - error
-    - 1tbs
-  curly:
-    - error
-    - all
-  eqeqeq:
-    - error
-    - smart
-  indent:
-    - error
-    - 4
-    - SwitchCase: 1
-  no-use-before-define:
-    - error
-    - functions: false
-  new-cap: error
-  no-caller: error
-  no-unused-vars: error
-  prefer-template: error
-  quote-props:
-    - error
-    - as-needed
-  quotes:
-    - error
-    - single
-  semi:
-    - error
-    - always
-  strict:
-    - error
-    - function
-
 overrides:
   # Gulp
   - files: gulpfile.js
@@ -49,14 +13,11 @@ overrides:
       strict: off
       camelcase: off
 
-  # JavaScript files
-  - files: '*.js'
-    globals:
-      $: true
-
-  # TypeScript files
-  - files: '*.ts'
-    excludedFiles: 'cypress/**'
+  # Embed TypeScript files
+  - files: 'embed/**/*.ts'
+    excludedFiles:
+      - cypress/**
+      - frontend/**
     parser: '@typescript-eslint/parser'
     plugins:
       - '@typescript-eslint'
@@ -69,8 +30,80 @@ overrides:
         - warn
         - ignoreTypeReferences: true
       '@typescript-eslint/no-explicit-any': off
+      '@typescript-eslint/no-non-null-assertion': off
+      brace-style:
+        - error
+        - 1tbs
+      camelcase: 2
+      curly:
+        - error
+        - all
+      eqeqeq:
+        - error
+        - smart
+      indent:
+        - error
+        - 4
+        - SwitchCase: 1
+      new-cap: error
+      no-bitwise: 2
+      no-caller: error
       no-use-before-define: off # Replaced by @typescript-eslint/no-use-before-define
       object-shorthand: error
+      prefer-template: error
+      quote-props:
+        - error
+        - as-needed
+      quotes:
+        - error
+        - single
+      semi:
+        - error
+        - always
+      strict:
+        - error
+        - function
+
+  # Frontend TypeScript files
+  - files: 'frontend/**/*.ts'
+    parserOptions:
+      project:
+        - ./tsconfig.json
+      createDefaultProgram: true
+    extends:
+      - 'plugin:@angular-eslint/ng-cli-compat'
+      - 'plugin:@angular-eslint/ng-cli-compat--formatting-add-on'
+      - 'plugin:@angular-eslint/template/process-inline-templates'
+    rules:
+      '@angular-eslint/component-selector':
+        - error
+        - type: element
+          prefix: app
+          style: kebab-case
+      '@angular-eslint/directive-selector':
+        - error
+        - type: attribute
+          prefix: app
+          style: camelCase
+      '@typescript-eslint/naming-convention':
+        - error
+        - selector: enumMember
+          format:
+            - camelCase
+            - UPPER_CASE
+      jsdoc/newline-after-description:
+        - 'off'
+      max-len:
+        - 'off'
+        - code: 140
+      no-underscore-dangle:
+        - 'off'
+
+  # Frontend HTML files
+  - files: 'frontend/**/*.html'
+    extends:
+      - 'plugin:@angular-eslint/template/recommended'
+    rules: {}
 
   # Cypress Typescript
   - files: cypress/**/*.ts

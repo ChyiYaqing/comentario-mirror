@@ -15,6 +15,6 @@ services:
         target: /var/lib/postgresql/data
 
   http:
-    image: registry.gitlab.com/comentario/comentario-ci-tools/test-site:v6
+    image: registry.gitlab.com/comentario/comentario-ci-tools/test-site:v7
     ports:
       - '8000:80'

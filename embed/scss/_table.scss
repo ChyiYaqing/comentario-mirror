@@ -1,0 +1,18 @@
+@import "colours";
+
+.comentario-table-container {
+    max-width: 100%;
+    overflow-x: auto;
+}
+
+.comentario-table {
+    tr {
+        &:not(:last-child) {
+            border-bottom: 1px solid transparentize($gray-6, 0.5);
+        }
+        td {
+            padding: 4px 8px;
+        }
+    }
+}
+

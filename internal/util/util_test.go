@@ -204,6 +204,92 @@ func TestIsValidPort(t *testing.T) {
 	}
 }
 
+func TestIsUILang(t *testing.T) {
+	tests := []struct {
+		name string
+		lang string
+		want bool
+	}{
+		{"empty string", "", false},
+		{"1 char", "e", false},
+		{"3 chars", "ene", false},
+		{"af is not", "af", false},
+		{"am is not", "am", false},
+		{"ar is not", "ar", false},
+		{"az is not", "az", false},
+		{"bg is not", "bg", false},
+		{"bn is not", "bn", false},
+		{"ca is not", "ca", false},
+		{"cs is not", "cs", false},
+		{"da is not", "da", false},
+		{"de is not", "de", false},
+		{"el is not", "el", false},
+		{"en is supported", "en", true},
+		{"es is not", "es", false},
+		{"et is not", "et", false},
+		{"fa is not", "fa", false},
+		{"fi is not", "fi", false},
+		{"fr is not", "fr", false},
+		{"gu is not", "gu", false},
+		{"he is not", "he", false},
+		{"hi is not", "hi", false},
+		{"hr is not", "hr", false},
+		{"hu is not", "hu", false},
+		{"hy is not", "hy", false},
+		{"id is not", "id", false},
+		{"is is not", "is", false},
+		{"it is not", "it", false},
+		{"ja is not", "ja", false},
+		{"ka is not", "ka", false},
+		{"kk is not", "kk", false},
+		{"km is not", "km", false},
+		{"kn is not", "kn", false},
+		{"ko is not", "ko", false},
+		{"ky is not", "ky", false},
+		{"lo is not", "lo", false},
+		{"lt is not", "lt", false},
+		{"lv is not", "lv", false},
+		{"mk is not", "mk", false},
+		{"ml is not", "ml", false},
+		{"mn is not", "mn", false},
+		{"mr is not", "mr", false},
+		{"ms is not", "ms", false},
+		{"my is not", "my", false},
+		{"ne is not", "ne", false},
+		{"nl is not", "nl", false},
+		{"no is not", "no", false},
+		{"pa is not", "pa", false},
+		{"pl is not", "pl", false},
+		{"pt is not", "pt", false},
+		{"ro is not", "ro", false},
+		{"ru is not", "ru", false},
+		{"si is not", "si", false},
+		{"sk is not", "sk", false},
+		{"sl is not", "sl", false},
+		{"sq is not", "sq", false},
+		{"sr is not", "sr", false},
+		{"sv is not", "sv", false},
+		{"sw is not", "sw", false},
+		{"ta is not", "ta", false},
+		{"te is not", "te", false},
+		{"th is not", "th", false},
+		{"tr is not", "tr", false},
+		{"uk is not", "uk", false},
+		{"ur is not", "ur", false},
+		{"uz is not", "uz", false},
+		{"vi is not", "vi", false},
+		{"zh is not", "zh", false},
+		{"zu is not", "zu", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := IsUILang(tt.lang); got != tt.want {
+				t.Errorf("IsUILang() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestMarkdownToHTML(t *testing.T) {
 	tests := []struct {
 		name     string

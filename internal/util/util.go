@@ -99,6 +99,20 @@ func IsValidPort(s string) bool {
 	return err == nil && i > 0 && i < 65536
 }
 
+// IsUILang returns whether the provided 2-letter string is a supported UI language
+func IsUILang(s string) bool {
+	// Only 2-letter codes are in scope
+	if len(s) == 2 {
+		// Search through the available languages to find one whose base matches the string
+		for _, t := range UILanguageTags {
+			if base, _ := t.Base(); base.String() == s {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // MarkdownToHTML renders the provided markdown string as HTML
 func MarkdownToHTML(markdown string) string {
 	// Lazy-initialise the renderer

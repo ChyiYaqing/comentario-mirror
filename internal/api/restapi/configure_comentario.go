@@ -127,7 +127,7 @@ func configureAPI(api *operations.ComentarioAPI) http.Handler {
 
 	// Set up the middleware
 	chain := alice.New(
-		rootHandler,
+		redirectToLangRootHandler,
 		corsHandler,
 		staticHandler,
 		makeAPIHandler(api.Serve(nil)),

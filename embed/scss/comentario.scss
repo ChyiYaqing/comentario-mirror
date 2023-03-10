@@ -1,0 +1,95 @@
+@import "source-sans";
+@import "colours";
+
+.comentario-root {
+    position: relative;
+    padding: 0;
+    width: 100%;
+    font-family: inherit;
+    font-size: 15px;
+    line-height: 1.5;
+    color: $root-color;
+
+    @import "common";
+    @import "animations";
+    @import "button";
+    @import "table";
+    @import "profile";
+    @import "mod-tools";
+    @import "input";
+    @import "card";
+    @import "dialog";
+    @import "footer";
+
+    .comentario-backdrop {
+        position: absolute;
+        left: 0;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 10;
+        background-color: rgba(255, 255, 255, 0.6);
+        backdrop-filter: blur(3px);
+    }
+
+    .comentario-error-box {
+        width: 100%;
+        padding: 2rem;
+        margin-top: 1rem;
+        margin-bottom: 1rem;
+        border-radius: 4px;
+        text-align: center;
+        background-color: $red-1;
+        color: $red-7;
+        font-weight: 700;
+    }
+
+    .comentario-moderation-notice {
+        width: 100%;
+        border-radius: 4px;
+        height: 32px;
+        text-align: center;
+        color: $orange-7;
+        font-weight: 700;
+        margin-top: 16px;
+    }
+
+    .comentario-sort-policy-buttons-container {
+        padding: 12px 0;
+        font-weight: 400;
+
+        .comentario-sort-policy-buttons {
+            float: right;
+
+            .comentario-sort-policy-button {
+                color: $gray-6 !important;
+                font-size: 13px;
+                padding: 0 7px;
+                cursor: pointer;
+            }
+
+            .comentario-sort-policy-button-selected {
+                color: $blue-8 !important;
+                font-weight: bold;
+            }
+        }
+    }
+
+
+    &.comentario-root-font {
+        * {font-family: 'Source Sans Pro', sans-serif;}
+    }
+
+    @each $i, $c in $colourize-map {
+
+        // Generate colouring classes for the left border
+        .comentario-border-#{$i} {
+            border-left: 2px solid #{$c} !important;
+        }
+
+        // Generate background colouring classes
+        .comentario-bg-#{$i} {
+            background-color: #{$c} !important;
+        }
+    }
+}

@@ -2,7 +2,6 @@
 /build/
 
 # Generated code
-/frontend/app/api/
 /internal/api/models/*.go
 /internal/api/restapi/operations/
 /internal/api/restapi/doc.go
@@ -10,7 +9,10 @@
 /internal/api/restapi/server.go
 
 # Front-end dependencies
-/node_modules/
+node_modules/
+
+# Caches
+.angular/
 
 # IDE
 /.idea/

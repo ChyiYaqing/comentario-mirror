@@ -1,0 +1,62 @@
+@import "colours";
+
+$animation-duration: 250ms;
+
+.comentario-fade-in {
+    animation: comentario-fade-in-animation $animation-duration ease-in-out forwards 1;
+}
+
+.comentario-fade-out {
+    animation: comentario-fade-out-animation $animation-duration ease-in-out forwards 1;
+}
+
+@keyframes comentario-fade-in-animation {
+    from {opacity: 0;}
+    to   {opacity: 1;}
+}
+
+@keyframes comentario-fade-out-animation {
+    from {opacity: 1;}
+    to   {opacity: 0;}
+}
+
+.comentario-expand {
+    animation: comentario-expand-animation $animation-duration ease-in-out forwards 1;
+}
+
+.comentario-collapse {
+    animation: comentario-collapse-animation $animation-duration ease-in-out forwards 1;
+}
+
+.comentario-bg-highlight {
+    animation: comentario-bg-highlight-animation 5s ease forwards 1;
+}
+
+@keyframes comentario-expand-animation {
+    from {
+        opacity: 0;
+        transform: translateY(-100%);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes comentario-collapse-animation {
+    from {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateY(-100%);
+    }
+}
+
+@keyframes comentario-bg-highlight-animation {
+    0%   { background-color: transparent; }
+    10%  { background-color: $yellow-4; }
+    50%  { background-color: $yellow-4; }
+    100% { background-color: transparent; }
+}

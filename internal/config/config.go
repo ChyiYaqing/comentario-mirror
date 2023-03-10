@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"github.com/op/go-logging"
 	"gitlab.com/comentario/comentario/internal/util"
+	"golang.org/x/text/language"
 	"gopkg.in/yaml.v3"
+	"net/http"
 	"net/url"
 	"os"
 	"strings"
@@ -68,9 +70,9 @@ var (
 		EmailFrom       string `long:"email-from"        description:"'From' address in sent emails"              default:"noreply@localhost"      env:"EMAIL_FROM"`
 		DBIdleConns     int    `long:"db-idle-conns"     description:"Max. # of idle DB connections"              default:"50"                     env:"DB_MAX_IDLE_CONNS"`
 		EnableSwaggerUI bool   `long:"enable-swagger-ui" description:"Enable Swagger UI at /api/docs"`
-		StaticPath      string `long:"static-path"       description:"Path to static files"                       default:"."                      env:"STATIC_PATH"`
-		DBMigrationPath string `long:"db-migration-path" description:"Path to DB migration files"                 default:"."                      env:"DB_MIGRATION_PATH"`
-		TemplatePath    string `long:"template-path"     description:"Path to template files"                     default:"."                      env:"TEMPLATE_PATH"`
+		StaticPath      string `long:"static-path"       description:"Path to static files"                       default:"./frontend"             env:"STATIC_PATH"`
+		DBMigrationPath string `long:"db-migration-path" description:"Path to DB migration files"                 default:"./db"                   env:"DB_MIGRATION_PATH"`
+		TemplatePath    string `long:"template-path"     description:"Path to template files"                     default:"./templates"            env:"TEMPLATE_PATH"`
 		SecretsFile     string `long:"secrets"           description:"Path to YAML file with secrets"             default:"secrets.yaml"           env:"SECRETS_FILE"`
 		AllowNewOwners  bool   `long:"allow-new-owners"  description:"Allow new owner signups"                                                     env:"ALLOW_NEW_OWNERS"`
 		GitLabURL       string `long:"gitlab-url"        description:"Custom GitLab URL for authentication"       default:""                       env:"GITLAB_URL"`
@@ -123,6 +125,26 @@ func CLIParsed() error {
 
 	// Succeeded
 	return nil
+}
+
+// GuessUserLanguage tries to identify the most appropriate language for the user based on the request URL path, the
+// user's language cookie and/or browser preferences, amongst those supported, and returns it as a 2-letter code.
+func GuessUserLanguage(r *http.Request) string {
+	// First, analyze the requested path. If it's under a language root, use that language
+	if ok, p := PathOfBaseURL(r.URL.Path); ok && len(p) >= 3 && p[2] == '/' && util.IsUILang(p[0:2]) {
+		return p[0:2]
+	}
+
+	// Next, try to extract the preferred language from a cookie
+	cookieLang := ""
+	if c, _ := r.Cookie("lang"); c != nil {
+		cookieLang = c.Value
+	}
+
+	// Find the best match based on the cookie and/or browser header
+	tag, _ := language.MatchStrings(util.UILangMatcher, cookieLang, r.Header.Get("Accept-Language"))
+	base, _ := tag.Base()
+	return base.String()
 }
 
 // PathOfBaseURL returns whether the given path is under the Base URL's path, and the path part relative to the base

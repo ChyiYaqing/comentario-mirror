@@ -1,16 +1,27 @@
 {
+    "compileOnSave": false,
     "compilerOptions": {
+        "baseUrl": "./",
         "outDir": "./build/",
+        "forceConsistentCasingInFileNames": true,
+        "strict": true,
+        "noImplicitOverride": true,
         "noImplicitAny": true,
         "noImplicitReturns": true,
-        "module": "ES2022",
+        "noFallthroughCasesInSwitch": true,
+        "noPropertyAccessFromIndexSignature": true,
         "sourceMap": true,
+        "declaration": false,
+        "downlevelIteration": true,
+        "useDefineForClassFields": false,
+        "moduleResolution": "node",
+        "importHelpers": true,
         "target": "ES6",
-        "allowJs": true,
-        "moduleResolution": "node"
-    },
-    "exclude": [
-        "cypress",
-        "./cypress.config.ts"
-    ]
+        "module": "ES2022",
+        "lib": [
+            "ES6",
+            "DOM",
+            "DOM.Iterable"
+        ]
+    }
 }

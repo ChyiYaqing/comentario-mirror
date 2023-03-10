@@ -1,11 +1,13 @@
 package restapi
 
 import (
+	"fmt"
 	"github.com/gorilla/handlers"
 	"github.com/justinas/alice"
 	"gitlab.com/comentario/comentario/internal/config"
 	"gitlab.com/comentario/comentario/internal/util"
 	"net/http"
+	"net/url"
 	"os"
 	"path"
 	"strconv"
@@ -48,14 +50,14 @@ func corsHandler(next http.Handler) http.Handler {
 	return handlers.CORS(
 		handlers.AllowedOrigins([]string{"*"}),
 		handlers.AllowedHeaders([]string{"Content-Type", "X-Requested-With"}),
-		handlers.AllowedMethods([]string{"GET", "POST"}))(next)
+		handlers.AllowedMethods([]string{http.MethodGet, http.MethodPost}))(next)
 }
 
 // fallbackHandler returns a middleware that is called in case all other handlers failed
 func fallbackHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Only serve 404's on GET requests
-		if r.Method == "GET" {
+		if r.Method == http.MethodGet {
 			http.NotFoundHandler().ServeHTTP(w, r)
 
 		} else {
@@ -89,35 +91,47 @@ func makeAPIHandler(apiHandler http.Handler) alice.Constructor {
 	}
 }
 
-// rootHandler returns a middleware that handles the root path ("/")
-func rootHandler(next http.Handler) http.Handler {
-	// Check for the presence of the index.html file
-	indexFilename := path.Join(config.CLIFlags.StaticPath, "html", "index.html")
-	indexAvail := false
-	if _, err := os.Stat(indexFilename); os.IsNotExist(err) {
-		logger.Infof("No %s file present, '/' will redirect to login", indexFilename)
-	} else if err != nil {
-		logger.Warningf("Failed to read %s, '/' will redirect to login: %v", indexFilename, err)
-	} else {
-		indexAvail = true
+// redirectToLangRootHandler returns a middleware that redirects the user from the site root or an "incomplete" language
+// root (such as "/en") to the complete/appropriate language root (such as "/en/")
+func redirectToLangRootHandler(next http.Handler) http.Handler {
+	// Replace the path in the provided URL and return the whole URL as a string
+	replacePath := func(u *url.URL, p string) string {
+		// Clone the URL
+		cu := *u
+		// Wipe out any user info
+		cu.User = nil
+		// Replace the path
+		cu.Path = p
+		return cu.String()
 	}
 
-	// Return a root handler function
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// If it's 'GET <root>'
-		if ok, p := config.PathOfBaseURL(r.URL.Path); ok && p == "" && r.Method == "GET" {
-			// If there's an index page, serve that out
-			if indexAvail {
-				serveFileWithPlaceholders("/html/index.html", w)
-			} else {
-				// No usable index page, redirect to login instead
-				logger.Debug("Redirecting to login")
-				http.Redirect(w, r, config.URLFor("login", nil), 301)
+		// If it's 'GET <path-under-root>'
+		if ok, p := config.PathOfBaseURL(r.URL.Path); ok && r.Method == http.MethodGet {
+			switch len(p) {
+			// Site root: redirect to the most appropriate language root
+			case 0:
+				// Redirect with 302 and not "Moved Permanently" to avoid caching by browsers
+				http.Redirect(
+					w,
+					r,
+					replacePath(r.URL, fmt.Sprintf("/%s/", config.GuessUserLanguage(r))),
+					http.StatusFound)
+				return
+
+			// If it's an "incomplete" language root, redirect to the full root, permanently
+			case 2:
+				if util.IsUILang(p) {
+					http.Redirect(
+						w,
+						r,
+						replacePath(r.URL, fmt.Sprintf("/%s/", p)), http.StatusMovedPermanently)
+					return
+				}
 			}
-			return
 		}
 
-		// Pass on to the next handler otherwise
+		// Otherwise, hand over to the next handler
 		next.ServeHTTP(w, r)
 	})
 }
@@ -164,50 +178,65 @@ func serveFileWithPlaceholders(filePath string, w http.ResponseWriter) {
 	_, _ = w.Write(b)
 }
 
-// staticHandler returns a middleware that serves the static content of the app, ie. the stuff listed in UIStaticPaths[]
-// (favicon, scripts and such)
+// staticHandler returns a middleware that serves the static content of the app, which includes:
+// - stuff listed in UIStaticPaths[] (favicon and such)
+// - paths starting from a language root ('/en/', '/ru/' etc.)
 func staticHandler(next http.Handler) http.Handler {
 	// Instantiate a file server for static content
 	fileHandler := http.FileServer(http.Dir(config.CLIFlags.StaticPath))
 
 	// Make a middleware handler
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Resources are only served out via GET. Do not allow directory browsing (ie. paths ending with a '/')
-		if r.Method == "GET" && !strings.HasSuffix(r.URL.Path, "/") {
+		// Resources are only served out via GET
+		if r.Method == http.MethodGet {
 			// If it's a path under the base URL
 			if ok, p := config.PathOfBaseURL(r.URL.Path); ok {
-				// Check if it's a static file
-				if entry, ok := util.UIStaticPaths[p]; ok {
-					// Calculate the source file path: if it isn't specified, it equals to the requested path
-					srcPath := p
-					if entry.Src != "" {
-						srcPath = strings.ReplaceAll(entry.Src, "$", path.Base(p))
-					}
+				// Check if it's a static resource or a path on/under a language root
+				repl, static := util.UIStaticPaths[p]
+				hasLang := !static && len(p) >= 3 && p[2] == '/' && util.IsUILang(p[0:2])
+				langRoot := hasLang && len(p) == 3 // If the path looks like 'xx/', it's a language root
 
-					// If replacement is required
-					if entry.Repl {
-						serveFileWithPlaceholders(srcPath, w)
-						return
-					}
-
-					// Otherwise it a "real" static file
-					logger.Debugf("Serving /%s from static file /%s", p, srcPath)
-
-					// Make a "fake" (bypassing) response writer
-					bypassWriter := &notFoundBypassWriter{ResponseWriter: w}
-
-					// Try to serve the requested static content: rewrite the path to the srcDir
-					r.URL.Path = "/" + srcPath
-					fileHandler.ServeHTTP(bypassWriter, r)
-
-					// If the content was found, we're done
-					if bypassWriter.status != http.StatusNotFound {
-						return
-					}
+				// If under a language root, set a language cookie
+				if hasLang {
+					http.SetCookie(w, &http.Cookie{
+						Name:   "lang",
+						Value:  p[0:2],
+						Path:   "/",
+						MaxAge: int(util.LangCookieDuration.Seconds()),
+					})
 				}
 
-				// Remove any existing header to allow automatic MIME type detection
-				delete(w.Header(), "Content-Type")
+				// If it's a static file with placeholders, serve it with replacements
+				if static && repl {
+					serveFileWithPlaceholders(p, w)
+					return
+				}
+
+				// Non-replaceable static stuff and content under language root
+				if static || hasLang {
+					// Do not allow directory browsing (any path ending with a '/', which isn't a language root)
+					if !langRoot && !strings.HasSuffix(p, "/") {
+						// Make a "fake" (bypassing) response writer
+						bypassWriter := &notFoundBypassWriter{ResponseWriter: w}
+
+						// Try to serve the requested static content
+						fileHandler.ServeHTTP(bypassWriter, r)
+
+						// If the content was found, we're done
+						if bypassWriter.status != http.StatusNotFound {
+							return
+						}
+					}
+
+					// Language root or file wasn't found: serve the main application script for the given language
+					if hasLang {
+						serveFileWithPlaceholders(fmt.Sprintf("%s/index.html", p[0:2]), w)
+						return
+					}
+
+					// Remove any existing content type to allow automatic MIME type detection
+					delete(w.Header(), "Content-Type")
+				}
 			}
 		}
 

@@ -1,0 +1,21 @@
+@import "colours";
+
+.comentario-footer {
+    display: flex;
+    justify-content: end;
+    margin: 36px 0 12px 0;
+    padding-right: 12px;
+    font-size: 13px;
+    line-height: 24px;
+    color: $gray-7;
+    font-weight: 400;
+
+    .comentario-logo-container {
+        display: flex;
+        align-items: center;
+
+        .comentario-logo-brand {
+            font-weight: 700;
+        }
+    }
+}

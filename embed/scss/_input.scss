@@ -1,0 +1,228 @@
+@import "colours";
+
+textarea,
+input[type=text],
+input[type=email],
+input[type=password] {
+    background-color: $white;
+    border: 1px solid rgba(50, 50, 93, .1);
+    border-radius: 3px;
+    color: $gray-7;
+
+    // Draw a red border around invalid controls that have been touched (blurred; gets added programmatically)
+    &.comentario-touched:invalid {
+        border: 1px solid $red-7;
+    }
+
+    &::placeholder {
+        color: $gray-5;
+    }
+}
+
+textarea {
+    display: inline-block;
+    white-space: pre-wrap;
+    padding: 8px;
+    outline: none;
+    overflow: auto;
+    min-height: 130px;
+    width: 100%;
+
+    &::placeholder {
+        font-size: 18px;
+        display: flex;
+        line-height: 110px;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+    }
+}
+
+.comentario-comment-editor {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+
+    .comentario-comment-editor-footer {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 12px;
+
+        .comentario-comment-editor-buttons {
+            display: flex;
+            justify-content: end;
+            align-items: center;
+            flex-grow: 1;
+            flex-wrap: wrap;
+        }
+    }
+}
+
+.comentario-checkbox-container {
+    display: inline-block;
+    min-height: 22px;
+    padding-left: 24px;
+    margin-bottom: 2px;
+
+    input {
+        float: left;
+        margin-left: -24px;
+        width: 20px;
+        height: 20px;
+        vertical-align: top;
+        background: #fff no-repeat center;
+        background-size: contain;
+        border: 1px solid rgba(0,0,0,.25);
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        appearance: none;
+
+        &:checked {
+            background-color: $primary;
+            border-color: $primary;
+        }
+        &:disabled {
+            pointer-events: none;
+            filter: none;
+            opacity: 0.5;
+        }
+        &[disabled],
+        &:disabled {
+            ~ label {
+                cursor: default;
+                opacity: 0.5;
+            }
+        }
+
+    }
+
+    input[type="checkbox"] {
+        border-radius: 5px;
+
+        &:checked {
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='none' stroke='%23fff' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='M6 10l3 3l6-6'/%3e%3c/svg%3e");
+        }
+    }
+
+    label {
+        color: $gray-7;
+        font-size: 13px;
+    }
+}
+
+.comentario-input-group {
+    flex: 1 1 100%;
+    display: flex;
+    align-items: stretch;
+    box-shadow: 0 1px 3px rgba(50, 50, 93, .15), 0 1px 0 rgba(0, 0, 0, .02);
+    border-radius: 4px;
+    background-color: $white;
+    margin: 8px;
+
+    .comentario-input {
+        flex-grow: 1;
+        height: 40px;
+        background-color: $white;
+        border: none;
+        outline: none;
+        padding: 5px 5px 5px 10px;
+
+        &::placeholder {
+            color: $gray-5;
+        }
+    }
+
+    .comentario-button {
+        box-shadow: none;
+        margin: 0;
+    }
+}
+
+.comentario-round-check {
+    input[type="radio"],
+    input[type="checkbox"] {
+        display: none;
+    }
+
+    input[type="radio"] + label,
+    input[type="checkbox"] + label {
+        display: block;
+        position: relative;
+        padding-left: 35px;
+        margin-bottom: 5px;
+        cursor: pointer;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+    }
+
+    input[type="radio"] + label:last-child,
+    input[type="checkbox"] + label:last-child {
+        margin-bottom: 0;
+    }
+
+    input[type="radio"] + label:before,
+    input[type="checkbox"] + label:before {
+        content: '';
+        display: block;
+        width: 13px;
+        height: 13px;
+        margin-top: 2px;
+        background: $gray-0;
+        border: 1px solid $gray-3;
+        border-radius: 3px;
+        position: absolute;
+        left: 0;
+        top: 0;
+        transition: all .15s;
+    }
+
+    input[type="radio"]:disabled + label:before,
+    input[type="checkbox"]:disabled + label:before {
+        background: $gray-0;
+        border: 1px solid $gray-4;
+        opacity: 0.4;
+    }
+
+    input[type="radio"]:checked + label:before,
+    input[type="checkbox"]:checked + label:before {
+        background: $blue-6;
+        border: 1px solid $blue-6;
+    }
+
+    input[type="radio"] + label:after,
+    input[type="checkbox"] + label:after {
+        position: absolute;
+        left: -7px;
+        top: 4px;
+        content: '';
+        display: inline-block;
+        width: 3px;
+        height: 7px;
+        transform: rotate(45deg);
+        margin-left: 12px;
+        margin-right: 12px;
+        border: solid transparent;
+        border-width: 0 2px 2px 0;
+    }
+
+    input[type="radio"]:disabled + label:after,
+    input[type="checkbox"]:disabled + label:after {
+        border: solid transparent;
+        border-width: 0 2px 2px 0;
+    }
+
+    input[type="radio"]:checked + label:after,
+    input[type="checkbox"]:checked + label:after {
+        border: solid $gray-0;
+        border-width: 0 2px 2px 0;
+    }
+
+    .pitch {
+        font-size: 14px;
+        color: #a5a5a5;
+        line-height: 20px !important;
+    }
+}

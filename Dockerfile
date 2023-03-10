@@ -8,15 +8,14 @@ COPY build /comentario/
 
 # Make sure files were built and are available
 RUN test -x /comentario/comentario && \
-    test -d /comentario/css && \
     test -d /comentario/db && \
-    test -d /comentario/fonts && \
-    test -d /comentario/html && \
-    test -d /comentario/images && \
-    test -d /comentario/js && \
-    test -s /comentario/js/comentario.js && \
+    test -s /comentario/frontend/comentario.css && \
+    test -s /comentario/frontend/comentario.js && \
+    test -d /comentario/frontend/en/fonts && \
+    test -d /comentario/frontend/en/images && \
+    test -s /comentario/frontend/en/index.html && \
     test -d /comentario/templates
 
 WORKDIR /comentario/
 ENTRYPOINT ["/comentario/comentario"]
-CMD ["--host=0.0.0.0", "--port=80", "--static-path=/comentario", "--db-migration-path=/comentario/db", "--template-path=/comentario/templates", "-v"]
+CMD ["--host=0.0.0.0", "--port=80", "-v"]

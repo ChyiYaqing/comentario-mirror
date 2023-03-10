@@ -89,7 +89,7 @@ echo "Starting $build_dir/comentario"
     -vv \
     --e2e \
     --port=8080 \
-    --static-path="$build_dir" \
+    --static-path="$build_dir/frontend" \
     --db-migration-path="$build_dir/db" \
     --template-path="$build_dir/templates" \
     --secrets="$secrets" "$@"

@@ -1,0 +1,29 @@
+{
+    "name": "comentario-embed",
+    "version": "2.0.0",
+    "main": "gulpfile.mjs",
+    "scripts": {
+        "clean": "gulp clean",
+        "build": "env NODE_ENV=development gulp",
+        "build:prod": "gulp",
+        "lint": "gulp lint"
+    },
+    "private": true,
+    "dependencies": {},
+    "devDependencies": {
+        "@popperjs/core": "^2.11.6",
+        "gulp": "^4.0.2",
+        "gulp-clean-css": "^4.3.0",
+        "gulp-cli": "^2.3.0",
+        "gulp-eslint": "^6.0.0",
+        "gulp-if": "^3.0.0",
+        "gulp-sass": "^5.1.0",
+        "gulp-sourcemaps": "^3.0.0",
+        "html-minifier": "^4.0.0",
+        "sass": "^1.57.1",
+        "ts-loader": "^9.4.2",
+        "webpack": "^5.75.0",
+        "webpack-cli": "^5.0.1",
+        "webpack-stream": "^7.0.0"
+    }
+}

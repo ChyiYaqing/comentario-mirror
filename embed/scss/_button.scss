@@ -1,0 +1,79 @@
+@import "colours";
+
+.comentario-button {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    cursor: pointer;
+    line-height: 24px;
+    padding: 6px 20px;
+    border: 1px solid transparent;
+    border-radius: 3px;
+    margin-left: 5px;
+    margin-right: 5px;
+    background: transparent;
+    color: $link-color;
+    transition: color 0.2s;
+    white-space: nowrap;
+
+    &:hover, &:focus, &:active {
+        color: $link-hover-color;
+    }
+}
+
+.comentario-submit-button {
+    color: $white;
+    background-color: $primary;
+    font-weight: bold;
+    transition: background-color 0.2s;
+
+    @include btn-shadow();
+
+    &.comentario-submit-glyph {
+        background:
+            $primary no-repeat center/40%
+            url("data:image/svg+xml,%3Csvg viewBox='0 0 128 115.25' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='m102.53 52.839c-0.82333 5.8731-5.7084 10.612-11.819 11.234h-39.52v-25.633l-51.193 38.404 51.193 38.404v-25.505h51.138v-0.14637c14.161-0.036593 25.596-11.362 25.651-25.541h0.0183v-64.055h-25.468z' fill='%23fff'/%3E%3C/svg%3E");
+    }
+
+    &:hover, &:focus, &:active {
+        color: $white;
+        background-color: $blue-6;
+    }
+}
+
+.comentario-danger-button {
+    color: $white;
+    background-color: $red-8;
+    transition: background-color 0.2s;
+
+    @include btn-shadow();
+
+    &:hover, &:focus, &:active {
+        color: $white;
+        background-color: $red-6;
+    }
+}
+
+.comentario-oauth-button {
+    font-weight: bold;
+    text-transform: uppercase;
+
+    @include btn-shadow();
+
+    &, &:hover, &:focus, &:active {
+        color: $white;
+    }
+}
+
+.comentario-google-button  {background: #dd4b39;}
+.comentario-github-button  {background: #000000;}
+.comentario-gitlab-button  {background: #fc6d26;}
+.comentario-twitter-button {background: #219aee;}
+.comentario-sso-button     {background: #000000;}
+
+.comentario-oauth-buttons {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+}
