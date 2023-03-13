@@ -269,13 +269,6 @@ func (db *Database) getInstalledMigrations() (map[string]bool, error) {
 
 // tryConnect tries to establish a database connection, once
 func (db *Database) tryConnect(num, total int) error {
-	// SSL Mode defaults to "disable"
-	sslMode := config.SecretsConfig.Postgres.SSLMode
-	if sslMode == "" {
-		sslMode = "disable"
-	}
-
-	// Open a new connection
 	var err error
 	db.db, err = sql.Open(
 		"postgres",
@@ -286,7 +279,7 @@ func (db *Database) tryConnect(num, total int) error {
 			config.SecretsConfig.Postgres.Host,
 			config.SecretsConfig.Postgres.Port,
 			config.SecretsConfig.Postgres.Database,
-			sslMode,
+			config.SecretsConfig.Postgres.SSLMode,
 		))
 
 	// Failed to connect
@@ -320,6 +313,9 @@ func validateConfig() error {
 	}
 	if config.SecretsConfig.Postgres.Password == "" {
 		e = append(e, "password is not specified")
+	}
+	if config.SecretsConfig.Postgres.SSLMode == "" {
+		config.SecretsConfig.Postgres.SSLMode = "disable"
 	}
 	if len(e) > 0 {
 		return fmt.Errorf("database misconfigured: %s", strings.Join(e, "; "))
