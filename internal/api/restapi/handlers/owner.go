@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"fmt"
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/go-openapi/strfmt"
 	"gitlab.com/comentario/comentario/internal/api/models"
@@ -12,14 +11,6 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"time"
 )
-
-const ownersRowColumns = `
-	owners.ownerHex,
-	owners.email,
-	owners.name,
-	owners.confirmedEmail,
-	owners.joinDate
-`
 
 func OwnerConfirmHex(params operations.OwnerConfirmHexParams) middleware.Responder {
 	if params.ConfirmHex != "" {
@@ -36,12 +27,12 @@ func OwnerConfirmHex(params operations.OwnerConfirmHexParams) middleware.Respond
 }
 
 func OwnerDelete(params operations.OwnerDeleteParams) middleware.Responder {
-	owner, err := ownerGetByOwnerToken(*params.Body.OwnerToken)
+	user, err := svc.TheUserService.FindOwnerByToken(*params.Body.OwnerToken)
 	if err != nil {
 		return operations.NewOwnerDeleteOK().WithPayload(&models.APIResponseBase{Message: err.Error()})
 	}
 
-	if err = ownerDelete(owner.OwnerHex, false); err != nil {
+	if err = ownerDelete(user.HexID, false); err != nil {
 		return operations.NewOwnerDeleteOK().WithPayload(&models.APIResponseBase{Message: err.Error()})
 	}
 
@@ -78,7 +69,7 @@ func OwnerNew(params operations.OwnerNewParams) middleware.Responder {
 
 func OwnerSelf(params operations.OwnerSelfParams) middleware.Responder {
 	// Try to find the owner
-	owner, err := ownerGetByOwnerToken(*params.Body.OwnerToken)
+	user, err := svc.TheUserService.FindOwnerByToken(*params.Body.OwnerToken)
 	if err == util.ErrorNoSuchToken {
 		return operations.NewOwnerSelfOK().WithPayload(&operations.OwnerSelfOKBody{Success: true})
 	}
@@ -90,7 +81,7 @@ func OwnerSelf(params operations.OwnerSelfParams) middleware.Responder {
 	// Succeeded
 	return operations.NewOwnerSelfOK().WithPayload(&operations.OwnerSelfOKBody{
 		LoggedIn: true,
-		Owner:    owner,
+		Owner:    user.ToOwner(),
 		Success:  true,
 	})
 }
@@ -165,45 +156,6 @@ func ownerDelete(ownerHex models.HexID, deleteDomains bool) error {
 	return nil
 }
 
-func ownerGetByEmail(email strfmt.Email) (*models.Owner, error) {
-	if email == "" {
-		return nil, util.ErrorMissingField
-	}
-
-	row := svc.DB.QueryRow(fmt.Sprintf("select %s from owners where email=$1;", ownersRowColumns), email)
-
-	var o models.Owner
-	if err := ownersRowScan(row, &o); err != nil {
-		// TODO: Make sure this is actually no such email.
-		return nil, util.ErrorNoSuchEmail
-	}
-
-	return &o, nil
-}
-
-func ownerGetByOwnerToken(ownerToken models.HexID) (*models.Owner, error) {
-	if ownerToken == "" {
-		return nil, util.ErrorMissingField
-	}
-
-	row := svc.DB.QueryRow(
-		fmt.Sprintf(
-			"select %s "+
-				"from owners "+
-				"where owners.ownerHex in "+
-				"(select ownerSessions.ownerHex from ownerSessions where ownerSessions.ownerToken = $1);",
-			ownersRowColumns),
-		ownerToken)
-
-	var o models.Owner
-	if err := ownersRowScan(row, &o); err != nil {
-		logger.Errorf("cannot scan owner: %v\n", err)
-		return nil, util.ErrorInternal
-	}
-
-	return &o, nil
-}
-
 func ownerLogin(email strfmt.Email, password string) (models.HexID, error) {
 	if email == "" || password == "" {
 		return "", util.ErrorMissingField
@@ -260,7 +212,7 @@ func ownerNew(email strfmt.Email, name string, password string) (string, error) 
 		return "", util.ErrorNewOwnerForbidden
 	}
 
-	if _, err := ownerGetByEmail(email); err == nil {
+	if _, err := svc.TheUserService.FindOwnerByEmail(string(email)); err == nil {
 		return "", util.ErrorEmailAlreadyExists
 	}
 
@@ -322,14 +274,4 @@ func ownerNew(email strfmt.Email, name string, password string) (string, error) 
 
 	// Succeeded
 	return ownerHex, nil
-}
-
-func ownersRowScan(s util.Scanner, o *models.Owner) error {
-	return s.Scan(
-		&o.OwnerHex,
-		&o.Email,
-		&o.Name,
-		&o.ConfirmedEmail,
-		&o.JoinDate,
-	)
 }

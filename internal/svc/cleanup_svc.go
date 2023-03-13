@@ -30,7 +30,7 @@ func (s *cleanupService) domainExportCleanupBegin() error {
 				delete from exports
 				where creationDate < $1;
 			`
-			_, err := DB.Exec(statement, time.Now().UTC().AddDate(0, 0, -7))
+			_, err := db.Exec(statement, time.Now().UTC().AddDate(0, 0, -7))
 			if err != nil {
 				logger.Errorf("error cleaning up export rows: %v", err)
 				return
@@ -50,7 +50,7 @@ func (s *cleanupService) ssoTokenCleanupBegin() error {
 				delete from ssoTokens
 				where creationDate < $1;
 			`
-			_, err := DB.Exec(statement, time.Now().UTC().Add(time.Duration(-10)*time.Minute))
+			_, err := db.Exec(statement, time.Now().UTC().Add(time.Duration(-10)*time.Minute))
 			if err != nil {
 				logger.Errorf("error cleaning up export rows: %v", err)
 				return
@@ -67,7 +67,7 @@ func (s *cleanupService) viewsCleanupBegin() error {
 	go func() {
 		for {
 			statement := `delete from views where viewDate < $1;`
-			_, err := DB.Exec(statement, time.Now().UTC().AddDate(0, 0, -45))
+			_, err := db.Exec(statement, time.Now().UTC().AddDate(0, 0, -45))
 			if err != nil {
 				logger.Errorf("error cleaning up views: %v", err)
 				return

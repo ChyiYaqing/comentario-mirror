@@ -7,8 +7,11 @@ import (
 // TheServiceManager is a global service manager interface
 var TheServiceManager ServiceManager = &manager{}
 
-// Global database instance (TODO: make only available in this package)
+// obsolete
 var DB *persistence.Database
+
+// db is a global database instance (only available for the services package)
+var db *persistence.Database
 
 // ServiceManager provides high-level service management routines
 type ServiceManager interface {
@@ -32,9 +35,10 @@ func (m *manager) Initialise() {
 
 	// Initiate a DB connection
 	var err error
-	if DB, err = persistence.InitDB(); err != nil {
+	if db, err = persistence.InitDB(); err != nil {
 		logger.Fatalf("Failed to connect to database: %v", err)
 	}
+	DB = db // TODO REMOVE
 
 	// Start the cleanup service
 	if err = TheCleanupService.Init(); err != nil {
@@ -52,7 +56,8 @@ func (m *manager) Shutdown() {
 	}
 
 	// Teardown the database
-	_ = DB.Shutdown()
-	DB = nil
+	_ = db.Shutdown()
+	db = nil
+	DB = db // TODO REMOVE
 	m.inited = false
 }

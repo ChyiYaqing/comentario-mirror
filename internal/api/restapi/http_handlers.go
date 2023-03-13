@@ -2,6 +2,7 @@ package restapi
 
 import (
 	"fmt"
+	"github.com/go-openapi/errors"
 	"github.com/gorilla/handlers"
 	"github.com/justinas/alice"
 	"gitlab.com/comentario/comentario/internal/config"
@@ -14,10 +15,10 @@ import (
 	"strings"
 )
 
-// InternalError responds with the "Internal server error" response
-func InternalError(w http.ResponseWriter) {
-	http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-}
+var (
+	ErrInternal     = errors.New(http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
+	ErrUnauthorised = errors.New(http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized))
+)
 
 // notFoundBypassWriter is an object that pretends to be a ResponseWriter but refrains from writing a 404 response
 type notFoundBypassWriter struct {
@@ -145,7 +146,7 @@ func serveFileWithPlaceholders(filePath string, w http.ResponseWriter) {
 	b, err := os.ReadFile(filename)
 	if err != nil {
 		logger.Warningf("Failed to read %s: %v", filename, err)
-		InternalError(w)
+		http.Error(w, ErrInternal.Error(), int(ErrInternal.Code()))
 		return
 	}
 

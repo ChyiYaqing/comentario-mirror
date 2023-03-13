@@ -405,8 +405,7 @@ func oauthFailure(err error) middleware.Responder {
 }
 
 func ssoTokenExtract(token string) (string, models.CommenterHexID, error) {
-	statement := "select domain, commenterToken from ssoTokens where token = $1;"
-	row := svc.DB.QueryRow(statement, token)
+	row := svc.DB.QueryRow("select domain, commenterToken from ssoTokens where token = $1;", token)
 
 	var domain string
 	var commenterToken models.CommenterHexID
@@ -414,11 +413,7 @@ func ssoTokenExtract(token string) (string, models.CommenterHexID, error) {
 		return "", "", util.ErrorNoSuchToken
 	}
 
-	statement = `
-		delete from ssoTokens
-		where token = $1;
-	`
-	if _, err := svc.DB.Exec(statement, token); err != nil {
+	if _, err := svc.DB.Exec("delete from ssoTokens where token = $1;", token); err != nil {
 		logger.Errorf("cannot delete SSO token after usage: %v", err)
 		return "", "", util.ErrorInternal
 	}

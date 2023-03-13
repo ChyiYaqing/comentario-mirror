@@ -34,6 +34,7 @@ type Mailer interface {
 var logger = logging.MustGetLogger("persistence")
 
 var (
+	reHexID        = regexp.MustCompile(`^[\da-f]{64}$`)
 	reDNSHostname  = regexp.MustCompile(`^([a-z\d][-a-z\d]{0,62})(\.[a-z\d][-a-z\d]{0,62})*$`) // Minimum one part
 	reEmailAddress = regexp.MustCompile(`^[^<>()[\]\\.,;:\s@"%]+(\.[^<>()[\]\\.,;:\s@"%]+)*@`) // Only the part up to the '@'
 
@@ -64,6 +65,11 @@ func IsValidEmail(s string) bool {
 		}
 	}
 	return false
+}
+
+// IsValidHexID returns true if the passed string is a valid hex ID
+func IsValidHexID(s string) bool {
+	return len(s) == 64 && reHexID.MatchString(s)
 }
 
 // IsValidHostname returns true if the passed string is a valid domain hostname

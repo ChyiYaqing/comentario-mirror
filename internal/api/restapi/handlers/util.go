@@ -5,7 +5,9 @@ import (
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/op/go-logging"
 	"gitlab.com/comentario/comentario/internal/api/models"
+	"gitlab.com/comentario/comentario/internal/api/restapi/operations"
 	"gitlab.com/comentario/comentario/internal/config"
+	"gitlab.com/comentario/comentario/internal/svc"
 	"net/http"
 	"time"
 )
@@ -88,4 +90,15 @@ func (r *CookieResponder) WithCookie(name, value, path string, maxAge time.Durat
 func (r *CookieResponder) WithoutCookie(name, path string) *CookieResponder {
 	r.cookies[name] = &http.Cookie{Name: name, Path: path, MaxAge: -1}
 	return r
+}
+
+// serviceErrorResponder translates the provided error, returned by a service, into an appropriate error responder
+func serviceErrorResponder(err error) middleware.Responder {
+	switch err {
+	case svc.ErrNotFound:
+		return operations.NewGenericNotFound()
+	}
+
+	// Not recognised: return an internal error response
+	return operations.NewGenericInternalServerError()
 }

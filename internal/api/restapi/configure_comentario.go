@@ -64,6 +64,9 @@ func configureAPI(api *operations.ComentarioAPI) http.Handler {
 		api.UseSwaggerUI()
 	}
 
+	// Set up auth handlers
+	api.OwnerCookieAuth = FindOwnerByCookieHeader
+
 	// Comment
 	api.CommentApproveHandler = operations.CommentApproveHandlerFunc(handlers.CommentApprove)
 	api.CommentCountHandler = operations.CommentCountHandlerFunc(handlers.CommentCount)

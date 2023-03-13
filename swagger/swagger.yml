@@ -10,6 +10,14 @@ schemes:
 swagger: "2.0"
 basePath: /api
 
+securityDefinitions:
+  # Cookie authentication for owners. Uses the apiKey type for the lack of a proper cookie-based authentication in
+  # Swagger 2
+  ownerCookie:
+    type: apiKey
+    in: header
+    name: Cookie
+
 definitions:
 
   apiResponseBase:
@@ -245,6 +253,11 @@ definitions:
     maxLength: 64
     pattern: 'root|[0-9a-f]{64}'
 
+  principal:
+    description: The authenticated principal
+    type: object
+    readOnly: true
+
   sortPolicy:
     description: Sort policy
     type: string
@@ -297,6 +310,13 @@ paths:
                 type: string
         401:
           description: Unauthorized
+          schema:
+            type: object
+            properties:
+              details:
+                type: string
+        403:
+          description: Forbidden
           schema:
             type: object
             properties:
@@ -957,6 +977,8 @@ paths:
   /domain/list:
     post:
       operationId: DomainList
+      security:
+        - ownerCookie: []
       parameters:
         - in: body
           name: body

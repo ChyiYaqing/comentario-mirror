@@ -40,12 +40,12 @@ var domainsRowColumns = `
 `
 
 func DomainClear(params operations.DomainClearParams) middleware.Responder {
-	owner, err := ownerGetByOwnerToken(*params.Body.OwnerToken)
+	user, err := svc.TheUserService.FindOwnerByToken(*params.Body.OwnerToken)
 	if err != nil {
 		return operations.NewDomainClearOK().WithPayload(&models.APIResponseBase{Message: err.Error()})
 	}
 
-	isOwner, err := domainOwnershipVerify(owner.OwnerHex, *params.Body.Domain)
+	isOwner, err := domainOwnershipVerify(user.HexID, *params.Body.Domain)
 	if err != nil {
 		return operations.NewDomainClearOK().WithPayload(&models.APIResponseBase{Message: err.Error()})
 	}
@@ -62,12 +62,12 @@ func DomainClear(params operations.DomainClearParams) middleware.Responder {
 }
 
 func DomainDelete(params operations.DomainDeleteParams) middleware.Responder {
-	owner, err := ownerGetByOwnerToken(*params.Body.OwnerToken)
+	user, err := svc.TheUserService.FindOwnerByToken(*params.Body.OwnerToken)
 	if err != nil {
 		return operations.NewDomainDeleteOK().WithPayload(&models.APIResponseBase{Message: err.Error()})
 	}
 
-	isOwner, err := domainOwnershipVerify(owner.OwnerHex, *params.Body.Domain)
+	isOwner, err := domainOwnershipVerify(user.HexID, *params.Body.Domain)
 	if err != nil {
 		return operations.NewDomainDeleteOK().WithPayload(&models.APIResponseBase{Message: err.Error()})
 	}
@@ -83,13 +83,8 @@ func DomainDelete(params operations.DomainDeleteParams) middleware.Responder {
 	return operations.NewDomainDeleteOK().WithPayload(&models.APIResponseBase{Success: true})
 }
 
-func DomainList(params operations.DomainListParams) middleware.Responder {
-	owner, err := ownerGetByOwnerToken(*params.Body.OwnerToken)
-	if err != nil {
-		return operations.NewDomainListOK().WithPayload(&operations.DomainListOKBody{Message: err.Error()})
-	}
-
-	domains, err := domainList(owner.OwnerHex)
+func DomainList(_ operations.DomainListParams, principal *data.User) middleware.Responder {
+	domains, err := domainList(principal.HexID)
 	if err != nil {
 		return operations.NewDomainListOK().WithPayload(&operations.DomainListOKBody{Message: err.Error()})
 	}
@@ -109,13 +104,13 @@ func DomainList(params operations.DomainListParams) middleware.Responder {
 }
 
 func DomainModeratorDelete(params operations.DomainModeratorDeleteParams) middleware.Responder {
-	owner, err := ownerGetByOwnerToken(*params.Body.OwnerToken)
+	user, err := svc.TheUserService.FindOwnerByToken(*params.Body.OwnerToken)
 	if err != nil {
 		return operations.NewDomainModeratorDeleteOK().WithPayload(&models.APIResponseBase{Message: err.Error()})
 	}
 
 	domainName := *params.Body.Domain
-	authorised, err := domainOwnershipVerify(owner.OwnerHex, domainName)
+	authorised, err := domainOwnershipVerify(user.HexID, domainName)
 	if err != nil {
 		return operations.NewDomainModeratorDeleteOK().WithPayload(&models.APIResponseBase{Message: err.Error()})
 	}
@@ -132,13 +127,13 @@ func DomainModeratorDelete(params operations.DomainModeratorDeleteParams) middle
 }
 
 func DomainModeratorNew(params operations.DomainModeratorNewParams) middleware.Responder {
-	owner, err := ownerGetByOwnerToken(*params.Body.OwnerToken)
+	user, err := svc.TheUserService.FindOwnerByToken(*params.Body.OwnerToken)
 	if err != nil {
 		return operations.NewDomainModeratorNewOK().WithPayload(&models.APIResponseBase{Message: err.Error()})
 	}
 
 	domainName := *params.Body.Domain
-	isOwner, err := domainOwnershipVerify(owner.OwnerHex, domainName)
+	isOwner, err := domainOwnershipVerify(user.HexID, domainName)
 	if err != nil {
 		return operations.NewDomainModeratorNewOK().WithPayload(&models.APIResponseBase{Message: err.Error()})
 	}
@@ -155,7 +150,7 @@ func DomainModeratorNew(params operations.DomainModeratorNewParams) middleware.R
 }
 
 func DomainNew(params operations.DomainNewParams) middleware.Responder {
-	owner, err := ownerGetByOwnerToken(*params.Body.OwnerToken)
+	user, err := svc.TheUserService.FindOwnerByToken(*params.Body.OwnerToken)
 	if err != nil {
 		return operations.NewDomainNewOK().WithPayload(&operations.DomainNewOKBody{Message: err.Error()})
 	}
@@ -182,12 +177,12 @@ func DomainNew(params operations.DomainNewParams) middleware.Responder {
 	}
 
 	// Persist a new domain record in the database
-	if err = domainNew(owner.OwnerHex, *params.Body.Name, domainName); err != nil {
+	if err = domainNew(user.HexID, *params.Body.Name, domainName); err != nil {
 		return operations.NewDomainNewOK().WithPayload(&operations.DomainNewOKBody{Message: err.Error()})
 	}
 
 	// Register the current owner as a domain moderator
-	if err = domainModeratorNew(domainName, owner.Email); err != nil {
+	if err = domainModeratorNew(domainName, strfmt.Email(user.Email)); err != nil {
 		return operations.NewDomainNewOK().WithPayload(&operations.DomainNewOKBody{Message: err.Error()})
 	}
 
@@ -199,13 +194,13 @@ func DomainNew(params operations.DomainNewParams) middleware.Responder {
 }
 
 func DomainSsoSecretNew(params operations.DomainSsoSecretNewParams) middleware.Responder {
-	owner, err := ownerGetByOwnerToken(*params.Body.OwnerToken)
+	user, err := svc.TheUserService.FindOwnerByToken(*params.Body.OwnerToken)
 	if err != nil {
 		return operations.NewDomainSsoSecretNewOK().WithPayload(&operations.DomainSsoSecretNewOKBody{Message: err.Error()})
 	}
 
 	domainName := *params.Body.Domain
-	isOwner, err := domainOwnershipVerify(owner.OwnerHex, domainName)
+	isOwner, err := domainOwnershipVerify(user.HexID, domainName)
 	if err != nil {
 		return operations.NewDomainSsoSecretNewOK().WithPayload(&operations.DomainSsoSecretNewOKBody{Message: err.Error()})
 	}
@@ -226,13 +221,13 @@ func DomainSsoSecretNew(params operations.DomainSsoSecretNewParams) middleware.R
 }
 
 func DomainStatistics(params operations.DomainStatisticsParams) middleware.Responder {
-	owner, err := ownerGetByOwnerToken(*params.Body.OwnerToken)
+	user, err := svc.TheUserService.FindOwnerByToken(*params.Body.OwnerToken)
 	if err != nil {
 		return operations.NewDomainStatisticsOK().WithPayload(&operations.DomainStatisticsOKBody{Message: err.Error()})
 	}
 
 	domainName := *params.Body.Domain
-	isOwner, err := domainOwnershipVerify(owner.OwnerHex, domainName)
+	isOwner, err := domainOwnershipVerify(user.HexID, domainName)
 	if err != nil {
 		return operations.NewDomainStatisticsOK().WithPayload(&operations.DomainStatisticsOKBody{Message: err.Error()})
 	}
@@ -259,12 +254,12 @@ func DomainStatistics(params operations.DomainStatisticsParams) middleware.Respo
 }
 
 func DomainUpdate(params operations.DomainUpdateParams) middleware.Responder {
-	owner, err := ownerGetByOwnerToken(*params.Body.OwnerToken)
+	user, err := svc.TheUserService.FindOwnerByToken(*params.Body.OwnerToken)
 	if err != nil {
 		return operations.NewDomainUpdateOK().WithPayload(&models.APIResponseBase{Message: err.Error()})
 	}
 
-	isOwner, err := domainOwnershipVerify(owner.OwnerHex, params.Body.Domain.Domain)
+	isOwner, err := domainOwnershipVerify(user.HexID, params.Body.Domain.Domain)
 	if err != nil {
 		return operations.NewDomainUpdateOK().WithPayload(&models.APIResponseBase{Message: err.Error()})
 	}

@@ -31,12 +31,12 @@ func DomainExportBegin(params operations.DomainExportBeginParams) middleware.Res
 		return operations.NewDomainExportBeginOK().WithPayload(&models.APIResponseBase{Message: util.ErrorSmtpNotConfigured.Error()})
 	}
 
-	owner, err := ownerGetByOwnerToken(*params.Body.OwnerToken)
+	user, err := svc.TheUserService.FindOwnerByToken(*params.Body.OwnerToken)
 	if err != nil {
 		return operations.NewDomainExportBeginOK().WithPayload(&models.APIResponseBase{Message: err.Error()})
 	}
 
-	isOwner, err := domainOwnershipVerify(owner.OwnerHex, *params.Body.Domain)
+	isOwner, err := domainOwnershipVerify(user.HexID, *params.Body.Domain)
 	if err != nil {
 		return operations.NewDomainExportBeginOK().WithPayload(&models.APIResponseBase{Message: err.Error()})
 	}
@@ -45,7 +45,7 @@ func DomainExportBegin(params operations.DomainExportBeginParams) middleware.Res
 		return operations.NewDomainExportBeginOK().WithPayload(&models.APIResponseBase{Message: util.ErrorNotAuthorised.Error()})
 	}
 
-	go domainExportBegin(owner.Email, *params.Body.Domain)
+	go domainExportBegin(strfmt.Email(user.Email), *params.Body.Domain)
 
 	// Succeeded
 	return operations.NewDomainExportBeginOK().WithPayload(&models.APIResponseBase{Success: true})
@@ -67,13 +67,13 @@ func DomainExportDownload(params operations.DomainExportDownloadParams) middlewa
 }
 
 func DomainImportCommento(params operations.DomainImportCommentoParams) middleware.Responder {
-	o, err := ownerGetByOwnerToken(*params.Body.OwnerToken)
+	user, err := svc.TheUserService.FindOwnerByToken(*params.Body.OwnerToken)
 	if err != nil {
 		return operations.NewDomainImportCommentoOK().WithPayload(&operations.DomainImportCommentoOKBody{Message: err.Error()})
 	}
 
 	domainName := *params.Body.Domain
-	isOwner, err := domainOwnershipVerify(o.OwnerHex, domainName)
+	isOwner, err := domainOwnershipVerify(user.HexID, domainName)
 	if err != nil {
 		return operations.NewDomainImportCommentoOK().WithPayload(&operations.DomainImportCommentoOKBody{Message: err.Error()})
 	}
@@ -94,13 +94,13 @@ func DomainImportCommento(params operations.DomainImportCommentoParams) middlewa
 }
 
 func DomainImportDisqus(params operations.DomainImportDisqusParams) middleware.Responder {
-	owner, err := ownerGetByOwnerToken(*params.Body.OwnerToken)
+	user, err := svc.TheUserService.FindOwnerByToken(*params.Body.OwnerToken)
 	if err != nil {
 		return operations.NewDomainImportDisqusOK().WithPayload(&operations.DomainImportDisqusOKBody{Message: err.Error()})
 	}
 
 	domainName := *params.Body.Domain
-	isOwner, err := domainOwnershipVerify(owner.OwnerHex, domainName)
+	isOwner, err := domainOwnershipVerify(user.HexID, domainName)
 	if err != nil {
 		return operations.NewDomainImportDisqusOK().WithPayload(&operations.DomainImportDisqusOKBody{Message: err.Error()})
 	}

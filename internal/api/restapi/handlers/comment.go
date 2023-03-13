@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"fmt"
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
@@ -13,18 +12,6 @@ import (
 	"gitlab.com/comentario/comentario/internal/util"
 	"time"
 )
-
-const commentsRowColumns = `
-	comments.commentHex,
-	comments.commenterHex,
-	comments.markdown,
-	comments.html,
-	comments.parentHex,
-	comments.score,
-	comments.state,
-	comments.deleted,
-	comments.creationDate
-`
 
 func CommentApprove(params operations.CommentApproveParams) middleware.Responder {
 	c, err := commenterGetByCommenterToken(*params.Body.CommenterToken)
@@ -70,7 +57,7 @@ func CommentDelete(params operations.CommentDeleteParams) middleware.Responder {
 		return operations.NewCommentDeleteOK().WithPayload(&models.APIResponseBase{Message: err.Error()})
 	}
 
-	comment, err := commentGetByCommentHex(*params.Body.CommentHex)
+	comment, err := svc.TheCommentService.FindByHexID(*params.Body.CommentHex)
 	if err != nil {
 		return operations.NewCommentDeleteOK().WithPayload(&models.APIResponseBase{Message: err.Error()})
 	}
@@ -105,7 +92,7 @@ func CommentEdit(params operations.CommentEditParams) middleware.Responder {
 	}
 
 	// Find the existing comment
-	comment, err := commentGetByCommentHex(*params.Body.CommentHex)
+	comment, err := svc.TheCommentService.FindByHexID(*params.Body.CommentHex)
 	if err != nil {
 		return operations.NewCommentEditOK().WithPayload(&operations.CommentEditOKBody{Message: err.Error()})
 	}
@@ -128,8 +115,8 @@ func CommentEdit(params operations.CommentEditParams) middleware.Responder {
 	markdown := swag.StringValue(params.Body.Markdown)
 	html := util.MarkdownToHTML(markdown)
 
-	// Persist the comment in the database
-	if err := commentEdit(*params.Body.CommentHex, markdown, html); err != nil {
+	// Persist the edits in the database
+	if err := svc.TheCommentService.UpdateText(*params.Body.CommentHex, markdown, html); err != nil {
 		return operations.NewCommentEditOK().WithPayload(&operations.CommentEditOKBody{Message: err.Error()})
 	}
 
@@ -280,7 +267,7 @@ func CommentVote(params operations.CommentVoteParams) middleware.Responder {
 		return operations.NewCommentVoteOK().WithPayload(&models.APIResponseBase{Message: util.ErrorUnauthorisedVote.Error()})
 	}
 
-	c, err := commenterGetByCommenterToken(*params.Body.CommenterToken)
+	commenter, err := commenterGetByCommenterToken(*params.Body.CommenterToken)
 	if err != nil {
 		return operations.NewCommentVoteOK().WithPayload(&models.APIResponseBase{Message: err.Error()})
 	}
@@ -292,8 +279,20 @@ func CommentVote(params operations.CommentVoteParams) middleware.Responder {
 		direction = -1
 	}
 
-	if err := commentVote(c.CommenterHex, *params.Body.CommentHex, direction); err != nil {
-		return operations.NewCommentVoteOK().WithPayload(&models.APIResponseBase{Message: err.Error()})
+	// Find the comment
+	comment, err := svc.TheCommentService.FindByHexID(*params.Body.CommentHex)
+	if err != nil {
+		return serviceErrorResponder(err)
+	}
+
+	// Make sure the commenter is not voting for their own comment
+	if comment.CommenterHex == commenter.CommenterHex {
+		return operations.NewGenericForbidden().WithPayload(&operations.GenericForbiddenBody{Details: util.ErrorSelfVote.Error()})
+	}
+
+	// Update the vote in the database
+	if err := svc.TheVoteService.SetVote(comment.CommentHex, commenter.CommenterHex, direction); err != nil {
+		return serviceErrorResponder(err)
 	}
 
 	// Succeeded
@@ -386,31 +385,6 @@ func commentDomainPathGet(commentHex models.HexID) (string, string, error) {
 	}
 
 	return domain, path, nil
-}
-
-// commentEdit updates the comment with the given hex ID in the database
-func commentEdit(commentHex models.HexID, markdown, html string) error {
-	if _, err := svc.DB.Exec("update comments set markdown=$2, html=$3 where commentHex=$1;", commentHex, markdown, html); err != nil {
-		// TODO: make sure this is the error is actually nonexistent commentHex
-		return util.ErrorNoSuchComment
-	}
-
-	return nil
-}
-
-func commentGetByCommentHex(commentHex models.HexID) (*models.Comment, error) {
-	if commentHex == "" {
-		return nil, util.ErrorMissingField
-	}
-
-	row := svc.DB.QueryRow(fmt.Sprintf("select %s from comments where comments.commentHex=$1;", commentsRowColumns), commentHex)
-	var comment models.Comment
-	if err := commentsRowScan(row, &comment); err != nil {
-		// TODO: is this the only error?
-		return nil, util.ErrorNoSuchComment
-	}
-
-	return &comment, nil
 }
 
 func commentList(commenter *models.Commenter, domain string, path string, isModerator bool) ([]*models.Comment, map[models.CommenterHexID]*models.Commenter, error) {
@@ -555,50 +529,4 @@ func commentNew(commenterHex models.CommenterHexID, domain string, path string, 
 	}
 
 	return models.HexID(commentHex), nil
-}
-
-func commentsRowScan(s util.Scanner, c *models.Comment) error {
-	return s.Scan(
-		&c.CommentHex,
-		&c.CommenterHex,
-		&c.Markdown,
-		&c.HTML,
-		&c.ParentHex,
-		&c.Score,
-		&c.State,
-		&c.Deleted,
-		&c.CreationDate,
-	)
-}
-
-func commentVote(commenterHex models.CommenterHexID, commentHex models.HexID, direction int) error {
-	if commentHex == "" || commenterHex == "" {
-		return util.ErrorMissingField
-	}
-
-	row := svc.DB.QueryRow("select commenterHex from comments where commentHex = $1;", commentHex)
-
-	var authorHex models.CommenterHexID
-	if err := row.Scan(&authorHex); err != nil {
-		logger.Errorf("error selecting authorHex for vote")
-		return util.ErrorInternal
-	}
-
-	if authorHex == commenterHex {
-		return util.ErrorSelfVote
-	}
-
-	_, err := svc.DB.Exec(
-		"insert into votes(commentHex, commenterHex, direction, voteDate) values($1, $2, $3, $4) "+
-			"on conflict (commentHex, commenterHex) do update set direction = $3;",
-		commentHex,
-		commenterHex,
-		direction,
-		time.Now().UTC())
-	if err != nil {
-		logger.Errorf("error inserting/updating votes: %v", err)
-		return util.ErrorInternal
-	}
-
-	return nil
 }

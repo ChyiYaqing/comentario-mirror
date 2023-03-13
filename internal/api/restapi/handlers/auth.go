@@ -41,7 +41,7 @@ func forgotPassword(email strfmt.Email, entity models.Entity) error {
 
 	var hex models.HexID
 	if entity == models.EntityOwner {
-		o, err := ownerGetByEmail(email)
+		user, err := svc.TheUserService.FindOwnerByEmail(string(email))
 		if err != nil {
 			if err == util.ErrorNoSuchEmail {
 				// TODO: use a more random time instead.
@@ -52,7 +52,7 @@ func forgotPassword(email strfmt.Email, entity models.Entity) error {
 				return util.ErrorInternal
 			}
 		}
-		hex = o.OwnerHex
+		hex = user.HexID
 	} else {
 		commenter, err := commenterGetByEmail("commento", email)
 		if err != nil {

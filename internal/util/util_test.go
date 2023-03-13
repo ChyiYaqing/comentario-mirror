@@ -85,6 +85,28 @@ func TestIsValidEmail(t *testing.T) {
 	}
 }
 
+func TestIsValidHexID(t *testing.T) {
+	tests := []struct {
+		name string
+		s    string
+		want bool
+	}{
+		{"empty string           ", "", false},
+		{"string of 63 digits    ", "012345678901234567890123456789012345678901234567890123456789012", false},
+		{"string of 64 bad chars ", "012345678901234567890123456789012345678901234567890123456789012g", false},
+		{"string of 65 digits    ", "01234567890123456789012345678901234567890123456789012345678901234", false},
+		{"string of 64 digits    ", "0123456789012345678901234567890123456789012345678901234567890123", true},
+		{"string of 64 hex digits", "1dae2342c9255a4ecc78f2f54380d90508aa49761f3471e94239f178a210bcba", true},
+	}
+	for _, tt := range tests {
+		t.Run(strings.TrimSpace(tt.name), func(t *testing.T) {
+			if got := IsValidHexID(tt.s); got != tt.want {
+				t.Errorf("IsValidHexID() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestIsValidHostname(t *testing.T) {
 	tests := []struct {
 		name string
