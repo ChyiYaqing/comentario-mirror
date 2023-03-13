@@ -492,7 +492,7 @@ export class Comentario {
             const parentHex = parentCard?.comment.commentHex || 'root';
             const r = await this.apiClient.post<ApiCommentNewResponse>('comment/new', {
                 commenterToken,
-                domain:    parent.location.host,
+                domain:    parent.location.hostname,
                 path:      this.pageId,
                 parentHex,
                 markdown,
@@ -675,7 +675,7 @@ export class Comentario {
         // Retrieve page settings and a comment list from the backend
         const r = await this.apiClient.post<ApiCommentListResponse>('comment/list', {
             commenterToken: this.token,
-            domain:         parent.location.host,
+            domain:         parent.location.hostname,
             path:           this.pageId,
         });
         if (this.checkError(r)) {
@@ -817,7 +817,7 @@ export class Comentario {
     private async submitPageAttrs(): Promise<void> {
         const r = await this.apiClient.post<ApiResponseBase>('page/update', {
             commenterToken: this.token,
-            domain:         parent.location.host,
+            domain:         parent.location.hostname,
             path:           this.pageId,
             attributes:     {isLocked: this.isLocked, stickyCommentHex: this.stickyCommentHex},
         });

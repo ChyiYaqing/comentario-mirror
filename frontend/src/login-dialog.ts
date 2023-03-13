@@ -65,7 +65,7 @@ export class LoginDialog extends Dialog {
                 UIToolkit.div('oauth-buttons')
                     .append(UIToolkit.button('Single Sign-On', () => this.dismissWith('sso'), 'oauth-button', 'sso-button')),
                 // Subtitle
-                UIToolkit.div('dialog-centered').inner(`Proceed with ${parent.location.host} authentication`),
+                UIToolkit.div('dialog-centered').inner(`Proceed with ${parent.location.hostname} authentication`),
                 // Separator
                 (hasOAuth || hasLocalAuth) && Wrap.new('hr'));
         }
