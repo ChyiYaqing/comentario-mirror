@@ -267,18 +267,27 @@ func (db *Database) getInstalledMigrations() (map[string]bool, error) {
 	return m, nil
 }
 
+func (db *Database) getSSLMode() string {
+	userInput := config.SecretsConfig.Postgres.SSLMode
+	if userInput == "" {
+		return "disable"
+	}
+	return userInput
+}
+
 // tryConnect tries to establish a database connection, once
 func (db *Database) tryConnect(num, total int) error {
 	var err error
 	db.db, err = sql.Open(
 		"postgres",
 		fmt.Sprintf(
-			"postgres://%s:%s@%s:%d/%s?sslmode=disable",
+			"postgres://%s:%s@%s:%d/%s?sslmode=%s",
 			config.SecretsConfig.Postgres.Username,
 			config.SecretsConfig.Postgres.Password,
 			config.SecretsConfig.Postgres.Host,
 			config.SecretsConfig.Postgres.Port,
 			config.SecretsConfig.Postgres.Database,
+			db.getSSLMode(),
 		))
 
 	// Failed to connect

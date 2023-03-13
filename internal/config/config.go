@@ -39,6 +39,7 @@ var (
 			Username string `yaml:"username"` // PostgreSQL username
 			Password string `yaml:"password"` // PostgreSQL password
 			Database string `yaml:"database"` // PostgreSQL database
+			SSLMode  string `yaml:"sslmode"`  // PostgreSQL sslmode https://www.postgresql.org/docs/current/libpq-ssl.html
 		} `yaml:"postgres"`
 
 		SMTPServer struct {
