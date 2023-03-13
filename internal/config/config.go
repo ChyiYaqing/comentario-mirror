@@ -41,6 +41,7 @@ var (
 			Username string `yaml:"username"` // PostgreSQL username
 			Password string `yaml:"password"` // PostgreSQL password
 			Database string `yaml:"database"` // PostgreSQL database
+			SSLMode  string `yaml:"sslmode"`  // PostgreSQL sslmode, defaults to "disable"
 		} `yaml:"postgres"`
 
 		SMTPServer struct {
