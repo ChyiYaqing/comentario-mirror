@@ -10,6 +10,8 @@ var TheVoteService VoteService = &voteService{}
 
 // VoteService is a service interface for dealing with comment votes
 type VoteService interface {
+	// DeleteByDomain deletes all votes for the specified domain
+	DeleteByDomain(domain string) error
 	// SetVote inserts or updates a vote for the given comment and commenter
 	SetVote(commentHex models.HexID, commenterHex models.CommenterHexID, direction int) error
 }
@@ -19,19 +21,24 @@ type VoteService interface {
 // voteService is a blueprint VoteService implementation
 type voteService struct{}
 
-func (svc *voteService) SetVote(commentHex models.HexID, commenterHex models.CommenterHexID, direction int) error {
-	// Validate the IDs
-	if err := validateHexID(commentHex); err != nil {
-		return err
+func (svc *voteService) DeleteByDomain(domain string) error {
+	logger.Debugf("voteService.DeleteByDomain(%s)", domain)
+
+	// Delete the records in the database
+	if err := db.Exec("delete from votes v using comments c where c.commentHex=v.commentHex and c.domain=$1;", domain); err != nil {
+		logger.Errorf("voteService.DeleteByDomain: Exec() failed: %v", err)
+		return translateErrors(err)
 	}
 
-	// Validate the direction
-	if direction < -1 || direction > 1 {
-		return ErrInvalidInput
-	}
+	// Succeeded
+	return nil
+}
+
+func (svc *voteService) SetVote(commentHex models.HexID, commenterHex models.CommenterHexID, direction int) error {
+	logger.Debugf("voteService.SetVote(%s, %s, %d)", commentHex, commenterHex, direction)
 
 	// Upsert a row
-	_, err := db.Exec(
+	err := db.Exec(
 		"insert into votes(commentHex, commenterHex, direction, voteDate) values($1, $2, $3, $4) "+
 			"on conflict (commentHex, commenterHex) do update set direction = $3;",
 		commentHex,
@@ -39,7 +46,7 @@ func (svc *voteService) SetVote(commentHex models.HexID, commenterHex models.Com
 		direction,
 		time.Now().UTC())
 	if err != nil {
-		logger.Errorf("voteService.SetVote(): Exec failed: %v", err)
+		logger.Errorf("voteService.SetVote: Exec() failed: %v", err)
 		return translateErrors(err)
 	}
 

@@ -12,6 +12,7 @@ import (
 	"gitlab.com/comentario/comentario/internal/api/models"
 	"gitlab.com/comentario/comentario/internal/api/restapi/operations"
 	"gitlab.com/comentario/comentario/internal/config"
+	data2 "gitlab.com/comentario/comentario/internal/data"
 	"gitlab.com/comentario/comentario/internal/svc"
 	"gitlab.com/comentario/comentario/internal/util"
 	"io"
@@ -122,7 +123,7 @@ func DomainImportDisqus(params operations.DomainImportDisqusParams) middleware.R
 
 // domainExportBeginError notifies the user by email about an export error
 func domainExportBeginError(email strfmt.Email, domain string, err error) {
-	_ = svc.TheEmailService.SendFromTemplate(
+	_ = svc.TheMailService.SendFromTemplate(
 		"",
 		string(email),
 		"Comentario Data Export Errored",
@@ -197,7 +198,7 @@ func domainExportBegin(email strfmt.Email, domain string) {
 		return
 	}
 
-	_, err = svc.DB.Exec(
+	err = svc.DB.Exec(
 		"insert into exports(exportHex, binData, domain, creationDate) values($1, $2, $3, $4);",
 		exportHex,
 		gje,
@@ -210,7 +211,7 @@ func domainExportBegin(email strfmt.Email, domain string) {
 	}
 
 	// Notify the user by email, ignoring any error
-	_ = svc.TheEmailService.SendFromTemplate(
+	_ = svc.TheMailService.SendFromTemplate(
 		"",
 		string(email),
 		"Comentario Data Export",
@@ -262,29 +263,33 @@ func domainImportCommento(domain string, url string) (int, error) {
 		return 0, util.ErrorUnsupportedCommentoImportVersion
 	}
 
-	// Check if imported commentedHex or email exists, creating a map of
-	// commenterHex (old hex, new hex)
-	commenterHex := map[models.CommenterHexID]models.CommenterHexID{AnonymousCommenterHexID: AnonymousCommenterHexID}
+	// Check if imported commentedHex or email exists, creating a map of commenterHex (old hex, new hex)
+	commenterHex := map[models.CommenterHexID]models.CommenterHexID{data2.AnonymousCommenterHexID: data2.AnonymousCommenterHexID}
 	for _, commenter := range data.Commenters {
-		c, err := commenterGetByEmail("commento", commenter.Email)
-		if err != nil && err != util.ErrorNoSuchCommenter {
-			logger.Errorf("cannot get commenter by email: %v", err)
+		// Try to find an existing commenter with the same email
+		if c, err := svc.TheUserService.FindCommenterByIdPEmail("", string(commenter.Email)); err == nil {
+			// Commenter already exists. Add its hex ID to the map and proceed to the next record
+			commenterHex[commenter.CommenterHex] = c.CommenterHexID()
+			continue
+		} else if err != svc.ErrNotFound {
+			// Any other error than "not found"
 			return 0, util.ErrorInternal
 		}
 
-		if err == nil {
-			commenterHex[commenter.CommenterHex] = c.CommenterHex
-			continue
-		}
-
+		// Generate a random password string
 		randomPassword, err := util.RandomHex(32)
 		if err != nil {
 			logger.Errorf("cannot generate random password for new commenter: %v", err)
 			return 0, util.ErrorInternal
 		}
 
-		commenterHex[commenter.CommenterHex], err = commenterNew(commenter.Email,
-			commenter.Name, commenter.Link, commenter.Photo, "commento", randomPassword)
+		commenterHex[commenter.CommenterHex], err = commenterNew(
+			commenter.Email,
+			commenter.Name,
+			commenter.Link,
+			commenter.Photo,
+			"commento",
+			randomPassword)
 		if err != nil {
 			return 0, err
 		}
@@ -297,9 +302,9 @@ func domainImportCommento(domain string, url string) (int, error) {
 	}
 
 	// Import comments, creating a map of comment hex (old hex, new hex)
-	commentHex := map[models.ParentHexID]models.ParentHexID{RootParentHexID: RootParentHexID}
+	commentHex := map[models.ParentHexID]models.ParentHexID{data2.RootParentHexID: data2.RootParentHexID}
 	numImported := 0
-	keys := []models.ParentHexID{RootParentHexID}
+	keys := []models.ParentHexID{data2.RootParentHexID}
 	for i := 0; i < len(keys); i++ {
 		for _, comment := range comments[keys[i]] {
 			cHex, ok := commenterHex[comment.CommenterHex]
@@ -313,18 +318,12 @@ func domainImportCommento(domain string, url string) (int, error) {
 				return numImported, util.ErrorInternal
 			}
 
-			hex, err := commentNew(
-				cHex,
-				domain,
-				comment.URL,
-				parentHex,
-				comment.Markdown,
-				comment.State,
-				comment.CreationDate)
+			newComment, err := svc.TheCommentService.Create(
+				cHex, domain, comment.URL, comment.Markdown, parentHex, comment.State, comment.CreationDate)
 			if err != nil {
 				return numImported, err
 			}
-			commentHex[models.ParentHexID(comment.CommentHex)] = models.ParentHexID(hex)
+			commentHex[models.ParentHexID(comment.CommentHex)] = models.ParentHexID(newComment.CommentHex)
 			numImported++
 			keys = append(keys, models.ParentHexID(comment.CommentHex))
 		}
@@ -420,31 +419,31 @@ func domainImportDisqus(domain string, url string) (int, error) {
 		threads[thread.Id] = thread
 	}
 
-	// Map Disqus emails to commenterHex (if not available, create a new one
-	// with a random password that can be reset later).
+	// Map Disqus emails to commenterHex (if not available, create a new one with a random password that can be reset
+	// later)
 	commenterHex := map[strfmt.Email]models.CommenterHexID{}
 	for _, post := range x.Posts {
 		if post.IsDeleted || post.IsSpam {
 			continue
 		}
 
+		// Skip authors whose email has already been processed
 		email := strfmt.Email(post.Author.Username + "@disqus.com")
-
 		if _, ok := commenterHex[email]; ok {
 			continue
 		}
 
-		c, err := commenterGetByEmail("commento", email)
-		if err != nil && err != util.ErrorNoSuchCommenter {
-			logger.Errorf("cannot get commenter by email: %v", err)
+		// Try to find an existing commenter with this email
+		if c, err := svc.TheUserService.FindCommenterByIdPEmail("", string(email)); err == nil {
+			// Commenter already exists. Add its hex ID to the map and proceed to the next record
+			commenterHex[email] = c.CommenterHexID()
+			continue
+		} else if err != svc.ErrNotFound {
+			// Any other error than "not found"
 			return 0, util.ErrorInternal
 		}
 
-		if err == nil {
-			commenterHex[email] = c.CommenterHex
-			continue
-		}
-
+		// Generate a random password string
 		randomPassword, err := util.RandomHex(32)
 		if err != nil {
 			logger.Errorf("cannot generate random password for new commenter: %v", err)
@@ -466,31 +465,31 @@ func domainImportDisqus(domain string, url string) (int, error) {
 			continue
 		}
 
-		cHex := AnonymousCommenterHexID
+		cHex := data2.AnonymousCommenterHexID
 		if !post.Author.IsAnonymous {
 			cHex = commenterHex[strfmt.Email(post.Author.Username+"@disqus.com")]
 		}
 
-		parentHex := RootParentHexID
+		parentHex := data2.RootParentHexID
 		if val, ok := disqusIdMap[post.ParentId.Id]; ok {
 			parentHex = models.ParentHexID(val)
 		}
 
 		// TODO: restrict the list of tags to just the basics: <a>, <b>, <i>, <code>
 		// Especially remove <img> (convert it to <a>).
-		commentHex, err := commentNew(
+		comment, err := svc.TheCommentService.Create(
 			cHex,
 			domain,
 			pathStrip(threads[post.ThreadId.Id].URL),
-			parentHex,
 			html2md.Convert(post.Message),
+			parentHex,
 			models.CommentStateApproved,
 			strfmt.DateTime(post.CreationDate))
 		if err != nil {
 			return numImported, err
 		}
 
-		disqusIdMap[post.Id] = commentHex
+		disqusIdMap[post.Id] = comment.CommentHex
 		numImported += 1
 	}
 

@@ -1,24 +1,26 @@
 package data
 
 import (
-	"gitlab.com/comentario/comentario/internal/api/models"
+	"github.com/go-openapi/strfmt"
 	"testing"
 )
 
-func TestStringHexID(t *testing.T) {
-	v := models.HexID("oneTwo")
+func TestEmailToString(t *testing.T) {
+	v1 := strfmt.Email("whatever@foo.bar")
+	v2 := strfmt.Email("  spaces@foo.bar\n ")
 	tests := []struct {
 		name string
-		v    *models.HexID
+		v    *strfmt.Email
 		want string
 	}{
-		{"nil  ", nil, ""},
-		{"value", &v, "oneTwo"},
+		{"nil       ", nil, ""},
+		{"value     ", &v1, "whatever@foo.bar"},
+		{"whitespace", &v2, "spaces@foo.bar"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := StringHexID(tt.v); got != tt.want {
-				t.Errorf("StringHexID() = %v, want %v", got, tt.want)
+			if got := EmailToString(tt.v); got != tt.want {
+				t.Errorf("EmailToString() = %v, want %v", got, tt.want)
 			}
 		})
 	}

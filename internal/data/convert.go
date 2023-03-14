@@ -1,16 +1,13 @@
 package data
 
 import (
-	"gitlab.com/comentario/comentario/internal/api/models"
+	"github.com/go-openapi/strfmt"
 	"strings"
 )
 
-// StringHexID converts a value of *models.HexID into a string
-func StringHexID(id *models.HexID) string {
-	if id == nil {
-		return ""
-	}
-	return string(*id)
+// EmailToString converts a value of *strfmt.Email into a string
+func EmailToString(email *strfmt.Email) string {
+	return TrimmedString((*string)(email))
 }
 
 // TrimmedString converts a *string value into a string, trimming all leading and trailing whitespace

@@ -354,9 +354,11 @@ export class Comentario {
             // Fetch the status from the backend
             try {
                 const r = await this.apiClient.post<ApiSelfResponse>('commenter/self', {commenterToken: token});
-                if (!r.success) {
+                if (!r.commenter || !r.email) {
+                    // Commenter isn't authenticated
                     this.token = 'anonymous';
                 } else {
+                    // Commenter is authenticated: update the profile bar
                     this.profileBar!.authenticated(r.commenter, r.email, token, () => this.logout());
                     this.isAuthenticated = true;
 

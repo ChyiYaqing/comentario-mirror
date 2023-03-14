@@ -11,8 +11,7 @@ type e2eApp struct {
 }
 
 func (a *e2eApp) DBExec(query string, args ...any) error {
-	_, e := svc.DB.Exec(query, args...)
-	return e
+	return svc.DB.Exec(query, args...)
 }
 
 func (a *e2eApp) DBInit() error {

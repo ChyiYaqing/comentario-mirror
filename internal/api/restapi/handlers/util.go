@@ -4,7 +4,6 @@ import (
 	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/op/go-logging"
-	"gitlab.com/comentario/comentario/internal/api/models"
 	"gitlab.com/comentario/comentario/internal/api/restapi/operations"
 	"gitlab.com/comentario/comentario/internal/config"
 	"gitlab.com/comentario/comentario/internal/svc"
@@ -14,9 +13,6 @@ import (
 
 // logger represents a package-wide logger instance
 var logger = logging.MustGetLogger("handlers")
-
-const RootParentHexID = models.ParentHexID("root")                 // The "root" parent hex
-const AnonymousCommenterHexID = models.CommenterHexID("anonymous") // The "anonymous" commenter hex ID or token
 
 // closeParentWindowResponse returns a responder that renders an HTML script closing the parent window
 func closeParentWindowResponse() middleware.Responder {
@@ -97,6 +93,9 @@ func serviceErrorResponder(err error) middleware.Responder {
 	switch err {
 	case svc.ErrNotFound:
 		return operations.NewGenericNotFound()
+	case svc.ErrPageLocked:
+		return operations.NewGenericBadRequest().
+			WithPayload(&operations.GenericBadRequestBody{Details: "Unable to add comment: the page is locked"})
 	}
 
 	// Not recognised: return an internal error response

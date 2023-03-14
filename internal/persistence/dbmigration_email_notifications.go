@@ -31,8 +31,12 @@ func migrateEmails(db *Database) error {
 			return util.ErrorDatabaseMigration
 		}
 
-		statement := `insert into emails(email, unsubscribeSecretHex, lastEmailNotificationDate) values ($1,    $2,                   $3                       ) on conflict do nothing;`
-		_, err = db.Exec(statement, email, unsubscribeSecretHex, time.Now().UTC())
+		err = db.Exec(
+			"insert into emails(email, unsubscribeSecretHex, lastEmailNotificationDate) values ($1, $2, $3) "+
+				"on conflict do nothing;",
+			email,
+			unsubscribeSecretHex,
+			time.Now().UTC())
 		if err != nil {
 			logger.Errorf("cannot insert email during migration: %v", err)
 			return util.ErrorDatabaseMigration

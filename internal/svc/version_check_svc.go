@@ -21,7 +21,8 @@ type VersionCheckService interface {
 type versionCheckService struct{}
 
 func (svc *versionCheckService) Init() {
-	svc.run()
+	// TODO switch this off until it can be useful
+	// svc.run()
 }
 
 func (svc *versionCheckService) run() {
@@ -41,8 +42,7 @@ func (svc *versionCheckService) run() {
 			var err error
 			func() {
 				var resp *http.Response
-				// TODO version.comentario.io doesn't exist yet
-				resp, err = http.Post("https://version.comentario.io/api/check", "application/x-www-form-urlencoded", bytes.NewBufferString(data.Encode()))
+				resp, err = http.Post("https://version.comentario.app/api/check", "application/x-www-form-urlencoded", bytes.NewBufferString(data.Encode()))
 				if err != nil {
 					// Print the error only once; we don't want to spam the logs with this every five minutes
 					if !printedError && errorCount > 5 {

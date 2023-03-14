@@ -28,6 +28,9 @@ type manager struct {
 }
 
 func (m *manager) Initialise() {
+	logger.Debug("manager.Initialise()")
+
+	// Make sure init isn't called twice
 	if m.inited {
 		logger.Fatal("ServiceManager is already initialised")
 	}
@@ -50,6 +53,8 @@ func (m *manager) Initialise() {
 }
 
 func (m *manager) Shutdown() {
+	logger.Debug("manager.Shutdown()")
+
 	// Make sure the services are initialised
 	if !m.inited {
 		return

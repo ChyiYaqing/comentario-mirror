@@ -1,11 +1,39 @@
 package util
 
 import (
+	"bytes"
 	"fmt"
 	"strings"
 	"sync"
 	"testing"
 )
+
+func TestHTMLDocumentTitle(t *testing.T) {
+	tests := []struct {
+		name    string
+		data    string
+		want    string
+		wantErr bool
+	}{
+		{"empty", "", "", true},
+		{"bad html", "<whatever><<<<", "", true},
+		{"empty title", "<html><head><title></title></head></html>", "", true},
+		{"valid title", "<html><head><title>Wooh</title></head></html>", "Wooh", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			reader := bytes.NewReader([]byte(tt.data))
+			got, err := HTMLDocumentTitle(reader)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("HTMLDocumentTitle() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("HTMLDocumentTitle() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
 
 func TestIsValidEmail(t *testing.T) {
 	tests := []struct {

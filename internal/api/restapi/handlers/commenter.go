@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"bytes"
-	"fmt"
 	"github.com/disintegration/imaging"
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/go-openapi/strfmt"
@@ -21,16 +20,6 @@ import (
 	"time"
 )
 
-const commentersRowColumns = `
-	commenters.commenterHex,
-	commenters.email,
-	commenters.name,
-	commenters.link,
-	commenters.photo,
-	commenters.provider,
-	commenters.joinDate
-`
-
 func CommenterLogin(params operations.CommenterLoginParams) middleware.Responder {
 	commenterToken, err := commenterLogin(*params.Body.Email, *params.Body.Password)
 	if err != nil {
@@ -38,19 +27,21 @@ func CommenterLogin(params operations.CommenterLoginParams) middleware.Responder
 	}
 
 	// TODO: modify commenterLogin to directly return c?
-	commenter, err := commenterGetByCommenterToken(commenterToken)
+	// Find the commenter
+	commenter, err := svc.TheUserService.FindCommenterByToken(commenterToken)
 	if err != nil {
-		return operations.NewCommenterLoginOK().WithPayload(&operations.CommenterLoginOKBody{Message: err.Error()})
+		return serviceErrorResponder(err)
 	}
 
-	email, err := emailGet(commenter.Email)
+	// Fetch the related email
+	email, err := svc.TheEmailService.FindByEmail(commenter.Email)
 	if err != nil {
-		return operations.NewCommenterLoginOK().WithPayload(&operations.CommenterLoginOKBody{Message: err.Error()})
+		return serviceErrorResponder(err)
 	}
 
 	// Succeeded
 	return operations.NewCommenterLoginOK().WithPayload(&operations.CommenterLoginOKBody{
-		Commenter:      commenter,
+		Commenter:      commenter.ToCommenter(),
 		CommenterToken: commenterToken,
 		Email:          email,
 		Success:        true,
@@ -77,12 +68,14 @@ func CommenterNew(params operations.CommenterNewParams) middleware.Responder {
 }
 
 func CommenterPhoto(params operations.CommenterPhotoParams) middleware.Responder {
-	c, err := commenterGetByHex(models.CommenterHexID(params.CommenterHex))
+	// Find the commenter user
+	commenter, err := svc.TheUserService.FindCommenterByID(models.CommenterHexID(params.CommenterHex))
 	if err != nil {
-		return operations.NewGenericNotFound()
+		return serviceErrorResponder(err)
 	}
 
-	resp, err := http.Get(c.Photo)
+	// Fetch the image pointed to by the PhotoURL
+	resp, err := http.Get(commenter.PhotoURL)
 	if err != nil {
 		return operations.NewGenericNotFound()
 	}
@@ -122,21 +115,27 @@ func CommenterPhoto(params operations.CommenterPhotoParams) middleware.Responder
 }
 
 func CommenterSelf(params operations.CommenterSelfParams) middleware.Responder {
-	commenter, err := commenterGetByCommenterToken(*params.Body.CommenterToken)
-	if err != nil {
-		return operations.NewCommenterSelfOK().WithPayload(&operations.CommenterSelfOKBody{Message: err.Error()})
+	// Find the commenter
+	commenter, err := svc.TheUserService.FindCommenterByToken(*params.Body.CommenterToken)
+	if err == svc.ErrNotFound {
+		// Not logged in or session doesn't exist
+		return operations.NewCommenterSelfOK()
+
+	} else if err != nil {
+		// Any other error
+		return serviceErrorResponder(err)
 	}
 
-	email, err := emailGet(commenter.Email)
+	// Fetch the commenter's email
+	email, err := svc.TheEmailService.FindByEmail(commenter.Email)
 	if err != nil {
-		return operations.NewCommenterSelfOK().WithPayload(&operations.CommenterSelfOKBody{Message: err.Error()})
+		return serviceErrorResponder(err)
 	}
 
 	// Succeeded
 	return operations.NewCommenterSelfOK().WithPayload(&operations.CommenterSelfOKBody{
-		Commenter: commenter,
+		Commenter: commenter.ToCommenter(),
 		Email:     email,
-		Success:   true,
 	})
 }
 
@@ -154,85 +153,25 @@ func CommenterTokenNew(operations.CommenterTokenNewParams) middleware.Responder 
 }
 
 func CommenterUpdate(params operations.CommenterUpdateParams) middleware.Responder {
-	commenter, err := commenterGetByCommenterToken(*params.Body.CommenterToken)
+	// Find the commenter
+	commenter, err := svc.TheUserService.FindCommenterByToken(*params.Body.CommenterToken)
 	if err != nil {
-		return operations.NewCommenterUpdateOK().WithPayload(&models.APIResponseBase{Message: err.Error()})
+		return serviceErrorResponder(err)
 	}
 
+	// Only locally authenticated users can be updated
 	if commenter.Provider != "commento" {
 		return operations.NewCommenterUpdateOK().WithPayload(&models.APIResponseBase{Message: util.ErrorCannotUpdateOauthProfile.Error()})
 	}
 
-	*params.Body.Email = commenter.Email
+	*params.Body.Email = strfmt.Email(commenter.Email)
 
-	if err = commenterUpdate(commenter.CommenterHex, *params.Body.Email, *params.Body.Name, params.Body.Link, params.Body.Photo, commenter.Provider); err != nil {
+	if err = commenterUpdate(commenter.CommenterHexID(), *params.Body.Email, *params.Body.Name, params.Body.Link, params.Body.Photo, commenter.Provider); err != nil {
 		return operations.NewCommenterUpdateOK().WithPayload(&models.APIResponseBase{Message: err.Error()})
 	}
 
 	// Succeeded
 	return operations.NewCommenterUpdateOK().WithPayload(&models.APIResponseBase{Success: true})
-}
-
-func commenterGetByCommenterToken(commenterToken models.CommenterHexID) (*models.Commenter, error) {
-	if commenterToken == "" {
-		return nil, util.ErrorMissingField
-	}
-
-	row := svc.DB.QueryRow(
-		fmt.Sprintf(
-			"select %s from commentersessions "+
-				"join commenters on commentersessions.commenterhex = commenters.commenterhex "+
-				"where commentertoken = $1;",
-			commentersRowColumns),
-		commenterToken)
-
-	var commenter models.Commenter
-	if err := commentersRowScan(row, &commenter); err != nil {
-		// TODO: is this the only error?
-		return nil, util.ErrorNoSuchToken
-	}
-
-	if commenter.CommenterHex == "none" {
-		return nil, util.ErrorNoSuchToken
-	}
-
-	return &commenter, nil
-}
-
-func commenterGetByEmail(provider string, email strfmt.Email) (*models.Commenter, error) {
-	if provider == "" || email == "" {
-		return nil, util.ErrorMissingField
-	}
-	row := svc.DB.QueryRow(
-		fmt.Sprintf("select %s from commenters where email=$1 and provider=$2;", commentersRowColumns),
-		email,
-		provider,
-	)
-
-	var c models.Commenter
-	if err := commentersRowScan(row, &c); err != nil {
-		// TODO: is this the only error?
-		return nil, util.ErrorNoSuchCommenter
-	}
-
-	return &c, nil
-}
-
-func commenterGetByHex(commenterHex models.CommenterHexID) (*models.Commenter, error) {
-	if commenterHex == "" {
-		return nil, util.ErrorMissingField
-	}
-
-	row := svc.DB.QueryRow(
-		fmt.Sprintf("select %s from commenters where commenterHex = $1;", commentersRowColumns),
-		commenterHex)
-	var c models.Commenter
-	if err := commentersRowScan(row, &c); err != nil {
-		// TODO: is this the only error?
-		return nil, util.ErrorNoSuchCommenter
-	}
-
-	return &c, nil
 }
 
 func commenterLogin(email strfmt.Email, password string) (models.CommenterHexID, error) {
@@ -261,7 +200,7 @@ func commenterLogin(email strfmt.Email, password string) (models.CommenterHexID,
 		return "", util.ErrorInternal
 	}
 
-	_, err = svc.DB.Exec(
+	err = svc.DB.Exec(
 		"insert into commenterSessions(commenterToken, commenterHex, creationDate) values($1, $2, $3);",
 		commenterToken,
 		commenterHex,
@@ -289,8 +228,11 @@ func commenterNew(email strfmt.Email, name string, link string, photo string, pr
 		}
 	}
 
-	if _, err := commenterGetByEmail(provider, email); err == nil {
+	// Verify no such email is registered yet
+	if _, err := svc.TheUserService.FindCommenterByIdPEmail(provider, string(email)); err == nil {
 		return "", util.ErrorEmailAlreadyExists
+	} else if err != svc.ErrNotFound {
+		return "", util.ErrorInternal
 	}
 
 	if err := EmailNew(email); err != nil {
@@ -311,8 +253,16 @@ func commenterNew(email strfmt.Email, name string, link string, photo string, pr
 		}
 	}
 
-	statement := `insert into commenters(commenterHex, email, name, link, photo, provider, passwordHash, joinDate) values($1, $2, $3, $4, $5, $6, $7, $8);`
-	_, err = svc.DB.Exec(statement, commenterHex, email, name, link, photo, provider, string(passwordHash), time.Now().UTC())
+	err = svc.DB.Exec(
+		"insert into commenters(commenterHex, email, name, link, photo, provider, passwordHash, joinDate) values($1, $2, $3, $4, $5, $6, $7, $8);",
+		commenterHex,
+		email,
+		name,
+		link,
+		photo,
+		provider,
+		string(passwordHash),
+		time.Now().UTC())
 	if err != nil {
 		logger.Errorf("cannot insert commenter: %v", err)
 		return "", util.ErrorInternal
@@ -321,24 +271,12 @@ func commenterNew(email strfmt.Email, name string, link string, photo string, pr
 	return models.CommenterHexID(commenterHex), nil
 }
 
-func commentersRowScan(s util.Scanner, c *models.Commenter) error {
-	return s.Scan(
-		&c.CommenterHex,
-		&c.Email,
-		&c.Name,
-		&c.Link,
-		&c.Photo,
-		&c.Provider,
-		&c.JoinDate,
-	)
-}
-
 func commenterSessionUpdate(commenterToken models.HexID, commenterHex models.CommenterHexID) error {
 	if commenterToken == "" || commenterHex == "" {
 		return util.ErrorMissingField
 	}
 
-	if _, err := svc.DB.Exec("update commenterSessions set commenterHex = $2 where commenterToken = $1;", commenterToken, commenterHex); err != nil {
+	if err := svc.DB.Exec("update commenterSessions set commenterHex = $2 where commenterToken = $1;", commenterToken, commenterHex); err != nil {
 		logger.Errorf("error updating commenterHex: %v", err)
 		return util.ErrorInternal
 	}
@@ -353,11 +291,7 @@ func commenterTokenNew() (models.CommenterHexID, error) {
 		return "", util.ErrorInternal
 	}
 
-	_, err = svc.DB.Exec(
-		"insert into commenterSessions(commenterToken, creationDate) values($1, $2);",
-		commenterToken,
-		time.Now().UTC())
-	if err != nil {
+	if err = svc.DB.Exec("insert into commenterSessions(commenterToken, creationDate) values($1, $2);", commenterToken, time.Now().UTC()); err != nil {
 		logger.Errorf("cannot insert new commenterToken: %v", err)
 		return "", util.ErrorInternal
 	}
@@ -375,7 +309,7 @@ func commenterUpdate(commenterHex models.CommenterHexID, email strfmt.Email, nam
 		link = "undefined"
 	}
 
-	_, err := svc.DB.Exec(
+	err := svc.DB.Exec(
 		"update commenters set email=$3, name=$4, link=$5, photo=$6 where commenterHex=$1 and provider=$2;",
 		commenterHex,
 		provider,

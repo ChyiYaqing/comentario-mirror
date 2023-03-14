@@ -1,30 +1,21 @@
 package handlers
 
 import (
-	"fmt"
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/go-openapi/strfmt"
 	"gitlab.com/comentario/comentario/internal/api/models"
 	"gitlab.com/comentario/comentario/internal/api/restapi/operations"
-	"gitlab.com/comentario/comentario/internal/config"
+	"gitlab.com/comentario/comentario/internal/data"
 	"gitlab.com/comentario/comentario/internal/svc"
 	"gitlab.com/comentario/comentario/internal/util"
-	"html/template"
 	"time"
 )
 
-const emailsRowColumns = `
-	emails.email,
-	emails.unsubscribeSecretHex,
-	emails.lastEmailNotificationDate,
-	emails.sendReplyNotifications,
-	emails.sendModeratorNotifications
-`
-
 func EmailGet(params operations.EmailGetParams) middleware.Responder {
-	email, err := emailGetByUnsubscribeSecretHex(*params.Body.UnsubscribeSecretHex)
+	// Fetch the email by its unsubscribe token
+	email, err := svc.TheEmailService.FindByUnsubscribeToken(*params.Body.UnsubscribeSecretHex)
 	if err != nil {
-		return operations.NewEmailGetOK().WithPayload(&operations.EmailGetOKBody{Message: err.Error()})
+		return serviceErrorResponder(err)
 	}
 
 	// Succeeded
@@ -47,14 +38,15 @@ func EmailModerate(params operations.EmailModerateParams) middleware.Responder {
 		return operations.NewGenericBadRequest().WithPayload(&operations.GenericBadRequestBody{Details: "Comment has already been deleted"})
 	}
 
-	e, err := emailGetByUnsubscribeSecretHex(models.HexID(params.UnsubscribeSecretHex))
+	// Fetch the email by its unsubscribe token
+	email, err := svc.TheEmailService.FindByUnsubscribeToken(models.HexID(params.UnsubscribeSecretHex))
 	if err != nil {
-		return operations.NewGenericBadRequest().WithPayload(&operations.GenericBadRequestBody{Details: err.Error()})
+		return serviceErrorResponder(err)
 	}
 
-	isModerator, err := isDomainModerator(domain, e.Email)
+	isModerator, err := isDomainModerator(domain, email.Email)
 	if err != nil {
-		logger.Errorf("error checking if %s is a moderator: %v", e.Email, err)
+		logger.Errorf("error checking if %s is a moderator: %v", email.Email, err)
 		return operations.NewGenericInternalServerError()
 	}
 
@@ -65,17 +57,17 @@ func EmailModerate(params operations.EmailModerateParams) middleware.Responder {
 	// Do not use commenterGetByEmail here because we don't know which provider should be used. This was poor design on
 	// multiple fronts on my part, but let's deal with that later. For now, it suffices to match the deleter/approver
 	// with any account owned by the same email
-	row = svc.DB.QueryRow("select commenterHex from commenters where email = $1;", e.Email)
+	row = svc.DB.QueryRow("select commenterHex from commenters where email = $1;", email.Email)
 
 	var commenterHex models.HexID
 	if err = row.Scan(&commenterHex); err != nil {
-		logger.Errorf("cannot retrieve commenterHex by email %q: %v", e.Email, err)
+		logger.Errorf("cannot retrieve commenterHex by email %q: %v", email.Email, err)
 		return operations.NewGenericInternalServerError()
 	}
 
 	switch params.Action {
 	case "approve":
-		err = commentApprove(models.HexID(params.CommentHex))
+		err = svc.TheCommentService.Approve(models.HexID(params.CommentHex))
 	case "delete":
 		err = commentDelete(models.HexID(params.CommentHex), commenterHex)
 	default:
@@ -97,7 +89,7 @@ func EmailNew(email strfmt.Email) error {
 		return util.ErrorInternal
 	}
 
-	_, err = svc.DB.Exec(
+	err = svc.DB.Exec(
 		`insert into emails(email, unsubscribeSecretHex, lastEmailNotificationDate) values ($1, $2, $3) on conflict do nothing;`,
 		email,
 		unsubscribeSecretHex,
@@ -111,53 +103,30 @@ func EmailNew(email strfmt.Email) error {
 }
 
 func EmailUpdate(params operations.EmailUpdateParams) middleware.Responder {
-	if err := emailUpdate(params.Body.Email); err != nil {
-		return operations.NewEmailUpdateOK().WithPayload(&models.APIResponseBase{Message: err.Error()})
+	// Update the email record
+	err := svc.TheEmailService.UpdateByEmailToken(
+		string(params.Body.Email.Email),
+		params.Body.Email.UnsubscribeSecretHex,
+		params.Body.Email.SendReplyNotifications,
+		params.Body.Email.SendModeratorNotifications)
+	if err != nil {
+		return serviceErrorResponder(err)
 	}
 
 	// Succeeded
 	return operations.NewEmailUpdateOK().WithPayload(&models.APIResponseBase{Success: true})
 }
 
-func emailGet(em strfmt.Email) (*models.Email, error) {
-	row := svc.DB.QueryRow(
-		fmt.Sprintf("select %s from emails where email = $1;", emailsRowColumns),
-		em)
-
-	var e models.Email
-	if err := emailsRowScan(row, &e); err != nil {
-		// TODO: is this the only error?
-		return nil, util.ErrorNoSuchEmail
-	}
-
-	return &e, nil
-}
-
-func emailGetByUnsubscribeSecretHex(unsubscribeSecretHex models.HexID) (*models.Email, error) {
-	row := svc.DB.QueryRow(
-		fmt.Sprintf("select %s from emails where unsubscribesecrethex = $1;", emailsRowColumns),
-		unsubscribeSecretHex)
-
-	var e models.Email
-	if err := emailsRowScan(row, &e); err != nil {
-		// TODO: is this the only error?
-		return nil, util.ErrorNoSuchUnsubscribeSecretHex
-	}
-
-	return &e, nil
-}
-
 func emailNotificationModerator(d *models.Domain, path string, title string, commenterHex models.CommenterHexID, commentHex models.HexID, html string, state models.CommentState) {
 	commenterName := "Anonymous"
 	var commenterEmail strfmt.Email
-	if commenterHex != AnonymousCommenterHexID {
-		c, err := commenterGetByHex(commenterHex)
-		if err != nil {
-			logger.Errorf("cannot get commenter to send email notification: %v", err)
+	if commenterHex != data.AnonymousCommenterHexID {
+		if commenter, err := svc.TheUserService.FindCommenterByID(commenterHex); err != nil {
 			return
+		} else {
+			commenterName = commenter.Name
+			commenterEmail = strfmt.Email(commenter.Email)
 		}
-		commenterName = c.Name
-		commenterEmail = c.Email
 	}
 
 	kind := d.EmailNotificationPolicy
@@ -167,17 +136,13 @@ func emailNotificationModerator(d *models.Domain, path string, title string, com
 
 	for _, m := range d.Moderators {
 		// Do not email the commenting moderator their own comment.
-		if commenterHex != AnonymousCommenterHexID && m.Email == commenterEmail {
+		if commenterEmail != "" && m.Email == commenterEmail {
 			continue
 		}
 
-		e, err := emailGet(m.Email)
-		if err != nil {
-			// No such email.
-			continue
-		}
-
-		if !e.SendModeratorNotifications {
+		// Try to fetch the moderator's email to check whether the notifications are enabled
+		modEmail, err := svc.TheEmailService.FindByEmail(string(m.Email))
+		if err != nil || !modEmail.SendModeratorNotifications {
 			continue
 		}
 
@@ -189,7 +154,17 @@ func emailNotificationModerator(d *models.Domain, path string, title string, com
 			continue
 		}
 
-		emailSendNotification(m.Email, string(kind), d.Domain, path, commenterName, title, html, commentHex, e.UnsubscribeSecretHex)
+		// Send a notification (ignore errors)
+		_ = svc.TheMailService.SendCommentNotification(
+			string(m.Email),
+			string(kind),
+			d.Domain,
+			path,
+			commenterName,
+			title,
+			html,
+			commentHex,
+			modEmail.UnsubscribeSecretHex)
 	}
 }
 
@@ -203,111 +178,71 @@ func emailNotificationReply(d *models.Domain, path string, title string, comment
 	}
 
 	// No reply notification emails for anonymous users and self replies
-	if parentCommenterHex == AnonymousCommenterHexID || parentCommenterHex == commenterHex {
+	if parentCommenterHex == data.AnonymousCommenterHexID || parentCommenterHex == commenterHex {
 		return
 	}
 
-	pc, err := commenterGetByHex(parentCommenterHex)
+	// Find the parent commenter
+	parentCommenter, err := svc.TheUserService.FindCommenterByID(parentCommenterHex)
 	if err != nil {
-		logger.Errorf("cannot get commenter to send email notification: %v", err)
 		return
 	}
 
 	commenterName := "Anonymous"
-	if commenterHex != AnonymousCommenterHexID {
-		c, err := commenterGetByHex(commenterHex)
-		if err != nil {
-			logger.Errorf("cannot get commenter to send email notification: %v", err)
+	if commenterHex != data.AnonymousCommenterHexID {
+		if commenter, err := svc.TheUserService.FindCommenterByID(commenterHex); err != nil {
 			return
+		} else {
+			commenterName = commenter.Name
 		}
-		commenterName = c.Name
 	}
 
-	epc, err := emailGet(pc.Email)
+	// Fetch the parent commenter's email
+	parentEmail, err := svc.TheEmailService.FindByEmail(parentCommenter.Email)
 	if err != nil {
-		// No such email.
+		// No valid email, ignore
 		return
 	}
 
-	if epc.SendReplyNotifications {
-		emailSendNotification(pc.Email, "reply", d.Domain, path, commenterName, title, html, commentHex, epc.UnsubscribeSecretHex)
+	// Queue a notification, if the notifications are enabled for this email (ignore errors)
+	if parentEmail.SendReplyNotifications {
+		_ = svc.TheMailService.SendCommentNotification(
+			parentCommenter.Email,
+			"reply",
+			d.Domain,
+			path,
+			commenterName,
+			title,
+			html,
+			commentHex,
+			parentEmail.UnsubscribeSecretHex)
 	}
 }
 
-func emailNotificationNew(d *models.Domain, path string, commenterHex models.CommenterHexID, commentHex models.HexID, html string, parentHex models.ParentHexID, state models.CommentState) {
-	p, err := pageGet(d.Domain, path)
+func emailNotificationNew(d *models.Domain, c *models.Comment) {
+	// Fetch the page
+	page, err := svc.ThePageService.FindByDomainPath(d.Domain, c.URL)
 	if err != nil {
 		logger.Errorf("cannot get page to send email notification: %v", err)
 		return
 	}
 
-	if p.Title == "" {
-		p.Title, err = pageTitleUpdate(d.Domain, path)
-		if err != nil {
-			// Not being able to update a page title isn't serious enough to skip an email notification
-			p.Title = d.Domain
+	// If the page has no title, try to fetch it
+	if page.Title == "" {
+		if page.Title, err = svc.ThePageService.UpdateTitleByDomainPath(d.Domain, c.URL); err != nil {
+			// Failed, just use the domain name
+			page.Title = d.Domain
 		}
 	}
 
 	// Send an email notification to moderators, if we notify about every comment or comments pending moderation and
 	// the comment isn't approved yet
-	if d.EmailNotificationPolicy == models.EmailNotificationPolicyAll || d.EmailNotificationPolicy == models.EmailNotificationPolicyPendingDashModeration && state != models.CommentStateApproved {
-		emailNotificationModerator(d, path, p.Title, commenterHex, commentHex, html, state)
+	if d.EmailNotificationPolicy == models.EmailNotificationPolicyAll || d.EmailNotificationPolicy == models.EmailNotificationPolicyPendingDashModeration && c.State != models.CommentStateApproved {
+		emailNotificationModerator(d, c.URL, page.Title, c.CommenterHex, c.CommentHex, c.HTML, c.State)
 	}
 
 	// If it's a reply and the comment is approved, send out a reply notifications
-	if parentHex != RootParentHexID && state == models.CommentStateApproved {
-		emailNotificationReply(d, path, p.Title, commenterHex, commentHex, html, parentHex)
+	if c.ParentHex != data.RootParentHexID && c.State == models.CommentStateApproved {
+		emailNotificationReply(d, c.URL, page.Title, c.CommenterHex, c.CommentHex, c.HTML, c.ParentHex)
 	}
-}
-
-func emailsRowScan(s util.Scanner, e *models.Email) error {
-	return s.Scan(
-		&e.Email,
-		&e.UnsubscribeSecretHex,
-		&e.LastEmailNotificationDate,
-		&e.SendReplyNotifications,
-		&e.SendModeratorNotifications,
-	)
-}
-
-func emailSendNotification(recipientEmail strfmt.Email, kind string, domain, path, commenterName, title, html string, commentHex, unsubscribeSecretHex models.HexID) {
-	_ = svc.TheEmailService.SendFromTemplate(
-		"",
-		string(recipientEmail),
-		"Comentario: "+title,
-		"email-notification.gohtml",
-		map[string]any{
-			"Kind":          kind,
-			"Title":         title,
-			"Domain":        domain,
-			"Path":          path,
-			"CommentHex":    commentHex,
-			"CommenterName": commenterName,
-			"HTML":          template.HTML(html),
-			"ApproveURL": config.URLForAPI(
-				"email/moderate",
-				map[string]string{"action": "approve", "commentHex": string(commentHex), "unsubscribeSecretHex": string(unsubscribeSecretHex)}),
-			"DeleteURL": config.URLForAPI(
-				"email/moderate",
-				map[string]string{"action": "delete", "commentHex": string(commentHex), "unsubscribeSecretHex": string(unsubscribeSecretHex)}),
-			"UnsubscribeURL": config.URLFor(
-				"unsubscribe",
-				map[string]string{"unsubscribeSecretHex": string(unsubscribeSecretHex)}),
-		})
-}
-
-func emailUpdate(e *models.Email) error {
-	_, err := svc.DB.Exec(
-		"update emails set sendReplyNotifications = $3, sendModeratorNotifications = $4 where email = $1 and unsubscribeSecretHex = $2;",
-		e.Email,
-		e.UnsubscribeSecretHex,
-		e.SendReplyNotifications,
-		e.SendModeratorNotifications)
-	if err != nil {
-		logger.Errorf("error updating email: %v", err)
-		return util.ErrorInternal
-	}
-
-	return nil
 }

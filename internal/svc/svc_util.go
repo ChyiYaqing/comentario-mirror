@@ -4,17 +4,16 @@ import (
 	"database/sql"
 	"errors"
 	"github.com/op/go-logging"
-	"gitlab.com/comentario/comentario/internal/api/models"
-	"gitlab.com/comentario/comentario/internal/util"
 )
 
 // logger represents a package-wide logger instance
 var logger = logging.MustGetLogger("svc")
 
 var (
-	ErrNotFound     = errors.New("services: object not found")
-	ErrInvalidInput = errors.New("services: invalid input passed")
-	ErrDB           = errors.New("services: database error")
+	ErrDB            = errors.New("services: database error")
+	ErrNotFound      = errors.New("services: object not found")
+	ErrPageLocked    = errors.New("services: page is locked")
+	ErrUnknownEntity = errors.New("services: unknown entity")
 )
 
 // checkErrors picks and returns the first non-nil error, or nil if there's none
@@ -40,20 +39,4 @@ func translateErrors(errs ...error) error {
 		// Any other database error
 		return ErrDB
 	}
-}
-
-// validateEmail validates the passed email value and returns an ErrInvalidInput should it prove invalid
-func validateEmail(s string) error {
-	if !util.IsValidEmail(s) {
-		return ErrInvalidInput
-	}
-	return nil
-}
-
-// validateHexID validates the passed hex ID value and returns an ErrInvalidInput should it prove invalid
-func validateHexID(s models.HexID) error {
-	if len(s) != 64 {
-		return ErrInvalidInput
-	}
-	return nil
 }

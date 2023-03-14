@@ -27,13 +27,34 @@ func OwnerConfirmHex(params operations.OwnerConfirmHexParams) middleware.Respond
 }
 
 func OwnerDelete(params operations.OwnerDeleteParams) middleware.Responder {
+	// Find the owner user
 	user, err := svc.TheUserService.FindOwnerByToken(*params.Body.OwnerToken)
 	if err != nil {
 		return operations.NewOwnerDeleteOK().WithPayload(&models.APIResponseBase{Message: err.Error()})
 	}
 
-	if err = ownerDelete(user.HexID, false); err != nil {
-		return operations.NewOwnerDeleteOK().WithPayload(&models.APIResponseBase{Message: err.Error()})
+	// Fetch a list of domains
+	if domains, err := domainList(user.HexID); err != nil {
+		return serviceErrorResponder(err)
+
+		// Make sure the owner owns no domains
+	} else if len(domains) > 0 {
+		return operations.NewGenericBadRequest().WithPayload(&operations.GenericBadRequestBody{Details: util.ErrorCannotDeleteOwnerWithActiveDomains.Error()})
+	}
+
+	// Remove all user's reset tokens
+	if err := svc.TheUserService.DeleteResetTokens(user.HexID); err != nil {
+		return serviceErrorResponder(err)
+	}
+
+	// Remove all user's sessions
+	if err := svc.DB.Exec("delete from ownersessions where ownerHex = $1;", user.HexID); err != nil {
+		return operations.NewGenericInternalServerError()
+	}
+
+	// Remove the owner user
+	if err := svc.DB.Exec("delete from owners where ownerHex = $1;", user.HexID); err != nil {
+		return operations.NewGenericInternalServerError()
 	}
 
 	// Succeeded
@@ -91,7 +112,7 @@ func ownerConfirmHex(confirmHex string) error {
 		return util.ErrorMissingField
 	}
 
-	res, err := svc.DB.Exec(
+	res, err := svc.DB.ExecRes(
 		"update owners "+
 			"set confirmedEmail=true where ownerHex in (select ownerHex from ownerConfirmHexes where confirmHex=$1);",
 		confirmHex)
@@ -110,47 +131,10 @@ func ownerConfirmHex(confirmHex string) error {
 		return util.ErrorNoSuchConfirmationToken
 	}
 
-	_, err = svc.DB.Exec("delete from ownerConfirmHexes where confirmHex=$1;", confirmHex)
+	err = svc.DB.Exec("delete from ownerConfirmHexes where confirmHex=$1;", confirmHex)
 	if err != nil {
 		logger.Warningf("cannot remove confirmation token: %v\n", err)
 		// Don't return an error because this is not critical.
-	}
-
-	return nil
-}
-
-func ownerDelete(ownerHex models.HexID, deleteDomains bool) error {
-	domains, err := domainList(ownerHex)
-	if err != nil {
-		return err
-	}
-
-	if len(domains) > 0 {
-		if !deleteDomains {
-			return util.ErrorCannotDeleteOwnerWithActiveDomains
-		}
-		for _, d := range domains {
-			if err := domainDelete(d.Domain); err != nil {
-				return err
-			}
-		}
-	}
-
-	_, err = svc.DB.Exec("delete from owners where ownerHex = $1;", ownerHex)
-	if err != nil {
-		return util.ErrorNoSuchOwner
-	}
-
-	_, err = svc.DB.Exec("delete from ownersessions where ownerHex = $1;", ownerHex)
-	if err != nil {
-		logger.Errorf("cannot delete from ownersessions: %v", err)
-		return util.ErrorInternal
-	}
-
-	_, err = svc.DB.Exec("delete from resethexes where hex = $1;", ownerHex)
-	if err != nil {
-		logger.Errorf("cannot delete from resethexes: %v", err)
-		return util.ErrorInternal
 	}
 
 	return nil
@@ -189,7 +173,7 @@ func ownerLogin(email strfmt.Email, password string) (models.HexID, error) {
 		return "", util.ErrorInternal
 	}
 
-	_, err = svc.DB.Exec(
+	err = svc.DB.Exec(
 		"insert into ownerSessions(ownerToken, ownerHex, loginDate) values($1, $2, $3);",
 		ownerToken,
 		ownerHex,
@@ -232,7 +216,7 @@ func ownerNew(email strfmt.Email, name string, password string) (string, error) 
 		return "", util.ErrorInternal
 	}
 
-	_, err = svc.DB.Exec(
+	err = svc.DB.Exec(
 		"insert into owners(ownerHex, email, name, passwordHash, joinDate, confirmedEmail) values($1, $2, $3, $4, $5, $6);",
 		ownerHex,
 		email,
@@ -252,7 +236,7 @@ func ownerNew(email strfmt.Email, name string, password string) (string, error) 
 		return "", util.ErrorInternal
 	}
 
-	_, err = svc.DB.Exec(
+	err = svc.DB.Exec(
 		"insert into ownerConfirmHexes(confirmHex, ownerHex, sendDate) values($1, $2, $3);",
 		confirmHex,
 		ownerHex,
@@ -262,7 +246,7 @@ func ownerNew(email strfmt.Email, name string, password string) (string, error) 
 		return "", util.ErrorInternal
 	}
 
-	err = svc.TheEmailService.SendFromTemplate(
+	err = svc.TheMailService.SendFromTemplate(
 		"",
 		string(email),
 		"Please confirm your email address",

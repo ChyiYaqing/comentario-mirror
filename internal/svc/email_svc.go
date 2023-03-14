@@ -1,22 +1,21 @@
 package svc
 
 import (
-	"bytes"
-	"gitlab.com/comentario/comentario/internal/config"
+	"gitlab.com/comentario/comentario/internal/api/models"
 	"gitlab.com/comentario/comentario/internal/util"
-	"html/template"
-	"path"
 )
 
 // TheEmailService is a global EmailService implementation
 var TheEmailService EmailService = &emailService{}
 
-// EmailService is a service interface for emailing
+// EmailService is a service interface for dealing with email objects
 type EmailService interface {
-	// Send sends an email and logs the outcome
-	Send(replyTo, recipient, subject, htmlMessage string) error
-	// SendFromTemplate sends an email from the provided template and logs the outcome
-	SendFromTemplate(replyTo, recipient, subject, templateFile string, templateData map[string]any) error
+	// FindByEmail finds and returns an Email instance for the given email address
+	FindByEmail(email string) (*models.Email, error)
+	// FindByUnsubscribeToken finds and returns an Email instance for the given unsubscribe token
+	FindByUnsubscribeToken(token models.HexID) (*models.Email, error)
+	// UpdateByEmailToken updates an Email instance for the given email address and unsubscribe token
+	UpdateByEmailToken(email string, token models.HexID, sendReply, sendModerator bool) error
 }
 
 //----------------------------------------------------------------------------------------------------------------------
@@ -24,32 +23,67 @@ type EmailService interface {
 // emailService is a blueprint EmailService implementation
 type emailService struct{}
 
-func (svc *emailService) Send(replyTo, recipient, subject, htmlMessage string) error {
-	err := util.AppMailer.Mail(replyTo, recipient, subject, htmlMessage)
-	if err != nil {
-		logger.Warningf("Failed to send email to %s: %v", recipient, err)
+func (svc *emailService) FindByEmail(email string) (*models.Email, error) {
+	logger.Debugf("emailService.FindByEmail(%s)", email)
+
+	// Query the database row
+	row := db.QueryRow(
+		"select email, unsubscribesecrethex, lastemailnotificationdate, sendreplynotifications, sendmoderatornotifications "+
+			"from emails "+
+			"where email=$1;",
+		email)
+
+	// Fetch the email
+	if e, err := svc.fetchEmail(row); err != nil {
+		return nil, translateErrors(err)
 	} else {
-		logger.Debugf("Successfully sent an email to %s", recipient)
+		return e, nil
 	}
-	return err
 }
 
-func (svc *emailService) SendFromTemplate(replyTo, recipient, subject, templateFile string, templateData map[string]any) error {
-	// Load and parse the template
-	filename := path.Join(config.CLIFlags.TemplatePath, templateFile)
-	t, err := template.ParseFiles(filename)
+func (svc *emailService) FindByUnsubscribeToken(token models.HexID) (*models.Email, error) {
+	logger.Debugf("emailService.FindByUnsubscribeToken(%s)", token)
+
+	// Query the database row
+	row := db.QueryRow(
+		"select email, unsubscribesecrethex, lastemailnotificationdate, sendreplynotifications, sendmoderatornotifications "+
+			"from emails "+
+			"where unsubscribesecrethex=$1;",
+		token)
+
+	// Fetch the email
+	if e, err := svc.fetchEmail(row); err != nil {
+		return nil, translateErrors(err)
+	} else {
+		return e, nil
+	}
+}
+
+func (svc *emailService) UpdateByEmailToken(email string, token models.HexID, sendReply, sendModerator bool) error {
+	logger.Debugf("emailService.UpdateByEmailToken(%s)", token)
+
+	// Update the database row
+	err := db.Exec(
+		"update emails set sendreplynotifications=$1, sendmoderatornotifications=$2 where email=$3 and unsubscribesecrethex=$4;",
+		sendReply,
+		sendModerator,
+		email,
+		token)
 	if err != nil {
-		logger.Errorf("Failed to parse HTML template file %s: %v", filename, err)
-		return util.ErrorMalformedTemplate
-	}
-	logger.Debugf("Parsed HTML template %s", filename)
-
-	// Execute the template
-	var bufHTML bytes.Buffer
-	if err := t.Execute(&bufHTML, templateData); err != nil {
-		return err
+		logger.Errorf("emailService.UpdateByEmailToken: Exec() failed: %v", err)
+		return translateErrors(err)
 	}
 
-	// Send the mail
-	return svc.Send(replyTo, recipient, subject, bufHTML.String())
+	// Succeeded
+	return nil
+}
+
+// fetchEmail returns a new Email instance from the provided database row
+func (svc *emailService) fetchEmail(s util.Scanner) (*models.Email, error) {
+	e := models.Email{}
+	if err := s.Scan(&e.Email, &e.UnsubscribeSecretHex, &e.LastEmailNotificationDate, &e.SendReplyNotifications, &e.SendModeratorNotifications); err != nil {
+		logger.Errorf("emailService.fetchEmail: Scan() failed: %v", err)
+		return nil, err
+	}
+	return &e, nil
 }

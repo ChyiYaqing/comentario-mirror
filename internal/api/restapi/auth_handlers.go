@@ -18,7 +18,7 @@ func FindOwnerByCookieHeader(headerValue string) (*data.User, error) {
 	// Check if there's a session cookie
 	if cookie, err := r.Cookie(util.UserTokenName); err == nil {
 		if user, err := svc.TheUserService.FindOwnerByToken(models.HexID(cookie.Value)); err == nil {
-			return user, nil
+			return &user.User, nil
 		}
 	}
 

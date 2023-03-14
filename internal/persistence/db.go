@@ -54,7 +54,13 @@ func InitDB() (*Database, error) {
 }
 
 // Exec executes the provided statement against the database
-func (db *Database) Exec(query string, args ...any) (sql.Result, error) {
+func (db *Database) Exec(query string, args ...any) error {
+	_, err := db.ExecRes(query, args...)
+	return err
+}
+
+// ExecRes executes the provided statement against the database and returns its result
+func (db *Database) ExecRes(query string, args ...any) (sql.Result, error) {
 	return db.db.Exec(query, args...)
 }
 

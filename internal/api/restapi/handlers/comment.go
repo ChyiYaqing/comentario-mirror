@@ -8,30 +8,35 @@ import (
 	"github.com/markbates/goth"
 	"gitlab.com/comentario/comentario/internal/api/models"
 	"gitlab.com/comentario/comentario/internal/api/restapi/operations"
+	"gitlab.com/comentario/comentario/internal/data"
 	"gitlab.com/comentario/comentario/internal/svc"
 	"gitlab.com/comentario/comentario/internal/util"
 	"time"
 )
 
 func CommentApprove(params operations.CommentApproveParams) middleware.Responder {
-	c, err := commenterGetByCommenterToken(*params.Body.CommenterToken)
+	// Find the commenter
+	commenter, err := svc.TheUserService.FindCommenterByToken(*params.Body.CommenterToken)
 	if err != nil {
-		return operations.NewCommentApproveOK().WithPayload(&models.APIResponseBase{Message: err.Error()})
+		return serviceErrorResponder(err)
 	}
 
-	domain, _, err := commentDomainPathGet(*params.Body.CommentHex)
+	// Fetch the comment
+	comment, err := svc.TheCommentService.FindByHexID(*params.Body.CommentHex)
 	if err != nil {
-		return operations.NewCommentApproveOK().WithPayload(&models.APIResponseBase{Message: err.Error()})
+		return serviceErrorResponder(err)
 	}
 
-	if isModerator, err := isDomainModerator(domain, c.Email); err != nil {
+	// Verify the user is a domain moderator
+	if isModerator, err := isDomainModerator(comment.Domain, strfmt.Email(commenter.Email)); err != nil {
 		return operations.NewCommentApproveOK().WithPayload(&models.APIResponseBase{Message: err.Error()})
 	} else if !isModerator {
 		return operations.NewCommentApproveOK().WithPayload(&models.APIResponseBase{Message: util.ErrorNotModerator.Error()})
 	}
 
-	if err = commentApprove(*params.Body.CommentHex); err != nil {
-		return operations.NewCommentApproveOK().WithPayload(&models.APIResponseBase{Message: err.Error()})
+	// Update the comment's state in the database
+	if err = svc.TheCommentService.Approve(*params.Body.CommentHex); err != nil {
+		return serviceErrorResponder(err)
 	}
 
 	// Succeeded
@@ -52,23 +57,22 @@ func CommentCount(params operations.CommentCountParams) middleware.Responder {
 }
 
 func CommentDelete(params operations.CommentDeleteParams) middleware.Responder {
-	commenter, err := commenterGetByCommenterToken(*params.Body.CommenterToken)
+	// Find the commenter
+	commenter, err := svc.TheUserService.FindCommenterByToken(*params.Body.CommenterToken)
 	if err != nil {
-		return operations.NewCommentDeleteOK().WithPayload(&models.APIResponseBase{Message: err.Error()})
+		return serviceErrorResponder(err)
 	}
 
+	// Find the comment
 	comment, err := svc.TheCommentService.FindByHexID(*params.Body.CommentHex)
 	if err != nil {
 		return operations.NewCommentDeleteOK().WithPayload(&models.APIResponseBase{Message: err.Error()})
 	}
 
 	// If not deleting their own comment, the user must be a domain moderator
-	if comment.CommenterHex != commenter.CommenterHex {
-		// Fetch comment's domain
-		if domain, _, err := commentDomainPathGet(*params.Body.CommentHex); err != nil {
-			return operations.NewCommentDeleteOK().WithPayload(&models.APIResponseBase{Message: err.Error()})
-			// Find the domain moderator
-		} else if isModerator, err := isDomainModerator(domain, commenter.Email); err != nil {
+	if comment.CommenterHex != commenter.CommenterHexID() {
+		// Find the domain moderator
+		if isModerator, err := isDomainModerator(comment.Domain, strfmt.Email(commenter.Email)); err != nil {
 			return operations.NewCommentDeleteOK().WithPayload(&models.APIResponseBase{Message: err.Error()})
 			// Check the commenter is a domain moderator
 		} else if !isModerator {
@@ -76,7 +80,7 @@ func CommentDelete(params operations.CommentDeleteParams) middleware.Responder {
 		}
 	}
 
-	if err = commentDelete(*params.Body.CommentHex, models.HexID(commenter.CommenterHex)); err != nil {
+	if err = commentDelete(*params.Body.CommentHex, commenter.HexID); err != nil {
 		return operations.NewCommentDeleteOK().WithPayload(&models.APIResponseBase{Message: err.Error()})
 	}
 
@@ -86,24 +90,21 @@ func CommentDelete(params operations.CommentDeleteParams) middleware.Responder {
 
 func CommentEdit(params operations.CommentEditParams) middleware.Responder {
 	// Find the commenter
-	commenter, err := commenterGetByCommenterToken(*params.Body.CommenterToken)
+	commenter, err := svc.TheUserService.FindCommenterByToken(*params.Body.CommenterToken)
 	if err != nil {
-		return operations.NewCommentEditOK().WithPayload(&operations.CommentEditOKBody{Message: err.Error()})
+		return serviceErrorResponder(err)
 	}
 
 	// Find the existing comment
 	comment, err := svc.TheCommentService.FindByHexID(*params.Body.CommentHex)
 	if err != nil {
-		return operations.NewCommentEditOK().WithPayload(&operations.CommentEditOKBody{Message: err.Error()})
+		return serviceErrorResponder(err)
 	}
 
 	// If not updating their own comment, the user must be a domain moderator
-	if comment.CommenterHex != commenter.CommenterHex {
-		// Fetch comment's domain
-		if domain, _, err := commentDomainPathGet(*params.Body.CommentHex); err != nil {
-			return operations.NewCommentEditOK().WithPayload(&operations.CommentEditOKBody{Message: err.Error()})
-			// Find the domain moderator
-		} else if isModerator, err := isDomainModerator(domain, commenter.Email); err != nil {
+	if comment.CommenterHex != commenter.CommenterHexID() {
+		// Find the domain moderator
+		if isModerator, err := isDomainModerator(comment.Domain, strfmt.Email(commenter.Email)); err != nil {
 			return operations.NewCommentEditOK().WithPayload(&operations.CommentEditOKBody{Message: err.Error()})
 			// Check the commenter is a domain moderator
 		} else if !isModerator {
@@ -134,17 +135,17 @@ func CommentList(params operations.CommentListParams) middleware.Responder {
 		return operations.NewCommentListOK().WithPayload(&operations.CommentListOKBody{Message: err.Error()})
 	}
 
-	// Fetch the page info
-	page, err := pageGet(domainName, params.Body.Path)
+	// Fetch the page
+	page, err := svc.ThePageService.FindByDomainPath(domainName, params.Body.Path)
 	if err != nil {
-		return operations.NewCommentListOK().WithPayload(&operations.CommentListOKBody{Message: err.Error()})
+		return serviceErrorResponder(err)
 	}
 
 	// If it isn't an anonymous token, try to find the related Commenter
-	var commenter *models.Commenter
-	if *params.Body.CommenterToken != AnonymousCommenterHexID {
-		if commenter, err = commenterGetByCommenterToken(*params.Body.CommenterToken); err != nil {
-			return operations.NewCommentListOK().WithPayload(&operations.CommentListOKBody{Message: err.Error()})
+	var commenter *data.UserCommenter
+	if *params.Body.CommenterToken != data.AnonymousCommenterHexID {
+		if commenter, err = svc.TheUserService.FindCommenterByToken(*params.Body.CommenterToken); err != nil {
+			return serviceErrorResponder(err)
 		}
 	}
 
@@ -153,7 +154,7 @@ func CommentList(params operations.CommentListParams) middleware.Responder {
 	moderatorEmailMap := map[strfmt.Email]bool{}
 	for _, mod := range domain.Moderators {
 		moderatorEmailMap[mod.Email] = true
-		if commenter != nil && mod.Email == commenter.Email {
+		if commenter != nil && string(mod.Email) == commenter.Email {
 			isModerator = true
 		}
 	}
@@ -161,6 +162,7 @@ func CommentList(params operations.CommentListParams) middleware.Responder {
 	// Register a view in domain statistics
 	domainViewRecord(domainName, commenter)
 
+	// Fetch comment list
 	comments, commenters, err := commentList(commenter, domainName, params.Body.Path, isModerator)
 	if err != nil {
 		return operations.NewCommentListOK().WithPayload(&operations.CommentListOKBody{Message: err.Error()})
@@ -207,71 +209,71 @@ func CommentNew(params operations.CommentNewParams) middleware.Responder {
 		return operations.NewCommentNewOK().WithPayload(&operations.CommentNewOKBody{Message: util.ErrorDomainFrozen.Error()})
 	}
 
-	if domain.RequireIdentification && *params.Body.CommenterToken == AnonymousCommenterHexID {
+	if domain.RequireIdentification && *params.Body.CommenterToken == data.AnonymousCommenterHexID {
 		return operations.NewCommentNewOK().WithPayload(&operations.CommentNewOKBody{Message: util.ErrorNotAuthorised.Error()})
 	}
 
-	commenterHex := AnonymousCommenterHexID
+	commenterHex := data.AnonymousCommenterHexID
 	commenterEmail := strfmt.Email("")
 	commenterName := "Anonymous"
-	commenterLink := ""
+	commenterWebsite := ""
 	var isModerator bool
-	if *params.Body.CommenterToken != AnonymousCommenterHexID {
-		c, err := commenterGetByCommenterToken(*params.Body.CommenterToken)
+	if *params.Body.CommenterToken != data.AnonymousCommenterHexID {
+		// Find the commenter
+		commenter, err := svc.TheUserService.FindCommenterByToken(*params.Body.CommenterToken)
 		if err != nil {
-			return operations.NewCommentNewOK().WithPayload(&operations.CommentNewOKBody{Message: err.Error()})
+			return serviceErrorResponder(err)
 		}
-		commenterHex = c.CommenterHex
-		commenterEmail = c.Email
-		commenterName = c.Name
-		commenterLink = c.Link
+		commenterHex = commenter.CommenterHexID()
+		commenterEmail = strfmt.Email(commenter.Email)
+		commenterName = commenter.Name
+		commenterWebsite = commenter.WebsiteURL
 		for _, mod := range domain.Moderators {
-			if mod.Email == c.Email {
+			if mod.Email == commenterEmail {
 				isModerator = true
 				break
 			}
 		}
 	}
 
+	// Determine comment state
 	var state models.CommentState
 	if isModerator {
 		state = models.CommentStateApproved
-	} else if domain.RequireModeration || commenterHex == AnonymousCommenterHexID && domain.ModerateAllAnonymous {
+	} else if domain.RequireModeration || commenterHex == data.AnonymousCommenterHexID && domain.ModerateAllAnonymous {
 		state = models.CommentStateUnapproved
-	} else if domain.AutoSpamFilter && checkForSpam(*params.Body.Domain, util.UserIP(params.HTTPRequest), util.UserAgent(params.HTTPRequest), commenterName, string(commenterEmail), commenterLink, *params.Body.Markdown) {
+	} else if domain.AutoSpamFilter && checkForSpam(*params.Body.Domain, util.UserIP(params.HTTPRequest), util.UserAgent(params.HTTPRequest), commenterName, string(commenterEmail), commenterWebsite, *params.Body.Markdown) {
 		state = models.CommentStateFlagged
 	} else {
 		state = models.CommentStateApproved
 	}
 
-	commentHex, err := commentNew(commenterHex, domainName, params.Body.Path, *params.Body.ParentHex, *params.Body.Markdown, state, strfmt.DateTime(time.Now().UTC()))
+	// Persist a new comment record
+	comment, err := svc.TheCommentService.Create(commenterHex, domainName, params.Body.Path, *params.Body.Markdown, *params.Body.ParentHex, state, strfmt.DateTime(time.Now().UTC()))
 	if err != nil {
-		return operations.NewCommentNewOK().WithPayload(&operations.CommentNewOKBody{Message: err.Error()})
+		return serviceErrorResponder(err)
 	}
 
-	// TODO: reuse html in commentNew and do only one markdown to HTML conversion?
-	html := util.MarkdownToHTML(*params.Body.Markdown)
-	go emailNotificationNew(domain, params.Body.Path, commenterHex, commentHex, html, *params.Body.ParentHex, state)
+	// Send out an email notification
+	go emailNotificationNew(domain, comment)
 
 	// Succeeded
 	return operations.NewCommentNewOK().WithPayload(&operations.CommentNewOKBody{
-		CommentHex: commentHex,
-		HTML:       html,
+		CommentHex: comment.CommentHex,
+		HTML:       comment.HTML,
 		State:      state,
 		Success:    true,
 	})
 }
 
 func CommentVote(params operations.CommentVoteParams) middleware.Responder {
-	if *params.Body.CommenterToken == AnonymousCommenterHexID {
-		return operations.NewCommentVoteOK().WithPayload(&models.APIResponseBase{Message: util.ErrorUnauthorisedVote.Error()})
-	}
-
-	commenter, err := commenterGetByCommenterToken(*params.Body.CommenterToken)
+	// Find the commenter
+	commenter, err := svc.TheUserService.FindCommenterByToken(*params.Body.CommenterToken)
 	if err != nil {
-		return operations.NewCommentVoteOK().WithPayload(&models.APIResponseBase{Message: err.Error()})
+		return serviceErrorResponder(err)
 	}
 
+	// Calculate the direction
 	direction := 0
 	if *params.Body.Direction > 0 {
 		direction = 1
@@ -286,31 +288,17 @@ func CommentVote(params operations.CommentVoteParams) middleware.Responder {
 	}
 
 	// Make sure the commenter is not voting for their own comment
-	if comment.CommenterHex == commenter.CommenterHex {
+	if comment.CommenterHex == commenter.CommenterHexID() {
 		return operations.NewGenericForbidden().WithPayload(&operations.GenericForbiddenBody{Details: util.ErrorSelfVote.Error()})
 	}
 
 	// Update the vote in the database
-	if err := svc.TheVoteService.SetVote(comment.CommentHex, commenter.CommenterHex, direction); err != nil {
+	if err := svc.TheVoteService.SetVote(comment.CommentHex, commenter.CommenterHexID(), direction); err != nil {
 		return serviceErrorResponder(err)
 	}
 
 	// Succeeded
 	return operations.NewCommentVoteOK().WithPayload(&models.APIResponseBase{Success: true})
-}
-
-func commentApprove(commentHex models.HexID) error {
-	if commentHex == "" {
-		return util.ErrorMissingField
-	}
-
-	_, err := svc.DB.Exec("update comments set state = 'approved' where commentHex = $1;", commentHex)
-	if err != nil {
-		logger.Errorf("cannot approve comment: %v", err)
-		return util.ErrorInternal
-	}
-
-	return nil
 }
 
 func commentCount(domain string, paths []string) (map[string]int, error) {
@@ -353,7 +341,7 @@ func commentDelete(commentHex models.HexID, deleterHex models.HexID) error {
 		return util.ErrorMissingField
 	}
 
-	_, err := svc.DB.Exec(
+	err := svc.DB.Exec(
 		"update comments "+
 			"set deleted = true, markdown = '[deleted]', html = '[deleted]', commenterHex = 'anonymous', deleterHex = $2, deletionDate = $3 "+
 			"where commentHex = $1;",
@@ -370,24 +358,7 @@ func commentDelete(commentHex models.HexID, deleterHex models.HexID) error {
 	return nil
 }
 
-func commentDomainPathGet(commentHex models.HexID) (string, string, error) {
-	if commentHex == "" {
-		return "", "", util.ErrorMissingField
-	}
-
-	row := svc.DB.QueryRow("select domain, path from comments where commentHex=$1;", commentHex)
-
-	var domain string
-	var path string
-	var err error
-	if err = row.Scan(&domain, &path); err != nil {
-		return "", "", util.ErrorNoSuchDomain
-	}
-
-	return domain, path, nil
-}
-
-func commentList(commenter *models.Commenter, domain string, path string, isModerator bool) ([]*models.Comment, map[models.CommenterHexID]*models.Commenter, error) {
+func commentList(commenter *data.UserCommenter, domain string, path string, isModerator bool) ([]*models.Comment, map[models.CommenterHexID]*models.Commenter, error) {
 	// Prepare a query
 	statement := "select commentHex, commenterHex, markdown, html, parentHex, score, state, deleted, creationDate " +
 		"from comments " +
@@ -403,7 +374,7 @@ func commentList(commenter *models.Commenter, domain string, path string, isMode
 		} else {
 			// Authenticated commenter: also show their own unapproved comments
 			statement += " and (comments.state='approved' or comments.commenterHex=$3)"
-			params = append(params, commenter.CommenterHex)
+			params = append(params, commenter.HexID)
 		}
 	}
 	statement += `;`
@@ -417,8 +388,8 @@ func commentList(commenter *models.Commenter, domain string, path string, isMode
 	defer rows.Close()
 
 	commenters := map[models.CommenterHexID]*models.Commenter{
-		AnonymousCommenterHexID: {
-			CommenterHex: AnonymousCommenterHexID,
+		data.AnonymousCommenterHexID: {
+			CommenterHex: data.AnonymousCommenterHexID,
 			Email:        "undefined",
 			Name:         "Anonymous",
 			Link:         "undefined",
@@ -448,7 +419,7 @@ func commentList(commenter *models.Commenter, domain string, path string, isMode
 			row := svc.DB.QueryRow(
 				"select direction from votes where commentHex=$1 and commenterHex=$2;",
 				comment.CommentHex,
-				commenter.CommenterHex)
+				commenter.HexID)
 			if err = row.Scan(&comment.Direction); err != nil {
 				// TODO: is the only error here that there is no such entry?
 				comment.Direction = 0
@@ -456,7 +427,7 @@ func commentList(commenter *models.Commenter, domain string, path string, isMode
 		}
 
 		// Do not include the original markdown for anonymous and other commenters, unless it's a moderator
-		if commenter == nil || !isModerator && commenter.CommenterHex != comment.CommenterHex {
+		if commenter == nil || !isModerator && commenter.CommenterHexID() != comment.CommenterHex {
 			comment.Markdown = ""
 		}
 
@@ -471,62 +442,14 @@ func commentList(commenter *models.Commenter, domain string, path string, isMode
 		// Add the commenter to the map
 		// TODO OMG this must be sloooooooow
 		if _, ok := commenters[comment.CommenterHex]; !ok {
-			commenters[comment.CommenterHex], err = commenterGetByHex(comment.CommenterHex)
-			if err != nil {
-				logger.Errorf("cannot retrieve commenter: %v", err)
+			if c, err := svc.TheUserService.FindCommenterByID(comment.CommenterHex); err != nil {
 				return nil, nil, util.ErrorInternal
+			} else {
+				commenters[comment.CommenterHex] = c.ToCommenter()
 			}
 		}
 	}
 
 	// Succeeded
 	return comments, commenters, nil
-}
-
-// Take `creationDate` as a param because comment import (from Disqus, for example) will require a custom time
-func commentNew(commenterHex models.CommenterHexID, domain string, path string, parentHex models.ParentHexID, markdown string, state models.CommentState, creationDate strfmt.DateTime) (models.HexID, error) {
-	// path is allowed to be empty
-	if commenterHex == "" || domain == "" || parentHex == "" || markdown == "" || state == "" {
-		return "", util.ErrorMissingField
-	}
-
-	p, err := pageGet(domain, path)
-	if err != nil {
-		logger.Errorf("cannot get page attributes: %v", err)
-		return "", util.ErrorInternal
-	}
-
-	if p.IsLocked {
-		return "", util.ErrorThreadLocked
-	}
-
-	commentHex, err := util.RandomHex(32)
-	if err != nil {
-		return "", err
-	}
-
-	html := util.MarkdownToHTML(markdown)
-
-	if err = pageNew(domain, path); err != nil {
-		return "", err
-	}
-
-	_, err = svc.DB.Exec(
-		"insert into comments(commentHex, domain, path, commenterHex, parentHex, markdown, html, creationDate, state) "+
-			"values($1, $2, $3, $4, $5, $6, $7, $8, $9);",
-		commentHex,
-		domain,
-		path,
-		commenterHex,
-		parentHex,
-		markdown,
-		html,
-		creationDate,
-		state)
-	if err != nil {
-		logger.Errorf("cannot insert comment: %v", err)
-		return "", util.ErrorInternal
-	}
-
-	return models.HexID(commentHex), nil
 }

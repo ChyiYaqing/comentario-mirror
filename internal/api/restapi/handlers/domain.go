@@ -53,8 +53,9 @@ func DomainClear(params operations.DomainClearParams) middleware.Responder {
 		return operations.NewDomainClearOK().WithPayload(&models.APIResponseBase{Message: util.ErrorNotAuthorised.Error()})
 	}
 
-	if err = domainClear(*params.Body.Domain); err != nil {
-		return operations.NewDomainClearOK().WithPayload(&models.APIResponseBase{Message: err.Error()})
+	// Clear all domain's pages/comments/votes
+	if err = svc.TheDomainService.Clear(*params.Body.Domain); err != nil {
+		return serviceErrorResponder(err)
 	}
 
 	// Succeeded
@@ -67,6 +68,7 @@ func DomainDelete(params operations.DomainDeleteParams) middleware.Responder {
 		return operations.NewDomainDeleteOK().WithPayload(&models.APIResponseBase{Message: err.Error()})
 	}
 
+	// Verify domain ownership
 	isOwner, err := domainOwnershipVerify(user.HexID, *params.Body.Domain)
 	if err != nil {
 		return operations.NewDomainDeleteOK().WithPayload(&models.APIResponseBase{Message: err.Error()})
@@ -75,16 +77,17 @@ func DomainDelete(params operations.DomainDeleteParams) middleware.Responder {
 		return operations.NewDomainDeleteOK().WithPayload(&models.APIResponseBase{Message: util.ErrorNotAuthorised.Error()})
 	}
 
-	if err = domainDelete(*params.Body.Domain); err != nil {
-		return operations.NewDomainDeleteOK().WithPayload(&models.APIResponseBase{Message: err.Error()})
+	// Delete the domain
+	if err = svc.TheDomainService.Delete(*params.Body.Domain); err != nil {
+		return serviceErrorResponder(err)
 	}
 
 	// Succeeded
 	return operations.NewDomainDeleteOK().WithPayload(&models.APIResponseBase{Success: true})
 }
 
-func DomainList(_ operations.DomainListParams, principal *data.User) middleware.Responder {
-	domains, err := domainList(principal.HexID)
+func DomainList(_ operations.DomainListParams, user *data.User) middleware.Responder {
+	domains, err := domainList(user.HexID)
 	if err != nil {
 		return operations.NewDomainListOK().WithPayload(&operations.DomainListOKBody{Message: err.Error()})
 	}
@@ -109,7 +112,7 @@ func DomainModeratorDelete(params operations.DomainModeratorDeleteParams) middle
 		return operations.NewDomainModeratorDeleteOK().WithPayload(&models.APIResponseBase{Message: err.Error()})
 	}
 
-	domainName := *params.Body.Domain
+	domainName := data.TrimmedString(params.Body.Domain)
 	authorised, err := domainOwnershipVerify(user.HexID, domainName)
 	if err != nil {
 		return operations.NewDomainModeratorDeleteOK().WithPayload(&models.APIResponseBase{Message: err.Error()})
@@ -118,8 +121,9 @@ func DomainModeratorDelete(params operations.DomainModeratorDeleteParams) middle
 		return operations.NewDomainModeratorDeleteOK().WithPayload(&models.APIResponseBase{Message: util.ErrorNotAuthorised.Error()})
 	}
 
-	if err = domainModeratorDelete(domainName, *params.Body.Email); err != nil {
-		return operations.NewDomainModeratorDeleteOK().WithPayload(&models.APIResponseBase{Message: err.Error()})
+	// Delete the moderator from the database
+	if err = svc.TheDomainService.DeleteModerator(domainName, data.EmailToString(params.Body.Email)); err != nil {
+		return serviceErrorResponder(err)
 	}
 
 	// Succeeded
@@ -310,69 +314,6 @@ func commentStatistics(domain string) ([]int64, error) {
 	return last30Days, nil
 }
 
-func domainClear(domain string) error {
-	if domain == "" {
-		return util.ErrorMissingField
-	}
-
-	_, err := svc.DB.Exec("delete from votes using comments where comments.commentHex = votes.commentHex and comments.domain = $1;", domain)
-	if err != nil {
-		logger.Errorf("cannot delete votes: %v", err)
-		return util.ErrorInternal
-	}
-
-	_, err = svc.DB.Exec("delete from comments where comments.domain = $1;", domain)
-	if err != nil {
-		logger.Errorf("domainClear(): DB.Exec for comments failed for domain %s: %v", domain, err)
-		return util.ErrorInternal
-	}
-
-	_, err = svc.DB.Exec("delete from pages where pages.domain = $1;", domain)
-	if err != nil {
-		logger.Errorf("domainClear(): DB.Exec for pages failed for domain %s: %v", domain, err)
-		return util.ErrorInternal
-	}
-
-	return nil
-}
-
-func domainDelete(domain string) error {
-	if domain == "" {
-		return util.ErrorMissingField
-	}
-
-	_, err := svc.DB.Exec("delete from domains where domain = $1;", domain)
-	if err != nil {
-		return util.ErrorNoSuchDomain
-	}
-
-	_, err = svc.DB.Exec("delete from views where views.domain = $1;", domain)
-	if err != nil {
-		logger.Errorf("cannot delete domain from views: %v", err)
-		return util.ErrorInternal
-	}
-
-	_, err = svc.DB.Exec("delete from moderators where moderators.domain = $1;", domain)
-	if err != nil {
-		logger.Errorf("cannot delete domain from moderators: %v", err)
-		return util.ErrorInternal
-	}
-
-	_, err = svc.DB.Exec("delete from ssotokens where ssotokens.domain = $1;", domain)
-	if err != nil {
-		logger.Errorf("cannot delete domain from ssotokens: %v", err)
-		return util.ErrorInternal
-	}
-
-	// comments, votes, and pages are handled by domainClear
-	if err = domainClear(domain); err != nil {
-		logger.Errorf("cannot clear domain: %v", err)
-		return util.ErrorInternal
-	}
-
-	return nil
-}
-
 func domainGet(dmn string) (*models.Domain, error) {
 	if dmn == "" {
 		return nil, util.ErrorMissingField
@@ -422,27 +363,8 @@ func domainList(ownerHex models.HexID) ([]*models.Domain, error) {
 	return domains, rows.Err()
 }
 
-func domainModeratorDelete(domain string, email strfmt.Email) error {
-	if domain == "" || email == "" {
-		return util.ErrorMissingConfig
-	}
-
-	_, err := svc.DB.Exec("delete from moderators where domain=$1 and email=$2;", domain, email)
-	if err != nil {
-		logger.Errorf("cannot delete moderator: %v", err)
-		return util.ErrorInternal
-	}
-
-	return nil
-}
-
 func domainModeratorList(domain string) ([]*models.DomainModerator, error) {
-	statement := `
-		select email, addDate
-		from moderators
-		where domain=$1;
-	`
-	rows, err := svc.DB.Query(statement, domain)
+	rows, err := svc.DB.Query("select email, addDate from moderators where domain=$1;", domain)
 	if err != nil {
 		logger.Errorf("cannot get moderators: %v", err)
 		return nil, util.ErrorInternal
@@ -467,7 +389,7 @@ func domainModeratorNew(domain string, email strfmt.Email) error {
 		return util.ErrorInternal
 	}
 
-	_, err := svc.DB.Exec(
+	err := svc.DB.Exec(
 		"insert into moderators(domain, email, addDate) values($1, $2, $3);",
 		domain,
 		email,
@@ -481,7 +403,7 @@ func domainModeratorNew(domain string, email strfmt.Email) error {
 }
 
 func domainNew(ownerHex models.HexID, name string, domain string) error {
-	_, err := svc.DB.Exec(
+	err := svc.DB.Exec(
 		"insert into domains(ownerHex, name, domain, creationDate) values($1, $2, $3, $4);",
 		ownerHex,
 		name,
@@ -560,7 +482,7 @@ func domainSsoSecretNew(domain string) (models.HexID, error) {
 		return "", util.ErrorInternal
 	}
 
-	if _, err = svc.DB.Exec("update domains set ssoSecret = $2 where domain = $1;", domain, ssoSecret); err != nil {
+	if err = svc.DB.Exec("update domains set ssoSecret = $2 where domain = $1;", domain, ssoSecret); err != nil {
 		logger.Errorf("cannot update ssoSecret: %v", err)
 		return "", util.ErrorInternal
 	}
@@ -627,7 +549,7 @@ func domainUpdate(d *models.Domain) error {
 		where domain=$1;
 	`
 
-	_, err := svc.DB.Exec(statement,
+	err := svc.DB.Exec(statement,
 		d.Domain,
 		d.Name,
 		d.State,
@@ -651,12 +573,12 @@ func domainUpdate(d *models.Domain) error {
 	return nil
 }
 
-func domainViewRecord(domain string, commenter *models.Commenter) {
-	ch := AnonymousCommenterHexID
+func domainViewRecord(domain string, commenter *data.UserCommenter) {
+	ch := data.AnonymousCommenterHexID
 	if commenter != nil {
-		ch = commenter.CommenterHex
+		ch = commenter.CommenterHexID()
 	}
-	_, err := svc.DB.Exec("insert into views(domain, commenterHex, viewDate) values ($1, $2, $3);", domain, ch, time.Now().UTC())
+	err := svc.DB.Exec("insert into views(domain, commenterHex, viewDate) values ($1, $2, $3);", domain, ch, time.Now().UTC())
 	if err != nil {
 		logger.Warningf("cannot insert views: %v", err)
 	}

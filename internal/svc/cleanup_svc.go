@@ -11,6 +11,7 @@ type CleanupService interface {
 type cleanupService struct{}
 
 func (s *cleanupService) Init() error {
+	logger.Debugf("cleanupService: initialising")
 	if err := s.domainExportCleanupBegin(); err != nil {
 		return err
 	}
@@ -24,18 +25,13 @@ func (s *cleanupService) Init() error {
 }
 
 func (s *cleanupService) domainExportCleanupBegin() error {
+	logger.Debugf("cleanupService: initialising domain export cleanup")
 	go func() {
 		for {
-			statement := `
-				delete from exports
-				where creationDate < $1;
-			`
-			_, err := db.Exec(statement, time.Now().UTC().AddDate(0, 0, -7))
-			if err != nil {
-				logger.Errorf("error cleaning up export rows: %v", err)
+			if err := db.Exec("delete from exports where creationDate < $1;", time.Now().UTC().AddDate(0, 0, -7)); err != nil {
+				logger.Errorf("cleanupService: error cleaning up domain export rows: %v", err)
 				return
 			}
-
 			time.Sleep(2 * time.Hour)
 		}
 	}()
@@ -44,18 +40,13 @@ func (s *cleanupService) domainExportCleanupBegin() error {
 }
 
 func (s *cleanupService) ssoTokenCleanupBegin() error {
+	logger.Debugf("cleanupService: initialising SSO token cleanup")
 	go func() {
 		for {
-			statement := `
-				delete from ssoTokens
-				where creationDate < $1;
-			`
-			_, err := db.Exec(statement, time.Now().UTC().Add(time.Duration(-10)*time.Minute))
-			if err != nil {
-				logger.Errorf("error cleaning up export rows: %v", err)
+			if err := db.Exec("delete from ssoTokens where creationDate < $1;", time.Now().UTC().Add(time.Duration(-10)*time.Minute)); err != nil {
+				logger.Errorf("cleanupService: error cleaning up SSO tokens: %v", err)
 				return
 			}
-
 			time.Sleep(10 * time.Minute)
 		}
 	}()
@@ -64,15 +55,13 @@ func (s *cleanupService) ssoTokenCleanupBegin() error {
 }
 
 func (s *cleanupService) viewsCleanupBegin() error {
+	logger.Debugf("cleanupService: initialising view stats cleanup")
 	go func() {
 		for {
-			statement := `delete from views where viewDate < $1;`
-			_, err := db.Exec(statement, time.Now().UTC().AddDate(0, 0, -45))
-			if err != nil {
-				logger.Errorf("error cleaning up views: %v", err)
+			if err := db.Exec("delete from views where viewDate < $1;", time.Now().UTC().AddDate(0, 0, -45)); err != nil {
+				logger.Errorf("cleanupService: error cleaning up view stats: %v", err)
 				return
 			}
-
 			time.Sleep(24 * time.Hour)
 		}
 	}()

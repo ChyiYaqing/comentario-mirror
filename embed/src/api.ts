@@ -5,9 +5,9 @@ export interface ApiResponseBase {
     message?: string;
 }
 
-export interface ApiSelfResponse extends ApiResponseBase {
-    commenter: Commenter;
-    email:     Email;
+export interface ApiSelfResponse {
+    commenter?: Commenter;
+    email?:     Email;
 }
 
 export interface ApiCommentListResponse extends ApiResponseBase {

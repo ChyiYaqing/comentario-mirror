@@ -81,6 +81,7 @@ definitions:
         type: string
       joinDate:
         type: string
+        format: date-time
       isModerator:
         type: boolean
         x-omitempty: false
@@ -240,10 +241,12 @@ definitions:
         type: string
       isLocked:
         type: boolean
+        x-omitempty: false
       commentCount:
         type: integer
+        x-omitempty: false
       stickyCommentHex:
-        type: string
+        $ref: "#/definitions/hexId"
       title:
         type: string
 
@@ -252,11 +255,6 @@ definitions:
     type: string
     maxLength: 64
     pattern: 'root|[0-9a-f]{64}'
-
-  principal:
-    description: The authenticated principal
-    type: object
-    readOnly: true
 
   sortPolicy:
     description: Sort policy
@@ -750,15 +748,10 @@ paths:
                 $ref: "#/definitions/commenterHexId"
       responses:
         200:
-          description: Success or failure response (see 'success' property)
+          description: Authenticated commenter user, or an empty response if the user isn't authenticated
           schema:
             type: object
             properties:
-              success:
-                type: boolean
-                x-omitempty: false
-              message:
-                type: string
               commenter:
                 $ref: "#/definitions/commenter"
               email:

@@ -53,7 +53,7 @@ func OauthInit(params operations.OauthInitParams) middleware.Responder {
 	}
 
 	// Verify the provided commenter token
-	if _, err = commenterGetByCommenterToken(models.CommenterHexID(params.CommenterToken)); err != nil && err != util.ErrorNoSuchToken {
+	if _, err = svc.TheUserService.FindCommenterByToken(models.CommenterHexID(params.CommenterToken)); err != nil && err != svc.ErrNotFound {
 		return oauthFailure(err)
 	}
 
@@ -173,38 +173,40 @@ func OauthCallback(params operations.OauthCallbackParams) middleware.Responder {
 	if fedUser.Name == "" {
 		return oauthFailure(errors.New("user name missing"))
 	}
-
-	// Try to find the corresponding existing user in the database
-	if _, err = commenterGetByCommenterToken(models.CommenterHexID(commenterToken)); err != nil && err != util.ErrorNoSuchToken {
-		return oauthFailure(err)
-	}
-
-	commenter, err := commenterGetByEmail(params.Provider, strfmt.Email(fedUser.Email))
-	if err != nil && err != util.ErrorNoSuchCommenter {
-		return oauthFailure(err)
-	}
-
-	var commenterHex models.CommenterHexID
+	// -- Avatar
 	avatar := fedUser.AvatarURL
 	if avatar == "" {
 		// TODO get rid of this crap
 		avatar = "undefined"
 	}
+
+	// Try to find the corresponding commenter by their token
+	if _, err := svc.TheUserService.FindCommenterByToken(models.CommenterHexID(commenterToken)); err != nil && err != svc.ErrNotFound {
+		return oauthFailure(err)
+	}
+
+	// Now try to find an existing commenter by their email
+	var commenterHex models.CommenterHexID
+	if commenter, err := svc.TheUserService.FindCommenterByIdPEmail(params.Provider, fedUser.Email); err == nil {
+		// Commenter found
+		commenterHex = commenter.CommenterHexID()
+
+	} else if err != svc.ErrNotFound {
+		// Any other error than "not found"
+		return oauthFailure(err)
+	}
+
 	// No such commenter yet: it's a signup
-	if err == util.ErrorNoSuchCommenter {
+	if commenterHex == "" {
 		// Create a new commenter
 		if commenterHex, err = commenterNew(strfmt.Email(fedUser.Email), fedUser.Name, "undefined", avatar, params.Provider, ""); err != nil {
 			return oauthFailure(err)
 		}
 
-		// Commenter already exists: it's a login
-	} else {
-		// Update commenter's details
-		if err = commenterUpdate(commenter.CommenterHex, strfmt.Email(fedUser.Email), fedUser.Name, "undefined", avatar, params.Provider); err != nil {
-			logger.Warningf("cannot update commenter: %s", err)
-			// Don't exit as we still can proceed
-		}
-		commenterHex = commenter.CommenterHex
+		// Commenter already exists: it's a login. Update commenter's details
+	} else if err = commenterUpdate(commenterHex, strfmt.Email(fedUser.Email), fedUser.Name, "undefined", avatar, params.Provider); err != nil {
+		// Failed to update, but proceed nonetheless
+		logger.Warningf("cannot update commenter: %s", err)
 	}
 
 	// Register a commenter session
@@ -276,28 +278,31 @@ func OauthSsoCallback(params operations.OauthSsoCallbackParams) middleware.Respo
 		return oauthFailure(fmt.Errorf("HMAC signature verification failed"))
 	}
 
-	_, err = commenterGetByCommenterToken(commenterToken)
-	if err != nil && err != util.ErrorNoSuchToken {
+	// Try to find the corresponding commenter by their token
+	if _, err := svc.TheUserService.FindCommenterByToken(commenterToken); err != nil && err != svc.ErrNotFound {
 		return oauthFailure(err)
 	}
 
-	c, err := commenterGetByEmail("sso:"+domain, strfmt.Email(payload.Email))
-	if err != nil && err != util.ErrorNoSuchCommenter {
-		return oauthFailure(err)
-	}
-
+	// Now try to find an existing commenter by their email
 	var commenterHex models.CommenterHexID
-	if err == util.ErrorNoSuchCommenter {
-		if commenterHex, err = commenterNew(strfmt.Email(payload.Email), payload.Name, payload.Link, payload.Photo, "sso:"+domain, ""); err != nil {
+	idp := "sso:" + domain
+	if commenter, err := svc.TheUserService.FindCommenterByIdPEmail(idp, payload.Email); err == nil {
+		// Commenter found
+		commenterHex = commenter.CommenterHexID()
+
+	} else if err != svc.ErrNotFound {
+		// Any other error than "not found"
+		return oauthFailure(err)
+	}
+
+	// No such commenter yet: it's a signup
+	if commenterHex == "" {
+		if commenterHex, err = commenterNew(strfmt.Email(payload.Email), payload.Name, payload.Link, payload.Photo, idp, ""); err != nil {
 			return oauthFailure(err)
 		}
-	} else {
-		if err = commenterUpdate(c.CommenterHex, strfmt.Email(payload.Email), payload.Name, payload.Link, payload.Photo, "sso:"+domain); err != nil {
-			logger.Warningf("cannot update commenter: %s", err)
-			// not a serious enough to exit with an error
-		}
-
-		commenterHex = c.CommenterHex
+	} else if err = commenterUpdate(commenterHex, strfmt.Email(payload.Email), payload.Name, payload.Link, payload.Photo, idp); err != nil {
+		// Failed to update, but proceed nonetheless
+		logger.Warningf("cannot update commenter: %s", err)
 	}
 
 	if err = commenterSessionUpdate(models.HexID(commenterToken), commenterHex); err != nil {
@@ -315,7 +320,7 @@ func OauthSsoRedirect(params operations.OauthSsoRedirectParams) middleware.Respo
 	}
 	domainName := domainURL.Host
 
-	if _, err = commenterGetByCommenterToken(models.CommenterHexID(params.CommenterToken)); err != nil && err != util.ErrorNoSuchToken {
+	if _, err = svc.TheUserService.FindCommenterByToken(models.CommenterHexID(params.CommenterToken)); err != nil && err != svc.ErrNotFound {
 		return oauthFailure(err)
 	}
 
@@ -413,7 +418,7 @@ func ssoTokenExtract(token string) (string, models.CommenterHexID, error) {
 		return "", "", util.ErrorNoSuchToken
 	}
 
-	if _, err := svc.DB.Exec("delete from ssoTokens where token = $1;", token); err != nil {
+	if err := svc.DB.Exec("delete from ssoTokens where token = $1;", token); err != nil {
 		logger.Errorf("cannot delete SSO token after usage: %v", err)
 		return "", "", util.ErrorInternal
 	}
@@ -428,12 +433,12 @@ func ssoTokenNew(domain string, commenterToken string) (string, error) {
 		return "", util.ErrorInternal
 	}
 
-	statement := `
-		insert into
-		ssoTokens (token, domain, commenterToken, creationDate)
-		values    ($1,    $2,     $3,             $4          );
-	`
-	_, err = svc.DB.Exec(statement, token, domain, commenterToken, time.Now().UTC())
+	err = svc.DB.Exec(
+		"insert into ssoTokens(token, domain, commenterToken, creationDate) values($1, $2, $3, $4);",
+		token,
+		domain,
+		commenterToken,
+		time.Now().UTC())
 	if err != nil {
 		logger.Errorf("error inserting SSO token: %v", err)
 		return "", util.ErrorInternal

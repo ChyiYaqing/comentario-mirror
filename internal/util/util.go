@@ -1,10 +1,14 @@
 package util
 
 import (
+	"errors"
 	"fmt"
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/op/go-logging"
 	"github.com/russross/blackfriday"
+	"golang.org/x/net/html"
+	"io"
+	"math/rand"
 	"net"
 	"net/http"
 	"net/url"
@@ -12,6 +16,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 )
 
 // Scanner is a database/sql abstraction interface that can be used with both *sql.Row and *sql.Rows
@@ -53,6 +58,56 @@ func (m *noOpMailer) Mail(_, recipient, subject, _ string) error {
 }
 
 // ----------------------------------------------------------------------------------------------------------------------
+
+// HTMLDocumentTitle parses and returns the title of an HTML document
+func HTMLDocumentTitle(body io.Reader) (string, error) {
+	// Iterate the body's tokens
+	tokenizer := html.NewTokenizer(body)
+	for {
+		// Get the next token type
+		switch tokenizer.Next() {
+		// An error token, we either reached the end of the file, or the HTML was malformed
+		case html.ErrorToken:
+			err := tokenizer.Err()
+			// End of the stream
+			if err == io.EOF {
+				return "", errors.New("no title found in HTML document")
+			}
+
+			// Any other error
+			return "", tokenizer.Err()
+
+		// A start tag token
+		case html.StartTagToken:
+			token := tokenizer.Token()
+			// If it's the title tag
+			if token.Data == "title" {
+				// The next token should be the page title
+				if tokenizer.Next() == html.TextToken {
+					return tokenizer.Token().Data, nil
+				}
+			}
+		}
+	}
+}
+
+// HTMLTitleFromURL tries to fetch the specified URL and subsequently extract the title from its HTML document
+func HTMLTitleFromURL(url string) (string, error) {
+	// Fetch the URL
+	resp, err := http.Get(url)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	// Verify we're dealing with a HTML document
+	if !strings.HasPrefix(resp.Header.Get("Content-Type"), "text/html") {
+		return "", nil
+	}
+
+	// Parse the response body
+	return HTMLDocumentTitle(resp.Body)
+}
 
 // IsValidEmail returns whether the passed string is a valid email address
 func IsValidEmail(s string) bool {
@@ -160,6 +215,11 @@ func ParseAbsoluteURL(s string) (*url.URL, error) {
 		u.Path = strings.TrimSuffix(u.Path, "/")
 	}
 	return u, nil
+}
+
+// RandomSleep sleeps a random duration of time within the given interval
+func RandomSleep(min, max time.Duration) {
+	time.Sleep(time.Duration(int64(min) + rand.Int63n(int64(max-min))))
 }
 
 // UserAgent return the value of the User-Agent request header

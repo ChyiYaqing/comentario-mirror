@@ -52,10 +52,17 @@ export class HttpClient {
                 // Resolve or reject the promise on load, based on the return status
                 const handleError = () => reject(new HttpClientError(req.status, req.statusText, req.response));
                 req.onload = () => {
-                    if (req.status >= 200 && req.status <= 299) {
-                        resolve(JSON.parse(req.response));
-                    } else {
+                    // Only statuses 200..299 are considered successful
+                    if (req.status < 200 || req.status > 299) {
                         handleError();
+
+                    // If there's any response available, parse it as JSON
+                    } else if (req.response) {
+                        resolve(JSON.parse(req.response));
+
+                    // Resolve with an empty object otherwise
+                    } else {
+                        resolve({} as T);
                     }
                 };
                 req.onerror = handleError;
