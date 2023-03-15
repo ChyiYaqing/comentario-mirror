@@ -7,7 +7,7 @@ import (
 // TheServiceManager is a global service manager interface
 var TheServiceManager ServiceManager = &manager{}
 
-// obsolete
+// Deprecated
 var DB *persistence.Database
 
 // db is a global database instance (only available for the services package)

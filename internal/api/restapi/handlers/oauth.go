@@ -247,25 +247,23 @@ func OauthSsoCallback(params operations.OauthSsoCallbackParams) middleware.Respo
 		payload.Photo = "undefined"
 	}
 
-	domain, commenterToken, err := ssoTokenExtract(payload.Token)
+	domainName, commenterToken, err := ssoTokenExtract(payload.Token)
 	if err != nil {
 		return oauthFailure(err)
 	}
 
-	d, err := domainGet(domain)
+	// Fetch the domain
+	domain, err := svc.TheDomainService.FindByName(domainName)
 	if err != nil {
-		if err == util.ErrorNoSuchDomain {
-			return oauthFailure(err)
-		}
-		logger.Errorf("cannot get domain for SSO: %v", err)
-		return oauthFailure(util.ErrorInternal)
+		return oauthFailure(err)
 	}
 
-	if d.SsoSecret == "" || d.SsoURL == "" {
+	// Verify the domain's SSO config is complete
+	if domain.SsoSecret == "" || domain.SsoURL == "" {
 		return oauthFailure(util.ErrorMissingConfig)
 	}
 
-	key, err := hex.DecodeString(d.SsoSecret)
+	key, err := hex.DecodeString(domain.SsoSecret)
 	if err != nil {
 		logger.Errorf("cannot decode SSO secret as hex: %v", err)
 		return oauthFailure(err)
@@ -285,7 +283,7 @@ func OauthSsoCallback(params operations.OauthSsoCallbackParams) middleware.Respo
 
 	// Now try to find an existing commenter by their email
 	var commenterHex models.CommenterHexID
-	idp := "sso:" + domain
+	idp := "sso:" + domain.Domain
 	if commenter, err := svc.TheUserService.FindCommenterByIdPEmail(idp, payload.Email); err == nil {
 		// Commenter found
 		commenterHex = commenter.CommenterHexID()
@@ -318,30 +316,34 @@ func OauthSsoRedirect(params operations.OauthSsoRedirectParams) middleware.Respo
 	if err != nil {
 		return oauthFailure(err)
 	}
-	domainName := domainURL.Host
 
 	if _, err = svc.TheUserService.FindCommenterByToken(models.CommenterHexID(params.CommenterToken)); err != nil && err != svc.ErrNotFound {
 		return oauthFailure(err)
 	}
 
-	d, err := domainGet(domainName)
+	// Fetch the domain
+	domain, err := svc.TheDomainService.FindByName(domainURL.Host)
 	if err != nil {
-		return oauthFailure(util.ErrorNoSuchDomain)
+		return serviceErrorResponder(err)
 	}
-	if !d.Idps["sso"] {
-		return oauthFailure(fmt.Errorf("SSO not configured for %s", domainName))
+
+	// Make sure the domain allow SSO authentication
+	if !domain.Idps["sso"] {
+		return oauthFailure(fmt.Errorf("SSO not configured for %s", domain.Domain))
 	}
-	if d.SsoSecret == "" || d.SsoURL == "" {
+
+	// Verify the domain's SSO config is complete
+	if domain.SsoSecret == "" || domain.SsoURL == "" {
 		return oauthFailure(util.ErrorMissingConfig)
 	}
 
-	key, err := hex.DecodeString(d.SsoSecret)
+	key, err := hex.DecodeString(domain.SsoSecret)
 	if err != nil {
 		logger.Errorf("cannot decode SSO secret as hex: %v", err)
 		return oauthFailure(err)
 	}
 
-	token, err := ssoTokenNew(domainName, params.CommenterToken)
+	token, err := ssoTokenNew(domain.Domain, params.CommenterToken)
 	if err != nil {
 		return oauthFailure(err)
 	}
@@ -356,7 +358,7 @@ func OauthSsoRedirect(params operations.OauthSsoRedirectParams) middleware.Respo
 	h.Write(tokenBytes)
 	signature := hex.EncodeToString(h.Sum(nil))
 
-	ssoURL, err := util.ParseAbsoluteURL(d.SsoURL)
+	ssoURL, err := util.ParseAbsoluteURL(domain.SsoURL)
 	if err != nil {
 		// this should really not be happening; we're checking if the passed URL is valid at domain update
 		logger.Errorf("cannot parse URL: %v", err)

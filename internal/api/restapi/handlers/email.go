@@ -26,15 +26,14 @@ func EmailGet(params operations.EmailGetParams) middleware.Responder {
 }
 
 func EmailModerate(params operations.EmailModerateParams) middleware.Responder {
-	row := svc.DB.QueryRow("select domain, deleted from comments where commentHex = $1;", params.CommentHex)
-
-	var domain string
-	var deleted bool
-	if err := row.Scan(&domain, &deleted); err != nil {
-		// TODO: is this the only error?
-		return operations.NewGenericBadRequest().WithPayload(&operations.GenericBadRequestBody{Details: "No such comment found (perhaps it has been deleted?)"})
+	// Find the comment
+	comment, err := svc.TheCommentService.FindByHexID(models.HexID(params.CommentHex))
+	if err != nil {
+		return serviceErrorResponder(err)
 	}
-	if deleted {
+
+	// If the comment is already deleted
+	if comment.Deleted {
 		return operations.NewGenericBadRequest().WithPayload(&operations.GenericBadRequestBody{Details: "Comment has already been deleted"})
 	}
 
@@ -44,22 +43,18 @@ func EmailModerate(params operations.EmailModerateParams) middleware.Responder {
 		return serviceErrorResponder(err)
 	}
 
-	isModerator, err := isDomainModerator(domain, email.Email)
-	if err != nil {
-		logger.Errorf("error checking if %s is a moderator: %v", email.Email, err)
-		return operations.NewGenericInternalServerError()
+	// Verify the user is a moderator
+	if isModerator, err := svc.TheDomainService.IsDomainModerator(comment.Domain, string(email.Email)); err != nil {
+		return serviceErrorResponder(err)
+	} else if !isModerator {
+		return operations.NewGenericForbidden()
 	}
 
-	if !isModerator {
-		return operations.NewGenericBadRequest().WithPayload(&operations.GenericBadRequestBody{Details: "Not a moderator of that domain"})
-	}
-
-	// Do not use commenterGetByEmail here because we don't know which provider should be used. This was poor design on
+	// TODO Do not use commenterGetByEmail here because we don't know which provider should be used. This was poor design on
 	// multiple fronts on my part, but let's deal with that later. For now, it suffices to match the deleter/approver
 	// with any account owned by the same email
-	row = svc.DB.QueryRow("select commenterHex from commenters where email = $1;", email.Email)
-
-	var commenterHex models.HexID
+	row := svc.DB.QueryRow("select commenterHex from commenters where email = $1;", email.Email)
+	var commenterHex models.CommenterHexID
 	if err = row.Scan(&commenterHex); err != nil {
 		logger.Errorf("cannot retrieve commenterHex by email %q: %v", email.Email, err)
 		return operations.NewGenericInternalServerError()
@@ -67,15 +62,15 @@ func EmailModerate(params operations.EmailModerateParams) middleware.Responder {
 
 	switch params.Action {
 	case "approve":
-		err = svc.TheCommentService.Approve(models.HexID(params.CommentHex))
+		if err := svc.TheCommentService.Approve(comment.CommentHex); err != nil {
+			return serviceErrorResponder(err)
+		}
 	case "delete":
-		err = commentDelete(models.HexID(params.CommentHex), commenterHex)
+		if err := svc.TheCommentService.MarkDeleted(comment.CommentHex, commenterHex); err != nil {
+			return serviceErrorResponder(err)
+		}
 	default:
 		return operations.NewGenericBadRequest().WithPayload(&operations.GenericBadRequestBody{Details: util.ErrorInvalidAction.Error()})
-	}
-
-	if err != nil {
-		return operations.NewGenericBadRequest().WithPayload(&operations.GenericBadRequestBody{Details: err.Error()})
 	}
 
 	// Succeeded

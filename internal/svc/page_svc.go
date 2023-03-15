@@ -3,6 +3,7 @@ package svc
 import (
 	"database/sql"
 	"fmt"
+	"github.com/lib/pq"
 	"gitlab.com/comentario/comentario/internal/api/models"
 	"gitlab.com/comentario/comentario/internal/util"
 	"strings"
@@ -13,6 +14,8 @@ var ThePageService PageService = &pageService{}
 
 // PageService is a service interface for dealing with pages
 type PageService interface {
+	// CommentCountsByPath returns a map of comment counts by page path, for the specified domain and multiple paths
+	CommentCountsByPath(domain string, paths []string) (map[string]int, error)
 	// DeleteByDomain deletes all pages for the specified domain
 	DeleteByDomain(domain string) error
 	// FindByDomainPath finds and returns a pages for the specified domain and path combination. If no such page exists
@@ -28,6 +31,33 @@ type PageService interface {
 
 // pageService is a blueprint PageService implementation
 type pageService struct{}
+
+func (svc *pageService) CommentCountsByPath(domain string, paths []string) (map[string]int, error) {
+	logger.Debugf("pageService.CommentCountsByPath(%s, ...)", domain)
+
+	// Query paths/comment counts
+	rows, err := db.Query("select path, commentcount from pages where domain=$1 and path=any($2);", domain, pq.Array(paths))
+	if err != nil {
+		logger.Errorf("pageService.CommentCountsByPath: Query() failed: %v", err)
+		return nil, translateErrors(err)
+	}
+	defer rows.Close()
+
+	// Fetch the paths and count, converting them into a map
+	res := make(map[string]int)
+	for rows.Next() {
+		var p string
+		var c int
+		if err = rows.Scan(&p, &c); err != nil {
+			logger.Errorf("pageService.CommentCountsByPath: rows.Scan() failed: %v", err)
+			return nil, translateErrors(err)
+		}
+		res[p] = c
+	}
+
+	// Succeeded
+	return res, nil
+}
 
 func (svc *pageService) DeleteByDomain(domain string) error {
 	logger.Debugf("pageService.DeleteByDomain(%s)", domain)

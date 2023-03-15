@@ -34,7 +34,7 @@ func OwnerDelete(params operations.OwnerDeleteParams) middleware.Responder {
 	}
 
 	// Fetch a list of domains
-	if domains, err := domainList(user.HexID); err != nil {
+	if domains, err := svc.TheDomainService.ListByOwner(user.HexID); err != nil {
 		return serviceErrorResponder(err)
 
 		// Make sure the owner owns no domains

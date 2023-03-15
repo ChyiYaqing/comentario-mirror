@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"fmt"
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/go-openapi/strfmt"
 	"github.com/markbates/goth"
@@ -15,29 +14,6 @@ import (
 	"strings"
 	"time"
 )
-
-var domainsRowColumns = `
-	domains.domain,
-	domains.ownerHex,
-	domains.name,
-	domains.creationDate,
-	domains.state,
-	domains.importedComments,
-	domains.autoSpamFilter,
-	domains.requireModeration,
-	domains.requireIdentification,
-	domains.moderateAllAnonymous,
-	domains.emailNotificationPolicy,
-	domains.commentoProvider,
-	domains.googleProvider,
-	domains.githubProvider,
-	domains.gitlabProvider,
-	domains.twitterProvider,
-	domains.ssoProvider,
-	domains.ssoSecret,
-	domains.ssoUrl,
-	domains.defaultSortPolicy
-`
 
 func DomainClear(params operations.DomainClearParams) middleware.Responder {
 	user, err := svc.TheUserService.FindOwnerByToken(*params.Body.OwnerToken)
@@ -87,9 +63,10 @@ func DomainDelete(params operations.DomainDeleteParams) middleware.Responder {
 }
 
 func DomainList(_ operations.DomainListParams, user *data.User) middleware.Responder {
-	domains, err := domainList(user.HexID)
+	// Fetch domains by the owner
+	domains, err := svc.TheDomainService.ListByOwner(user.HexID)
 	if err != nil {
-		return operations.NewDomainListOK().WithPayload(&operations.DomainListOKBody{Message: err.Error()})
+		return serviceErrorResponder(err)
 	}
 
 	// Prepare an IdentityProviderMap
@@ -314,75 +291,6 @@ func commentStatistics(domain string) ([]int64, error) {
 	return last30Days, nil
 }
 
-func domainGet(dmn string) (*models.Domain, error) {
-	if dmn == "" {
-		return nil, util.ErrorMissingField
-	}
-
-	row := svc.DB.QueryRow(fmt.Sprintf("select %s from domains where domain = $1;", domainsRowColumns), dmn)
-	var err error
-	var d models.Domain
-	if err = domainsRowScan(row, &d); err != nil {
-		return nil, util.ErrorNoSuchDomain
-	}
-
-	d.Moderators, err = domainModeratorList(d.Domain)
-	if err != nil {
-		return nil, err
-	}
-
-	return &d, nil
-}
-
-func domainList(ownerHex models.HexID) ([]*models.Domain, error) {
-	if ownerHex == "" {
-		return nil, util.ErrorMissingField
-	}
-
-	rows, err := svc.DB.Query(
-		fmt.Sprintf("select %s from domains where ownerHex=$1;", domainsRowColumns),
-		ownerHex)
-	if err != nil {
-		logger.Errorf("cannot query domains: %v", err)
-		return nil, util.ErrorInternal
-	}
-	defer rows.Close()
-
-	var domains []*models.Domain
-	for rows.Next() {
-		var d models.Domain
-		if err = domainsRowScan(rows, &d); err != nil {
-			logger.Errorf("cannot Scan domain: %v", err)
-			return nil, util.ErrorInternal
-		}
-		if d.Moderators, err = domainModeratorList(d.Domain); err != nil {
-			return nil, err
-		}
-		domains = append(domains, &d)
-	}
-	return domains, rows.Err()
-}
-
-func domainModeratorList(domain string) ([]*models.DomainModerator, error) {
-	rows, err := svc.DB.Query("select email, addDate from moderators where domain=$1;", domain)
-	if err != nil {
-		logger.Errorf("cannot get moderators: %v", err)
-		return nil, util.ErrorInternal
-	}
-	defer rows.Close()
-
-	var moderators []*models.DomainModerator
-	for rows.Next() {
-		m := models.DomainModerator{}
-		if err = rows.Scan(&m.Email, &m.AddDate); err != nil {
-			logger.Errorf("cannot Scan moderator: %v", err)
-			return nil, util.ErrorInternal
-		}
-		moderators = append(moderators, &m)
-	}
-	return moderators, nil
-}
-
 func domainModeratorNew(domain string, email strfmt.Email) error {
 	if err := EmailNew(email); err != nil {
 		logger.Errorf("cannot create email when creating moderator: %v", err)
@@ -429,46 +337,6 @@ func domainOwnershipVerify(ownerHex models.HexID, domain string) (bool, error) {
 	}
 
 	return exists, nil
-}
-
-func domainsRowScan(s util.Scanner, d *models.Domain) error {
-	var commento, google, github, gitlab, twitter, sso bool
-	err := s.Scan(
-		&d.Domain,
-		&d.OwnerHex,
-		&d.Name,
-		&d.CreationDate,
-		&d.State,
-		&d.ImportedComments,
-		&d.AutoSpamFilter,
-		&d.RequireModeration,
-		&d.RequireIdentification,
-		&d.ModerateAllAnonymous,
-		&d.EmailNotificationPolicy,
-		&commento,
-		&google,
-		&github,
-		&gitlab,
-		&twitter,
-		&sso,
-		&d.SsoSecret,
-		&d.SsoURL,
-		&d.DefaultSortPolicy,
-	)
-	if err != nil {
-		return err
-	}
-
-	// Compile a map of identity providers
-	d.Idps = exmodels.IdentityProviderMap{
-		"commento": commento,
-		"google":   google,
-		"github":   github,
-		"gitlab":   gitlab,
-		"twitter":  twitter,
-		"sso":      sso,
-	}
-	return nil
 }
 
 func domainSsoSecretNew(domain string) (models.HexID, error) {
@@ -571,29 +439,4 @@ func domainUpdate(d *models.Domain) error {
 		return util.ErrorInternal
 	}
 	return nil
-}
-
-func domainViewRecord(domain string, commenter *data.UserCommenter) {
-	ch := data.AnonymousCommenterHexID
-	if commenter != nil {
-		ch = commenter.CommenterHexID()
-	}
-	err := svc.DB.Exec("insert into views(domain, commenterHex, viewDate) values ($1, $2, $3);", domain, ch, time.Now().UTC())
-	if err != nil {
-		logger.Warningf("cannot insert views: %v", err)
-	}
-}
-
-func isDomainModerator(domain string, email strfmt.Email) (bool, error) {
-	row := svc.DB.QueryRow(
-		"select exists(select 1 from moderators where domain=$1 and email=$2);",
-		domain,
-		email)
-	var exists bool
-	if err := row.Scan(&exists); err != nil {
-		logger.Errorf("cannot query if moderator: %v", err)
-		return false, util.ErrorInternal
-	}
-
-	return exists, nil
 }

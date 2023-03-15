@@ -2,11 +2,9 @@ package handlers
 
 import (
 	"github.com/go-openapi/runtime/middleware"
-	"github.com/go-openapi/strfmt"
 	"gitlab.com/comentario/comentario/internal/api/models"
 	"gitlab.com/comentario/comentario/internal/api/restapi/operations"
 	"gitlab.com/comentario/comentario/internal/svc"
-	"gitlab.com/comentario/comentario/internal/util"
 )
 
 func PageUpdate(params operations.PageUpdateParams) middleware.Responder {
@@ -16,13 +14,11 @@ func PageUpdate(params operations.PageUpdateParams) middleware.Responder {
 		return serviceErrorResponder(err)
 	}
 
-	isModerator, err := isDomainModerator(*params.Body.Domain, strfmt.Email(commenter.Email))
-	if err != nil {
-		return operations.NewPageUpdateOK().WithPayload(&models.APIResponseBase{Message: err.Error()})
-	}
-
-	if !isModerator {
-		return operations.NewPageUpdateOK().WithPayload(&models.APIResponseBase{Message: util.ErrorNotModerator.Error()})
+	// Verify the user is a moderator
+	if isModerator, err := svc.TheDomainService.IsDomainModerator(*params.Body.Domain, commenter.Email); err != nil {
+		return serviceErrorResponder(err)
+	} else if !isModerator {
+		return operations.NewGenericForbidden()
 	}
 
 	// Insert or update the page

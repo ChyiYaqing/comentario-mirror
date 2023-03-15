@@ -440,17 +440,14 @@ paths:
                 type: array
                 items:
                   type: string
+                minItems: 1
+                maxItems: 32
       responses:
         200:
-          description: Success or failure response (see 'success' property)
+          description: Comment counts per path
           schema:
             type: object
             properties:
-              success:
-                type: boolean
-                x-omitempty: false
-              message:
-                type: string
               commentCounts:
                 type: object # map[string]int
 
