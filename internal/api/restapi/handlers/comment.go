@@ -17,25 +17,25 @@ func CommentApprove(params operations.CommentApproveParams) middleware.Responder
 	// Find the commenter
 	commenter, err := svc.TheUserService.FindCommenterByToken(*params.Body.CommenterToken)
 	if err != nil {
-		return serviceErrorResponder(err)
+		return respServiceError(err)
 	}
 
 	// Fetch the comment
 	comment, err := svc.TheCommentService.FindByHexID(*params.Body.CommentHex)
 	if err != nil {
-		return serviceErrorResponder(err)
+		return respServiceError(err)
 	}
 
 	// Verify the user is a domain moderator
 	if isModerator, err := svc.TheDomainService.IsDomainModerator(comment.Domain, commenter.Email); err != nil {
-		return serviceErrorResponder(err)
+		return respServiceError(err)
 	} else if !isModerator {
 		return operations.NewGenericForbidden()
 	}
 
 	// Update the comment's state in the database
 	if err = svc.TheCommentService.Approve(*params.Body.CommentHex); err != nil {
-		return serviceErrorResponder(err)
+		return respServiceError(err)
 	}
 
 	// Succeeded
@@ -46,7 +46,7 @@ func CommentCount(params operations.CommentCountParams) middleware.Responder {
 	// Fetch comment counts
 	cc, err := svc.ThePageService.CommentCountsByPath(*params.Body.Domain, params.Body.Paths)
 	if err != nil {
-		return serviceErrorResponder(err)
+		return respServiceError(err)
 	}
 
 	// Succeeded
@@ -57,19 +57,19 @@ func CommentDelete(params operations.CommentDeleteParams) middleware.Responder {
 	// Find the commenter
 	commenter, err := svc.TheUserService.FindCommenterByToken(*params.Body.CommenterToken)
 	if err != nil {
-		return serviceErrorResponder(err)
+		return respServiceError(err)
 	}
 
 	// Find the comment
 	comment, err := svc.TheCommentService.FindByHexID(*params.Body.CommentHex)
 	if err != nil {
-		return serviceErrorResponder(err)
+		return respServiceError(err)
 	}
 
 	// If not deleting their own comment, the user must be a domain moderator
 	if comment.CommenterHex != commenter.CommenterHexID() {
 		if isModerator, err := svc.TheDomainService.IsDomainModerator(comment.Domain, commenter.Email); err != nil {
-			return serviceErrorResponder(err)
+			return respServiceError(err)
 		} else if !isModerator {
 			return operations.NewGenericForbidden()
 		}
@@ -77,7 +77,7 @@ func CommentDelete(params operations.CommentDeleteParams) middleware.Responder {
 
 	// Mark the comment deleted
 	if err = svc.TheCommentService.MarkDeleted(comment.CommentHex, commenter.CommenterHexID()); err != nil {
-		return serviceErrorResponder(err)
+		return respServiceError(err)
 	}
 
 	// Succeeded
@@ -88,19 +88,19 @@ func CommentEdit(params operations.CommentEditParams) middleware.Responder {
 	// Find the commenter
 	commenter, err := svc.TheUserService.FindCommenterByToken(*params.Body.CommenterToken)
 	if err != nil {
-		return serviceErrorResponder(err)
+		return respServiceError(err)
 	}
 
 	// Find the existing comment
 	comment, err := svc.TheCommentService.FindByHexID(*params.Body.CommentHex)
 	if err != nil {
-		return serviceErrorResponder(err)
+		return respServiceError(err)
 	}
 
 	// If not updating their own comment, the user must be a domain moderator
 	if comment.CommenterHex != commenter.CommenterHexID() {
 		if isModerator, err := svc.TheDomainService.IsDomainModerator(comment.Domain, commenter.Email); err != nil {
-			return serviceErrorResponder(err)
+			return respServiceError(err)
 		} else if !isModerator {
 			return operations.NewGenericForbidden()
 		}
@@ -126,7 +126,7 @@ func CommentList(params operations.CommentListParams) middleware.Responder {
 	// Fetch the domain
 	domain, err := svc.TheDomainService.FindByName(*params.Body.Domain)
 	if err != nil {
-		return serviceErrorResponder(err)
+		return respServiceError(err)
 	}
 
 	// Prepare a map of configured identity providers: federated ones should only be enabled when configured
@@ -138,7 +138,7 @@ func CommentList(params operations.CommentListParams) middleware.Responder {
 	// Fetch the page
 	page, err := svc.ThePageService.FindByDomainPath(domain.Domain, params.Body.Path)
 	if err != nil {
-		return serviceErrorResponder(err)
+		return respServiceError(err)
 	}
 
 	// If it isn't an anonymous token, try to find the related Commenter
@@ -146,7 +146,7 @@ func CommentList(params operations.CommentListParams) middleware.Responder {
 	commenterHex := data.AnonymousCommenterHexID
 	if *params.Body.CommenterToken != data.AnonymousCommenterHexID {
 		if commenter, err = svc.TheUserService.FindCommenterByToken(*params.Body.CommenterToken); err != nil {
-			return serviceErrorResponder(err)
+			return respServiceError(err)
 		}
 		commenterHex = commenter.CommenterHexID()
 	}
@@ -201,7 +201,7 @@ func CommentNew(params operations.CommentNewParams) middleware.Responder {
 	// Fetch the domain
 	domain, err := svc.TheDomainService.FindByName(*params.Body.Domain)
 	if err != nil {
-		return serviceErrorResponder(err)
+		return respServiceError(err)
 	}
 
 	// Verify the domain isn't frozen
@@ -223,7 +223,7 @@ func CommentNew(params operations.CommentNewParams) middleware.Responder {
 		// Find the commenter
 		commenter, err := svc.TheUserService.FindCommenterByToken(*params.Body.CommenterToken)
 		if err != nil {
-			return serviceErrorResponder(err)
+			return respServiceError(err)
 		}
 		commenterHex = commenter.CommenterHexID()
 		commenterEmail = strfmt.Email(commenter.Email)
@@ -259,7 +259,7 @@ func CommentNew(params operations.CommentNewParams) middleware.Responder {
 		state,
 		strfmt.DateTime(time.Now().UTC()))
 	if err != nil {
-		return serviceErrorResponder(err)
+		return respServiceError(err)
 	}
 
 	// Send out an email notification
@@ -278,7 +278,7 @@ func CommentVote(params operations.CommentVoteParams) middleware.Responder {
 	// Find the commenter
 	commenter, err := svc.TheUserService.FindCommenterByToken(*params.Body.CommenterToken)
 	if err != nil {
-		return serviceErrorResponder(err)
+		return respServiceError(err)
 	}
 
 	// Calculate the direction
@@ -292,7 +292,7 @@ func CommentVote(params operations.CommentVoteParams) middleware.Responder {
 	// Find the comment
 	comment, err := svc.TheCommentService.FindByHexID(*params.Body.CommentHex)
 	if err != nil {
-		return serviceErrorResponder(err)
+		return respServiceError(err)
 	}
 
 	// Make sure the commenter is not voting for their own comment
@@ -302,7 +302,7 @@ func CommentVote(params operations.CommentVoteParams) middleware.Responder {
 
 	// Update the vote in the database
 	if err := svc.TheVoteService.SetVote(comment.CommentHex, commenter.CommenterHexID(), direction); err != nil {
-		return serviceErrorResponder(err)
+		return respServiceError(err)
 	}
 
 	// Succeeded

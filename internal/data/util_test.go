@@ -26,6 +26,27 @@ func TestEmailToString(t *testing.T) {
 	}
 }
 
+func TestRandomHexID(t *testing.T) {
+	t.Run("randomness test", func(t *testing.T) {
+		// Generate first ID
+		h1, err1 := RandomHexID()
+		if err1 != nil {
+			t.Errorf("RandomHexID() invocation 1 errored with %v", err1)
+		}
+
+		// Generate second ID
+		h2, err2 := RandomHexID()
+		if err2 != nil {
+			t.Errorf("RandomHexID() invocation 2 errored with %v", err2)
+		}
+
+		// The IDs must differ
+		if h1 == h2 {
+			t.Errorf("RandomHexID() generated 2 duplicate IDs = %x", h1)
+		}
+	})
+}
+
 func TestTrimmedString(t *testing.T) {
 	v1 := "You see, it's complicated"
 	v2 := "  \nBut not as complicated\t"

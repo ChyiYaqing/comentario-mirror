@@ -1,8 +1,11 @@
 package svc
 
 import (
+	"github.com/go-openapi/strfmt"
 	"gitlab.com/comentario/comentario/internal/api/models"
+	"gitlab.com/comentario/comentario/internal/data"
 	"gitlab.com/comentario/comentario/internal/util"
+	"time"
 )
 
 // TheEmailService is a global EmailService implementation
@@ -10,6 +13,8 @@ var TheEmailService EmailService = &emailService{}
 
 // EmailService is a service interface for dealing with email objects
 type EmailService interface {
+	// Create creates and persists a new email instance
+	Create(email string) (*models.Email, error)
 	// FindByEmail finds and returns an Email instance for the given email address
 	FindByEmail(email string) (*models.Email, error)
 	// FindByUnsubscribeToken finds and returns an Email instance for the given unsubscribe token
@@ -22,6 +27,35 @@ type EmailService interface {
 
 // emailService is a blueprint EmailService implementation
 type emailService struct{}
+
+func (svc *emailService) Create(email string) (*models.Email, error) {
+	logger.Debugf("emailService.Create(%s)", email)
+
+	// Create a new Email instance
+	e := models.Email{
+		Email:                     strfmt.Email(email),
+		LastEmailNotificationDate: strfmt.DateTime(time.Now().UTC()),
+	}
+
+	// Generate a random unsubscribe token
+	if token, err := data.RandomHexID(); err != nil {
+		return nil, err
+	} else {
+		e.UnsubscribeSecretHex = token
+	}
+
+	// Insert a new row
+	err := db.Exec(
+		"insert into emails(email, unsubscribesecrethex, lastemailnotificationdate) values ($1, $2, $3) "+
+			"on conflict do nothing;",
+		e.Email, e.UnsubscribeSecretHex, e.LastEmailNotificationDate)
+	if err != nil {
+		logger.Errorf("emailService.Create: Exec() failed: %v", err)
+		return nil, translateErrors(err)
+	}
+
+	return &e, nil
+}
 
 func (svc *emailService) FindByEmail(email string) (*models.Email, error) {
 	logger.Debugf("emailService.FindByEmail(%s)", email)

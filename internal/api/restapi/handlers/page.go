@@ -11,12 +11,12 @@ func PageUpdate(params operations.PageUpdateParams) middleware.Responder {
 	// Find the commenter
 	commenter, err := svc.TheUserService.FindCommenterByToken(*params.Body.CommenterToken)
 	if err != nil {
-		return serviceErrorResponder(err)
+		return respServiceError(err)
 	}
 
 	// Verify the user is a moderator
 	if isModerator, err := svc.TheDomainService.IsDomainModerator(*params.Body.Domain, commenter.Email); err != nil {
-		return serviceErrorResponder(err)
+		return respServiceError(err)
 	} else if !isModerator {
 		return operations.NewGenericForbidden()
 	}
@@ -28,7 +28,7 @@ func PageUpdate(params operations.PageUpdateParams) middleware.Responder {
 		params.Body.Attributes.IsLocked,
 		params.Body.Attributes.StickyCommentHex)
 	if err != nil {
-		return serviceErrorResponder(err)
+		return respServiceError(err)
 	}
 
 	// Succeeded

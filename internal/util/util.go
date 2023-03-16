@@ -263,23 +263,23 @@ func createMarkdownRenderer() {
 // ---------------------------------------------------------------------------------------------------------------------
 
 // SafeStringMap is a thread-safe map[string]string. Its zero value is a usable map
-type SafeStringMap struct {
-	m  map[string]string
+type SafeStringMap[K ~string] struct {
+	m  map[K]string
 	mu sync.Mutex
 }
 
 // Put stores a value under the given key
-func (m *SafeStringMap) Put(k, v string) {
+func (m *SafeStringMap[K]) Put(k K, v string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.m == nil {
-		m.m = make(map[string]string)
+		m.m = make(map[K]string)
 	}
 	m.m[k] = v
 }
 
 // Take retrieves and deletes a values by its key, thread-safely
-func (m *SafeStringMap) Take(k string) (string, bool) {
+func (m *SafeStringMap[K]) Take(k K) (string, bool) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -297,7 +297,7 @@ func (m *SafeStringMap) Take(k string) (string, bool) {
 }
 
 // Len returns the number of entries in the map
-func (m *SafeStringMap) Len() int {
+func (m *SafeStringMap[K]) Len() int {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.m == nil {

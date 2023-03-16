@@ -20,18 +20,18 @@ func ForgotPassword(params operations.ForgotPasswordParams) middleware.Responder
 	switch entity {
 	// Resetting owner password
 	case models.EntityOwner:
-		if owner, err := svc.TheUserService.FindOwnerByEmail(email); err == nil {
+		if owner, err := svc.TheUserService.FindOwnerByEmail(email, false); err == nil {
 			user = &owner.User
 		} else if err != svc.ErrNotFound {
-			return serviceErrorResponder(err)
+			return respServiceError(err)
 		}
 
 	// Resetting commenter password: find the locally authenticated commenter
 	case models.EntityCommenter:
-		if commenter, err := svc.TheUserService.FindCommenterByIdPEmail("", email); err == nil {
+		if commenter, err := svc.TheUserService.FindCommenterByIdPEmail("", email, false); err == nil {
 			user = &commenter.User
 		} else if err != svc.ErrNotFound {
-			return serviceErrorResponder(err)
+			return respServiceError(err)
 		}
 	}
 
@@ -41,7 +41,7 @@ func ForgotPassword(params operations.ForgotPasswordParams) middleware.Responder
 
 		// Generate a random reset token
 	} else if token, err := svc.TheUserService.CreateResetToken(user.HexID, entity); err != nil {
-		return serviceErrorResponder(err)
+		return respServiceError(err)
 
 		// Send out an email
 	} else if err := svc.TheMailService.SendFromTemplate(
@@ -49,9 +49,9 @@ func ForgotPassword(params operations.ForgotPasswordParams) middleware.Responder
 		email,
 		"Reset your password",
 		"reset-hex.gohtml",
-		map[string]any{"URL": config.URLFor("reset", map[string]string{"hex": token})},
+		map[string]any{"URL": config.URLFor("reset", map[string]string{"hex": string(token)})},
 	); err != nil {
-		return serviceErrorResponder(err)
+		return respServiceError(err)
 	}
 
 	// Succeeded (or no user found)
@@ -61,7 +61,7 @@ func ForgotPassword(params operations.ForgotPasswordParams) middleware.Responder
 func ResetPassword(params operations.ResetPasswordParams) middleware.Responder {
 	entity, err := svc.TheUserService.ResetUserPasswordByToken(*params.Body.ResetHex, *params.Body.Password)
 	if err != nil {
-		return serviceErrorResponder(err)
+		return respServiceError(err)
 	}
 
 	// Succeeded

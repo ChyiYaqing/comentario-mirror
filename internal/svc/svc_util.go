@@ -10,10 +10,11 @@ import (
 var logger = logging.MustGetLogger("svc")
 
 var (
-	ErrDB            = errors.New("services: database error")
-	ErrNotFound      = errors.New("services: object not found")
-	ErrPageLocked    = errors.New("services: page is locked")
-	ErrUnknownEntity = errors.New("services: unknown entity")
+	ErrDB             = errors.New("services: database error")
+	ErrDuplicateEmail = errors.New("services: duplicate email")
+	ErrNotFound       = errors.New("services: object not found")
+	ErrPageLocked     = errors.New("services: page is locked")
+	ErrUnknownEntity  = errors.New("services: unknown entity")
 )
 
 // checkErrors picks and returns the first non-nil error, or nil if there's none

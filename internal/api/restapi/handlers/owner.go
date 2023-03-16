@@ -3,9 +3,11 @@ package handlers
 import (
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/go-openapi/strfmt"
+	"github.com/go-openapi/swag"
 	"gitlab.com/comentario/comentario/internal/api/models"
 	"gitlab.com/comentario/comentario/internal/api/restapi/operations"
 	"gitlab.com/comentario/comentario/internal/config"
+	"gitlab.com/comentario/comentario/internal/data"
 	"gitlab.com/comentario/comentario/internal/svc"
 	"gitlab.com/comentario/comentario/internal/util"
 	"golang.org/x/crypto/bcrypt"
@@ -30,31 +32,21 @@ func OwnerDelete(params operations.OwnerDeleteParams) middleware.Responder {
 	// Find the owner user
 	user, err := svc.TheUserService.FindOwnerByToken(*params.Body.OwnerToken)
 	if err != nil {
-		return operations.NewOwnerDeleteOK().WithPayload(&models.APIResponseBase{Message: err.Error()})
+		return respServiceError(err)
 	}
 
 	// Fetch a list of domains
 	if domains, err := svc.TheDomainService.ListByOwner(user.HexID); err != nil {
-		return serviceErrorResponder(err)
+		return respServiceError(err)
 
 		// Make sure the owner owns no domains
 	} else if len(domains) > 0 {
-		return operations.NewGenericBadRequest().WithPayload(&operations.GenericBadRequestBody{Details: util.ErrorCannotDeleteOwnerWithActiveDomains.Error()})
-	}
-
-	// Remove all user's reset tokens
-	if err := svc.TheUserService.DeleteResetTokens(user.HexID); err != nil {
-		return serviceErrorResponder(err)
-	}
-
-	// Remove all user's sessions
-	if err := svc.DB.Exec("delete from ownersessions where ownerHex = $1;", user.HexID); err != nil {
-		return operations.NewGenericInternalServerError()
+		return respBadRequest(util.ErrorCannotDeleteOwnerWithActiveDomains)
 	}
 
 	// Remove the owner user
-	if err := svc.DB.Exec("delete from owners where ownerHex = $1;", user.HexID); err != nil {
-		return operations.NewGenericInternalServerError()
+	if err := svc.TheUserService.DeleteOwnerByID(user.HexID); err != nil {
+		return respServiceError(err)
 	}
 
 	// Succeeded
@@ -75,13 +67,19 @@ func OwnerLogin(params operations.OwnerLoginParams) middleware.Responder {
 }
 
 func OwnerNew(params operations.OwnerNewParams) middleware.Responder {
-	if _, err := ownerNew(*params.Body.Email, *params.Body.Name, *params.Body.Password); err != nil {
+	email := data.EmailToString(params.Body.Email)
+	name := data.TrimmedString(params.Body.Name)
+	pwd := swag.StringValue(params.Body.Password)
+
+	// Create a new owner record
+	if _, err := ownerNew(strfmt.Email(email), name, pwd); err != nil {
 		return operations.NewOwnerNewOK().WithPayload(&operations.OwnerNewOKBody{Message: err.Error()})
 	}
 
-	// Errors in creating a commenter account should not hold this up
-	_, _ = commenterNew(*params.Body.Email, *params.Body.Name, "undefined", "undefined", "commento", *params.Body.Password)
+	// Register the owner also as a commenter (ignore errors)
+	_, _ = svc.TheUserService.CreateCommenter(email, name, "undefined", "undefined", "", pwd)
 
+	// Succeeded
 	return operations.NewOwnerNewOK().WithPayload(&operations.OwnerNewOKBody{
 		ConfirmEmail: config.SMTPConfigured,
 		Success:      true,
@@ -167,7 +165,7 @@ func ownerLogin(email strfmt.Email, password string) (models.HexID, error) {
 		return "", util.ErrorInvalidEmailPassword
 	}
 
-	ownerToken, err := util.RandomHex(32)
+	ownerToken, err := data.RandomHexID()
 	if err != nil {
 		logger.Errorf("cannot create ownerToken: %v", err)
 		return "", util.ErrorInternal
@@ -184,10 +182,10 @@ func ownerLogin(email strfmt.Email, password string) (models.HexID, error) {
 		return "", util.ErrorInternal
 	}
 
-	return models.HexID(ownerToken), nil
+	return ownerToken, nil
 }
 
-func ownerNew(email strfmt.Email, name string, password string) (string, error) {
+func ownerNew(email strfmt.Email, name string, password string) (models.HexID, error) {
 	if email == "" || name == "" || password == "" {
 		return "", util.ErrorMissingField
 	}
@@ -196,15 +194,15 @@ func ownerNew(email strfmt.Email, name string, password string) (string, error) 
 		return "", util.ErrorNewOwnerForbidden
 	}
 
-	if _, err := svc.TheUserService.FindOwnerByEmail(string(email)); err == nil {
+	if _, err := svc.TheUserService.FindOwnerByEmail(string(email), false); err == nil {
 		return "", util.ErrorEmailAlreadyExists
 	}
 
-	if err := EmailNew(email); err != nil {
+	if _, err := svc.TheEmailService.Create(string(email)); err != nil {
 		return "", util.ErrorInternal
 	}
 
-	ownerHex, err := util.RandomHex(32)
+	ownerHex, err := data.RandomHexID()
 	if err != nil {
 		logger.Errorf("cannot generate ownerHex: %v", err)
 		return "", util.ErrorInternal
@@ -230,7 +228,7 @@ func ownerNew(email strfmt.Email, name string, password string) (string, error) 
 		return "", util.ErrorEmailAlreadyExists
 	}
 
-	confirmHex, err := util.RandomHex(32)
+	confirmHex, err := data.RandomHexID()
 	if err != nil {
 		logger.Errorf("cannot generate confirmHex: %v", err)
 		return "", util.ErrorInternal
@@ -251,7 +249,7 @@ func ownerNew(email strfmt.Email, name string, password string) (string, error) 
 		string(email),
 		"Please confirm your email address",
 		"confirm-hex.gohtml",
-		map[string]any{"URL": config.URLForAPI("owner/confirm-hex", map[string]string{"confirmHex": confirmHex})})
+		map[string]any{"URL": config.URLForAPI("owner/confirm-hex", map[string]string{"confirmHex": string(confirmHex)})})
 	if err != nil {
 		return "", err
 	}

@@ -1,6 +1,7 @@
 package persistence
 
 import (
+	"gitlab.com/comentario/comentario/internal/data"
 	"gitlab.com/comentario/comentario/internal/util"
 	"time"
 )
@@ -26,7 +27,7 @@ func migrateEmails(db *Database) error {
 			return util.ErrorDatabaseMigration
 		}
 
-		unsubscribeSecretHex, err := util.RandomHex(32)
+		unsubscribeSecretHex, err := data.RandomHexID()
 		if err != nil {
 			return util.ErrorDatabaseMigration
 		}

@@ -11,10 +11,11 @@ const AnonymousCommenterHexID = models.CommenterHexID("anonymous") // The "anony
 
 // User is a base user type
 type User struct {
-	HexID   models.HexID // User hex ID
-	Email   string       // User's email
-	Created time.Time    // Timestamp when user was created, in UTC
-	Name    string       // User's full name
+	HexID        models.HexID // User hex ID
+	Email        string       // User's email
+	Created      time.Time    // Timestamp when user was created, in UTC
+	Name         string       // User's full name
+	PasswordHash string       // User's hashed password
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

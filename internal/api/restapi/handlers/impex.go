@@ -12,7 +12,7 @@ import (
 	"gitlab.com/comentario/comentario/internal/api/models"
 	"gitlab.com/comentario/comentario/internal/api/restapi/operations"
 	"gitlab.com/comentario/comentario/internal/config"
-	data2 "gitlab.com/comentario/comentario/internal/data"
+	"gitlab.com/comentario/comentario/internal/data"
 	"gitlab.com/comentario/comentario/internal/svc"
 	"gitlab.com/comentario/comentario/internal/util"
 	"io"
@@ -191,7 +191,7 @@ func domainExportBegin(email strfmt.Email, domain string) {
 		return
 	}
 
-	exportHex, err := util.RandomHex(32)
+	exportHex, err := data.RandomHexID()
 	if err != nil {
 		logger.Errorf("cannot generate exportHex while exporting %s: %v", domain, err)
 		domainExportBeginError(email, domain, util.ErrorInternal)
@@ -218,7 +218,7 @@ func domainExportBegin(email strfmt.Email, domain string) {
 		"domain-export.gohtml",
 		map[string]any{
 			"Domain": domain,
-			"URL":    config.URLForAPI("domain/export/download", map[string]string{"exportHex": exportHex}),
+			"URL":    config.URLForAPI("domain/export/download", map[string]string{"exportHex": string(exportHex)}),
 		})
 }
 
@@ -252,22 +252,22 @@ func domainImportCommento(domain string, url string) (int, error) {
 		return 0, util.ErrorInternal
 	}
 
-	var data commentoExportV1
-	if err := json.Unmarshal(contents, &data); err != nil {
+	var inputData commentoExportV1
+	if err := json.Unmarshal(contents, &inputData); err != nil {
 		logger.Errorf("cannot unmarshal JSON at %s: %v", url, err)
 		return 0, util.ErrorInternal
 	}
 
-	if data.Version != 1 {
-		logger.Errorf("invalid data version (got %d, want 1): %v", data.Version, err)
+	if inputData.Version != 1 {
+		logger.Errorf("invalid data version (got %d, want 1): %v", inputData.Version, err)
 		return 0, util.ErrorUnsupportedCommentoImportVersion
 	}
 
 	// Check if imported commentedHex or email exists, creating a map of commenterHex (old hex, new hex)
-	commenterHex := map[models.CommenterHexID]models.CommenterHexID{data2.AnonymousCommenterHexID: data2.AnonymousCommenterHexID}
-	for _, commenter := range data.Commenters {
+	commenterHex := map[models.CommenterHexID]models.CommenterHexID{data.AnonymousCommenterHexID: data.AnonymousCommenterHexID}
+	for _, commenter := range inputData.Commenters {
 		// Try to find an existing commenter with the same email
-		if c, err := svc.TheUserService.FindCommenterByIdPEmail("", string(commenter.Email)); err == nil {
+		if c, err := svc.TheUserService.FindCommenterByIdPEmail("", string(commenter.Email), false); err == nil {
 			// Commenter already exists. Add its hex ID to the map and proceed to the next record
 			commenterHex[commenter.CommenterHex] = c.CommenterHexID()
 			continue
@@ -277,34 +277,31 @@ func domainImportCommento(domain string, url string) (int, error) {
 		}
 
 		// Generate a random password string
-		randomPassword, err := util.RandomHex(32)
+		randomPassword, err := data.RandomHexID()
 		if err != nil {
 			logger.Errorf("cannot generate random password for new commenter: %v", err)
 			return 0, util.ErrorInternal
 		}
 
-		commenterHex[commenter.CommenterHex], err = commenterNew(
-			commenter.Email,
-			commenter.Name,
-			commenter.Link,
-			commenter.Photo,
-			"commento",
-			randomPassword)
-		if err != nil {
+		// Persist a new commenter instance
+		if c, err := svc.TheUserService.CreateCommenter(string(commenter.Email), commenter.Name, commenter.Link, commenter.Photo, "", string(randomPassword)); err != nil {
 			return 0, err
+		} else {
+			// Save the new commenter's hex ID in the map
+			commenterHex[commenter.CommenterHex] = c.CommenterHexID()
 		}
 	}
 
 	// Create a map of (parent hex, comments)
 	comments := map[models.ParentHexID][]models.Comment{}
-	for _, comment := range data.Comments {
+	for _, comment := range inputData.Comments {
 		comments[comment.ParentHex] = append(comments[comment.ParentHex], comment)
 	}
 
 	// Import comments, creating a map of comment hex (old hex, new hex)
-	commentHex := map[models.ParentHexID]models.ParentHexID{data2.RootParentHexID: data2.RootParentHexID}
+	commentHex := map[models.ParentHexID]models.ParentHexID{data.RootParentHexID: data.RootParentHexID}
 	numImported := 0
-	keys := []models.ParentHexID{data2.RootParentHexID}
+	keys := []models.ParentHexID{data.RootParentHexID}
 	for i := 0; i < len(keys); i++ {
 		for _, comment := range comments[keys[i]] {
 			cHex, ok := commenterHex[comment.CommenterHex]
@@ -434,7 +431,7 @@ func domainImportDisqus(domain string, url string) (int, error) {
 		}
 
 		// Try to find an existing commenter with this email
-		if c, err := svc.TheUserService.FindCommenterByIdPEmail("", string(email)); err == nil {
+		if c, err := svc.TheUserService.FindCommenterByIdPEmail("", string(email), false); err == nil {
 			// Commenter already exists. Add its hex ID to the map and proceed to the next record
 			commenterHex[email] = c.CommenterHexID()
 			continue
@@ -444,15 +441,16 @@ func domainImportDisqus(domain string, url string) (int, error) {
 		}
 
 		// Generate a random password string
-		randomPassword, err := util.RandomHex(32)
+		randomPassword, err := data.RandomHexID()
 		if err != nil {
 			logger.Errorf("cannot generate random password for new commenter: %v", err)
 			return 0, util.ErrorInternal
 		}
 
-		commenterHex[email], err = commenterNew(email, post.Author.Name, "undefined", "undefined", "commento", randomPassword)
-		if err != nil {
+		if c, err := svc.TheUserService.CreateCommenter(string(email), post.Author.Name, "undefined", "undefined", "", string(randomPassword)); err != nil {
 			return 0, err
+		} else {
+			commenterHex[email] = c.CommenterHexID()
 		}
 	}
 
@@ -465,12 +463,12 @@ func domainImportDisqus(domain string, url string) (int, error) {
 			continue
 		}
 
-		cHex := data2.AnonymousCommenterHexID
+		cHex := data.AnonymousCommenterHexID
 		if !post.Author.IsAnonymous {
 			cHex = commenterHex[strfmt.Email(post.Author.Username+"@disqus.com")]
 		}
 
-		parentHex := data2.RootParentHexID
+		parentHex := data.RootParentHexID
 		if val, ok := disqusIdMap[post.ParentId.Id]; ok {
 			parentHex = models.ParentHexID(val)
 		}

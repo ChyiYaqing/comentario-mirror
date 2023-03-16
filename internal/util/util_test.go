@@ -368,7 +368,7 @@ func TestMarkdownToHTML(t *testing.T) {
 }
 
 func TestSafeStringMap(t *testing.T) {
-	m := SafeStringMap{}
+	m := SafeStringMap[string]{}
 	var wg sync.WaitGroup
 
 	// Run 500 parallel threads

@@ -88,9 +88,22 @@ func (r *CookieResponder) WithoutCookie(name, path string) *CookieResponder {
 	return r
 }
 
-// serviceErrorResponder translates the provided error, returned by a service, into an appropriate error responder
-func serviceErrorResponder(err error) middleware.Responder {
+// respBadRequest returns a responder that responds with HTTP Bad Request error
+func respBadRequest(err error) middleware.Responder {
+	return operations.NewGenericBadRequest().WithPayload(&operations.GenericBadRequestBody{Details: err.Error()})
+}
+
+// respInternalError returns a responder that responds with HTTP Internal Server Error
+func respInternalError() middleware.Responder {
+	return operations.NewGenericInternalServerError()
+}
+
+// respServiceError translates the provided error, returned by a service, into an appropriate error responder
+func respServiceError(err error) middleware.Responder {
 	switch err {
+	case svc.ErrDuplicateEmail:
+		return operations.NewGenericBadRequest().
+			WithPayload(&operations.GenericBadRequestBody{Details: "Duplicate email"})
 	case svc.ErrNotFound:
 		return operations.NewGenericNotFound()
 	case svc.ErrPageLocked:
@@ -99,5 +112,10 @@ func serviceErrorResponder(err error) middleware.Responder {
 	}
 
 	// Not recognised: return an internal error response
-	return operations.NewGenericInternalServerError()
+	return respInternalError()
+}
+
+// respUnauthorized returns a responder that responds with HTTP Unauthorized error
+func respUnauthorized(err error) middleware.Responder {
+	return operations.NewGenericUnauthorized().WithPayload(&operations.GenericUnauthorizedBody{Details: err.Error()})
 }

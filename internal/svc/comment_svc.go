@@ -63,7 +63,7 @@ func (svc *commentService) Create(commenterHex models.CommenterHexID, domain, pa
 	}
 
 	// Generate a new comment hex ID
-	commentHex, err := util.RandomHex(32)
+	commentHex, err := data.RandomHexID()
 	if err != nil {
 		return nil, err
 	}
@@ -78,7 +78,7 @@ func (svc *commentService) Create(commenterHex models.CommenterHexID, domain, pa
 
 	// Persist a new comment record
 	c := models.Comment{
-		CommentHex:   models.HexID(commentHex),
+		CommentHex:   commentHex,
 		CommenterHex: commenterHex,
 		CreationDate: creationDate,
 		Domain:       domain,

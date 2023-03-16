@@ -176,6 +176,7 @@ definitions:
         $ref: "#/definitions/hexId"
       lastEmailNotificationDate:
         type: string
+        format: date-time
       sendReplyNotifications:
         type: boolean
         x-omitempty: false
@@ -657,6 +658,7 @@ paths:
                 format: email
               password:
                 type: string
+                minLength: 1
       responses:
         200:
           description: Success or failure response (see 'success' property)

@@ -2,6 +2,7 @@ package svc
 
 import (
 	"database/sql"
+	"github.com/go-openapi/strfmt"
 	"gitlab.com/comentario/comentario/internal/api/exmodels"
 	"gitlab.com/comentario/comentario/internal/api/models"
 	"time"
@@ -14,6 +15,10 @@ var TheDomainService DomainService = &domainService{}
 type DomainService interface {
 	// Clear removes all pages, comments, and comment votes for the specified domain
 	Clear(domain string) error
+	// Create creates and persists a new domain record
+	Create(ownerHex models.HexID, name, domain string) (*models.Domain, error)
+	// CreateModerator creates and persists a new domain moderator record
+	CreateModerator(domain, email string) (*models.DomainModerator, error)
 	// Delete deletes the specified domain
 	Delete(domain string) error
 	// DeleteModerator deletes the specified domain moderator
@@ -54,6 +59,52 @@ func (svc *domainService) Clear(domain string) error {
 
 	// Succeeded
 	return nil
+}
+
+func (svc *domainService) Create(ownerHex models.HexID, name, domain string) (*models.Domain, error) {
+	logger.Debugf("domainService.Create(%s, %s, %s)", ownerHex, name, domain)
+
+	// Insert a new record
+	d := models.Domain{
+		CreationDate: strfmt.DateTime(time.Now().UTC()),
+		Domain:       domain,
+		Name:         name,
+		OwnerHex:     ownerHex,
+	}
+	err := db.Exec(
+		"insert into domains(ownerHex, name, domain, creationDate) values($1, $2, $3, $4);",
+		d.OwnerHex, d.Name, d.Domain, d.CreationDate)
+	if err != nil {
+		logger.Errorf("domainService.Create: Exec() failed: %v", err)
+		return nil, translateErrors(err)
+	}
+
+	// Succeeded
+	return &d, nil
+}
+
+func (svc *domainService) CreateModerator(domain, email string) (*models.DomainModerator, error) {
+	logger.Debugf("domainService.CreateModerator(%s, %s)", domain, email)
+
+	// Create a new email record
+	if _, err := TheEmailService.Create(email); err != nil {
+		return nil, err
+	}
+
+	// Create a new domain moderator record
+	dm := models.DomainModerator{
+		AddDate: strfmt.DateTime(time.Now().UTC()),
+		Domain:  domain,
+		Email:   strfmt.Email(email),
+	}
+	err := db.Exec("insert into moderators(domain, email, addDate) values($1, $2, $3);", dm.Domain, dm.Email, dm.AddDate)
+	if err != nil {
+		logger.Errorf("domainService.CreateModerator: Exec() failed: %v", err)
+		return nil, translateErrors(err)
+	}
+
+	// Succeeded
+	return &dm, nil
 }
 
 func (svc *domainService) Delete(domain string) error {

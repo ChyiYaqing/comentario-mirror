@@ -8,14 +8,13 @@ import (
 	"gitlab.com/comentario/comentario/internal/data"
 	"gitlab.com/comentario/comentario/internal/svc"
 	"gitlab.com/comentario/comentario/internal/util"
-	"time"
 )
 
 func EmailGet(params operations.EmailGetParams) middleware.Responder {
 	// Fetch the email by its unsubscribe token
 	email, err := svc.TheEmailService.FindByUnsubscribeToken(*params.Body.UnsubscribeSecretHex)
 	if err != nil {
-		return serviceErrorResponder(err)
+		return respServiceError(err)
 	}
 
 	// Succeeded
@@ -29,7 +28,7 @@ func EmailModerate(params operations.EmailModerateParams) middleware.Responder {
 	// Find the comment
 	comment, err := svc.TheCommentService.FindByHexID(models.HexID(params.CommentHex))
 	if err != nil {
-		return serviceErrorResponder(err)
+		return respServiceError(err)
 	}
 
 	// If the comment is already deleted
@@ -40,12 +39,12 @@ func EmailModerate(params operations.EmailModerateParams) middleware.Responder {
 	// Fetch the email by its unsubscribe token
 	email, err := svc.TheEmailService.FindByUnsubscribeToken(models.HexID(params.UnsubscribeSecretHex))
 	if err != nil {
-		return serviceErrorResponder(err)
+		return respServiceError(err)
 	}
 
 	// Verify the user is a moderator
 	if isModerator, err := svc.TheDomainService.IsDomainModerator(comment.Domain, string(email.Email)); err != nil {
-		return serviceErrorResponder(err)
+		return respServiceError(err)
 	} else if !isModerator {
 		return operations.NewGenericForbidden()
 	}
@@ -63,11 +62,11 @@ func EmailModerate(params operations.EmailModerateParams) middleware.Responder {
 	switch params.Action {
 	case "approve":
 		if err := svc.TheCommentService.Approve(comment.CommentHex); err != nil {
-			return serviceErrorResponder(err)
+			return respServiceError(err)
 		}
 	case "delete":
 		if err := svc.TheCommentService.MarkDeleted(comment.CommentHex, commenterHex); err != nil {
-			return serviceErrorResponder(err)
+			return respServiceError(err)
 		}
 	default:
 		return operations.NewGenericBadRequest().WithPayload(&operations.GenericBadRequestBody{Details: util.ErrorInvalidAction.Error()})
@@ -78,25 +77,6 @@ func EmailModerate(params operations.EmailModerateParams) middleware.Responder {
 	return operations.NewEmailModerateOK().WithPayload(&models.APIResponseBase{Success: true})
 }
 
-func EmailNew(email strfmt.Email) error {
-	unsubscribeSecretHex, err := util.RandomHex(32)
-	if err != nil {
-		return util.ErrorInternal
-	}
-
-	err = svc.DB.Exec(
-		`insert into emails(email, unsubscribeSecretHex, lastEmailNotificationDate) values ($1, $2, $3) on conflict do nothing;`,
-		email,
-		unsubscribeSecretHex,
-		time.Now().UTC())
-	if err != nil {
-		logger.Errorf("cannot insert email into emails: %v", err)
-		return util.ErrorInternal
-	}
-
-	return nil
-}
-
 func EmailUpdate(params operations.EmailUpdateParams) middleware.Responder {
 	// Update the email record
 	err := svc.TheEmailService.UpdateByEmailToken(
@@ -105,7 +85,7 @@ func EmailUpdate(params operations.EmailUpdateParams) middleware.Responder {
 		params.Body.Email.SendReplyNotifications,
 		params.Body.Email.SendModeratorNotifications)
 	if err != nil {
-		return serviceErrorResponder(err)
+		return respServiceError(err)
 	}
 
 	// Succeeded
@@ -163,22 +143,20 @@ func emailNotificationModerator(d *models.Domain, path string, title string, com
 	}
 }
 
-func emailNotificationReply(d *models.Domain, path string, title string, commenterHex models.CommenterHexID, commentHex models.HexID, html string, parentHex models.ParentHexID) {
-	row := svc.DB.QueryRow("select commenterHex from comments where commentHex = $1;", parentHex)
-	var parentCommenterHex models.CommenterHexID
-	err := row.Scan(&parentCommenterHex)
+func emailNotificationReply(d *models.Domain, path string, title string, commenterHex models.CommenterHexID, commentHex models.HexID, html string, parentHex models.HexID) {
+	// Fetch the parent comment
+	parentComment, err := svc.TheCommentService.FindByHexID(parentHex)
 	if err != nil {
-		logger.Errorf("cannot scan commenterHex and parentCommenterHex: %v", err)
 		return
 	}
 
 	// No reply notification emails for anonymous users and self replies
-	if parentCommenterHex == data.AnonymousCommenterHexID || parentCommenterHex == commenterHex {
+	if parentComment.CommenterHex == data.AnonymousCommenterHexID || parentComment.CommenterHex == commenterHex {
 		return
 	}
 
 	// Find the parent commenter
-	parentCommenter, err := svc.TheUserService.FindCommenterByID(parentCommenterHex)
+	parentCommenter, err := svc.TheUserService.FindCommenterByID(parentComment.CommenterHex)
 	if err != nil {
 		return
 	}
@@ -238,6 +216,6 @@ func emailNotificationNew(d *models.Domain, c *models.Comment) {
 
 	// If it's a reply and the comment is approved, send out a reply notifications
 	if c.ParentHex != data.RootParentHexID && c.State == models.CommentStateApproved {
-		emailNotificationReply(d, c.URL, page.Title, c.CommenterHex, c.CommentHex, c.HTML, c.ParentHex)
+		emailNotificationReply(d, c.URL, page.Title, c.CommenterHex, c.CommentHex, c.HTML, models.HexID(c.ParentHex))
 	}
 }
