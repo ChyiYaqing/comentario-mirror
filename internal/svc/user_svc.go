@@ -15,10 +15,14 @@ var TheUserService UserService = &userService{}
 
 // UserService is a service interface for dealing with users
 type UserService interface {
+	// ConfirmOwner confirms the owner's email using the specified token
+	ConfirmOwner(confirmToken models.HexID) error
 	// CreateCommenter creates and persists a new commenter. If no idp is provided, the local auth provider is assumed
 	CreateCommenter(email, name, websiteURL, photoURL, idp, password string) (*data.UserCommenter, error)
 	// CreateCommenterSession creates and persists a new commenter session record, returning session token
 	CreateCommenterSession(id models.CommenterHexID) (models.CommenterHexID, error)
+	// CreateOwnerSession creates and persists a new owner session record, returning session token
+	CreateOwnerSession(id models.HexID) (models.HexID, error)
 	// CreateResetToken creates and persists a new password reset token for the user of given kind ('entity') and hex ID
 	CreateResetToken(userID models.HexID, entity models.Entity) (models.HexID, error)
 	// DeleteOwnerByID removes an owner user by their hex ID
@@ -52,6 +56,35 @@ type UserService interface {
 
 // userService is a blueprint UserService implementation
 type userService struct{}
+
+func (svc *userService) ConfirmOwner(confirmToken models.HexID) error {
+	logger.Debugf("userService.ConfirmOwner(%s)", confirmToken)
+
+	// Update the owner's record
+	res, err := db.ExecRes(
+		"update owners set confirmedemail=true where ownerhex in (select ownerhex from ownerconfirmhexes where confirmhex=$1);",
+		confirmToken)
+	if err != nil {
+		logger.Errorf("userService.ConfirmOwner: ExecRes() failed (owner update): %v", err)
+		return translateErrors(err)
+	}
+
+	// Check if there was indeed an update
+	if count, err := res.RowsAffected(); err != nil {
+		logger.Errorf("userService.ConfirmOwner: res.RowsAffected() failed: %v", err)
+		return translateErrors(err)
+	} else if count == 0 {
+		return ErrNotFound
+	}
+
+	// Remove the token from the database
+	if err := db.Exec("delete from ownerconfirmhexes where confirmhex=$1;", confirmToken); err != nil {
+		logger.Warningf("userService.ConfirmOwner: Exec() failed (token removal): %v", err)
+	}
+
+	// Succeeded
+	return nil
+}
 
 func (svc *userService) CreateCommenter(email, name, websiteURL, photoURL, idp, password string) (*data.UserCommenter, error) {
 	logger.Debugf("userService.CreateCommenter(%s, %s, %s, %s, %s, %s)", email, name, websiteURL, photoURL, idp, password)
@@ -138,6 +171,29 @@ func (svc *userService) CreateCommenterSession(id models.CommenterHexID) (models
 
 	// Succeeded
 	return models.CommenterHexID(token), nil
+}
+
+func (svc *userService) CreateOwnerSession(id models.HexID) (models.HexID, error) {
+	logger.Debugf("userService.CreateOwnerSession(%s)", id)
+
+	// Generate a new random token
+	token, err := data.RandomHexID()
+	if err != nil {
+		logger.Errorf("userService.CreateOwnerSession: RandomHexID() failed: %v", err)
+		return "", err
+	}
+
+	// Insert a new record
+	err = db.Exec(
+		"insert into ownersessions(ownertoken, ownerhex, logindate) values($1, $2, $3);",
+		token, id, time.Now().UTC())
+	if err != nil {
+		logger.Errorf("userService.CreateOwnerSession: Exec() failed: %v", err)
+		return "", translateErrors(err)
+	}
+
+	// Succeeded
+	return token, nil
 }
 
 func (svc *userService) CreateResetToken(userID models.HexID, entity models.Entity) (models.HexID, error) {

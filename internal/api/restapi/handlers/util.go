@@ -93,6 +93,11 @@ func respBadRequest(err error) middleware.Responder {
 	return operations.NewGenericBadRequest().WithPayload(&operations.GenericBadRequestBody{Details: err.Error()})
 }
 
+// respForbidden returns a responder that responds with HTTP Forbidden error
+func respForbidden() middleware.Responder {
+	return operations.NewGenericForbidden()
+}
+
 // respInternalError returns a responder that responds with HTTP Internal Server Error
 func respInternalError() middleware.Responder {
 	return operations.NewGenericInternalServerError()

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/markbates/goth"
 	"gitlab.com/comentario/comentario/internal/api/exmodels"
@@ -235,21 +236,28 @@ func DomainStatistics(params operations.DomainStatisticsParams) middleware.Respo
 }
 
 func DomainUpdate(params operations.DomainUpdateParams) middleware.Responder {
+	// Find the owner user
 	user, err := svc.TheUserService.FindOwnerByToken(*params.Body.OwnerToken)
 	if err != nil {
 		return respServiceError(err)
 	}
 
-	isOwner, err := domainOwnershipVerify(user.HexID, params.Body.Domain.Domain)
-	if err != nil {
+	// Verify domain ownership
+	if isOwner, err := domainOwnershipVerify(user.HexID, params.Body.Domain.Domain); err != nil {
 		return operations.NewDomainUpdateOK().WithPayload(&models.APIResponseBase{Message: err.Error()})
-	}
-	if !isOwner {
-		return operations.NewDomainUpdateOK().WithPayload(&models.APIResponseBase{Message: util.ErrorNotAuthorised.Error()})
+	} else if !isOwner {
+		return respForbidden()
 	}
 
-	if err = domainUpdate(params.Body.Domain); err != nil {
-		return operations.NewDomainUpdateOK().WithPayload(&models.APIResponseBase{Message: err.Error()})
+	// Validate SSO provider
+	domain := params.Body.Domain
+	if domain.Idps["sso"] && domain.SsoURL == "" {
+		return respBadRequest(errors.New("SSO URL missing"))
+	}
+
+	// Update the domain record
+	if err := svc.TheDomainService.Update(domain); err != nil {
+		return respServiceError(err)
 	}
 
 	// Succeeded
@@ -356,54 +364,4 @@ func domainStatistics(domain string) ([]int64, error) {
 	}
 
 	return last30Days, nil
-}
-
-func domainUpdate(d *models.Domain) error {
-	if d.Idps["sso"] && d.SsoURL == "" {
-		return util.ErrorMissingField
-	}
-
-	statement := `
-		update domains
-		set
-			name=$2,
-			state=$3,
-			autoSpamFilter=$4,
-			requireModeration=$5,
-			requireIdentification=$6,
-			moderateAllAnonymous=$7,
-			emailNotificationPolicy=$8,
-			commentoProvider=$9,
-			googleProvider=$10,
-			githubProvider=$11,
-			gitlabProvider=$12,
-			twitterProvider=$13,
-			ssoProvider=$14,
-			ssoUrl=$15,
-			defaultSortPolicy=$16
-		where domain=$1;
-	`
-
-	err := svc.DB.Exec(statement,
-		d.Domain,
-		d.Name,
-		d.State,
-		d.AutoSpamFilter,
-		d.RequireModeration,
-		d.RequireIdentification,
-		d.ModerateAllAnonymous,
-		d.EmailNotificationPolicy,
-		d.Idps["commento"],
-		d.Idps["google"],
-		d.Idps["github"],
-		d.Idps["gitlab"],
-		d.Idps["twitter"],
-		d.Idps["sso"],
-		d.SsoURL,
-		d.DefaultSortPolicy)
-	if err != nil {
-		logger.Errorf("cannot update non-moderators: %v", err)
-		return util.ErrorInternal
-	}
-	return nil
 }

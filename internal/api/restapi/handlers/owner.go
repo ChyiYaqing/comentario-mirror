@@ -15,17 +15,15 @@ import (
 )
 
 func OwnerConfirmHex(params operations.OwnerConfirmHexParams) middleware.Responder {
-	if params.ConfirmHex != "" {
-		if err := ownerConfirmHex(params.ConfirmHex); err == nil {
-			// Redirect to login
-			return operations.NewOwnerConfirmHexTemporaryRedirect().
-				WithLocation(config.URLFor("login", map[string]string{"confirmed": "true"}))
-		}
+	// Update the owner, if the token checks out
+	conf := "true"
+	if err := svc.TheUserService.ConfirmOwner(models.HexID(params.ConfirmHex)); err != nil {
+		conf = "false"
 	}
 
-	// TODO: include error message in the URL
+	// Redirect to login
 	return operations.NewOwnerConfirmHexTemporaryRedirect().
-		WithLocation(config.URLFor("login", map[string]string{"confirmed": "false"}))
+		WithLocation(config.URLFor("login", map[string]string{"confirmed": conf}))
 }
 
 func OwnerDelete(params operations.OwnerDeleteParams) middleware.Responder {
@@ -54,9 +52,30 @@ func OwnerDelete(params operations.OwnerDeleteParams) middleware.Responder {
 }
 
 func OwnerLogin(params operations.OwnerLoginParams) middleware.Responder {
-	ownerToken, err := ownerLogin(*params.Body.Email, *params.Body.Password)
+	// Find the owner
+	owner, err := svc.TheUserService.FindOwnerByEmail(data.EmailToString(params.Body.Email), true)
+	if err == svc.ErrNotFound {
+		time.Sleep(util.WrongAuthDelay)
+		return respUnauthorized(util.ErrorInvalidEmailPassword)
+	} else if err != nil {
+		return respServiceError(err)
+	}
+
+	// Verify the owner is confirmed
+	if !owner.EmailConfirmed {
+		return respUnauthorized(util.ErrorUnconfirmedEmail)
+	}
+
+	// Verify the provided password
+	if err := bcrypt.CompareHashAndPassword([]byte(owner.PasswordHash), []byte(swag.StringValue(params.Body.Password))); err != nil {
+		time.Sleep(util.WrongAuthDelay)
+		return respUnauthorized(util.ErrorInvalidEmailPassword)
+	}
+
+	// Create a new owner session
+	ownerToken, err := svc.TheUserService.CreateOwnerSession(owner.HexID)
 	if err != nil {
-		return operations.NewOwnerLoginOK().WithPayload(&operations.OwnerLoginOKBody{Message: err.Error()})
+		return respServiceError(err)
 	}
 
 	// Succeeded
@@ -103,86 +122,6 @@ func OwnerSelf(params operations.OwnerSelfParams) middleware.Responder {
 		Owner:    user.ToOwner(),
 		Success:  true,
 	})
-}
-
-func ownerConfirmHex(confirmHex string) error {
-	if confirmHex == "" {
-		return util.ErrorMissingField
-	}
-
-	res, err := svc.DB.ExecRes(
-		"update owners "+
-			"set confirmedEmail=true where ownerHex in (select ownerHex from ownerConfirmHexes where confirmHex=$1);",
-		confirmHex)
-	if err != nil {
-		logger.Errorf("cannot mark user's confirmedEmail as true: %v\n", err)
-		return util.ErrorInternal
-	}
-
-	count, err := res.RowsAffected()
-	if err != nil {
-		logger.Errorf("cannot count rows affected: %v\n", err)
-		return util.ErrorInternal
-	}
-
-	if count == 0 {
-		return util.ErrorNoSuchConfirmationToken
-	}
-
-	err = svc.DB.Exec("delete from ownerConfirmHexes where confirmHex=$1;", confirmHex)
-	if err != nil {
-		logger.Warningf("cannot remove confirmation token: %v\n", err)
-		// Don't return an error because this is not critical.
-	}
-
-	return nil
-}
-
-func ownerLogin(email strfmt.Email, password string) (models.HexID, error) {
-	if email == "" || password == "" {
-		return "", util.ErrorMissingField
-	}
-
-	row := svc.DB.QueryRow("select ownerHex, confirmedEmail, passwordHash from owners where email=$1;", email)
-
-	var ownerHex string
-	var confirmedEmail bool
-	var passwordHash string
-	if err := row.Scan(&ownerHex, &confirmedEmail, &passwordHash); err != nil {
-		// Add a delay to discourage brute-force attacks
-		time.Sleep(util.WrongAuthDelay)
-		return "", util.ErrorInvalidEmailPassword
-	}
-
-	if !confirmedEmail {
-		return "", util.ErrorUnconfirmedEmail
-	}
-
-	if err := bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte(password)); err != nil {
-		// TODO: is this the only possible error?
-		// Add a delay to discourage brute-force attacks
-		time.Sleep(util.WrongAuthDelay)
-		return "", util.ErrorInvalidEmailPassword
-	}
-
-	ownerToken, err := data.RandomHexID()
-	if err != nil {
-		logger.Errorf("cannot create ownerToken: %v", err)
-		return "", util.ErrorInternal
-	}
-
-	err = svc.DB.Exec(
-		"insert into ownerSessions(ownerToken, ownerHex, loginDate) values($1, $2, $3);",
-		ownerToken,
-		ownerHex,
-		time.Now().UTC(),
-	)
-	if err != nil {
-		logger.Errorf("cannot insert ownerSession: %v\n", err)
-		return "", util.ErrorInternal
-	}
-
-	return ownerToken, nil
 }
 
 func ownerNew(email strfmt.Email, name string, password string) (models.HexID, error) {

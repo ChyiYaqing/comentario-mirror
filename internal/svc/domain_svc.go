@@ -25,13 +25,15 @@ type DomainService interface {
 	DeleteModerator(domain, email string) error
 	// FindByName fetches and returns a domain with the specified name
 	FindByName(domainName string) (*models.Domain, error)
-	// IsDomainModerator returns whther the given email is a moderator in the given domain
+	// IsDomainModerator returns whether the given email is a moderator in the given domain
 	IsDomainModerator(domain, email string) (bool, error)
 	// ListByOwner fetches and returns a list of domains for the specified owner
 	ListByOwner(ownerHex models.HexID) ([]*models.Domain, error)
 	// RegisterView records a domain view in the database. commenterHex should be "anonymous" for an unauthenticated
 	// viewer
 	RegisterView(domain string, commenterHex models.CommenterHexID) error
+	// Update updates the domain record in the database
+	Update(domain *models.Domain) error
 }
 
 //----------------------------------------------------------------------------------------------------------------------
@@ -225,11 +227,48 @@ func (svc *domainService) ListByOwner(ownerHex models.HexID) ([]*models.Domain, 
 func (svc *domainService) RegisterView(domain string, commenterHex models.CommenterHexID) error {
 	logger.Debugf("domainService.RegisterView(%s, %s)", domain, commenterHex)
 
+	// Insert a new view record
 	err := db.Exec(
 		"insert into views(domain, commenterhex, viewdate) values ($1, $2, $3);",
 		domain, commenterHex, time.Now().UTC())
 	if err != nil {
 		logger.Warningf("domainService.RegisterView: Exec() failed: %v", err)
+		return translateErrors(err)
+	}
+
+	// Succeeded
+	return nil
+}
+
+func (svc *domainService) Update(domain *models.Domain) error {
+	logger.Debug("domainService.Update(...)")
+
+	// Update the domain
+	err := db.Exec(
+		"update domains "+
+			"set name=$1, state=$2, autoSpamFilter=$3, requireModeration=$4, requireIdentification=$5, "+
+			"moderateAllAnonymous=$6, emailNotificationPolicy=$7, commentoProvider=$8, googleProvider=$9, "+
+			"githubProvider=$10, gitlabProvider=$11, twitterProvider=$12, ssoProvider=$13, ssoUrl=$14, "+
+			"defaultSortPolicy=$15 "+
+			"where domain=$16;",
+		domain.Name,
+		domain.State,
+		domain.AutoSpamFilter,
+		domain.RequireModeration,
+		domain.RequireIdentification,
+		domain.ModerateAllAnonymous,
+		domain.EmailNotificationPolicy,
+		domain.Idps["commento"],
+		domain.Idps["google"],
+		domain.Idps["github"],
+		domain.Idps["gitlab"],
+		domain.Idps["twitter"],
+		domain.Idps["sso"],
+		domain.SsoURL,
+		domain.DefaultSortPolicy,
+		domain.Domain)
+	if err != nil {
+		logger.Errorf("domainService.Update: Exec() failed: %v", err)
 		return translateErrors(err)
 	}
 
