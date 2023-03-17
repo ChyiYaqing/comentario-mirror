@@ -10,13 +10,8 @@ type e2eApp struct {
 	logger *logging.Logger
 }
 
-func (a *e2eApp) DBExec(query string, args ...any) error {
-	return svc.DB.Exec(query, args...)
-}
-
-func (a *e2eApp) DBInit() error {
-	// Install migrations
-	return svc.DB.Migrate()
+func (a *e2eApp) RecreateDBSchema(seedSQL string) error {
+	return svc.TheServiceManager.E2eRecreateDBSchema(seedSQL)
 }
 
 func (a *e2eApp) LogError(fmt string, args ...any) {

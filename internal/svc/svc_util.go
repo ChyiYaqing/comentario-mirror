@@ -10,11 +10,10 @@ import (
 var logger = logging.MustGetLogger("svc")
 
 var (
-	ErrDB             = errors.New("services: database error")
-	ErrDuplicateEmail = errors.New("services: duplicate email")
-	ErrNotFound       = errors.New("services: object not found")
-	ErrPageLocked     = errors.New("services: page is locked")
-	ErrUnknownEntity  = errors.New("services: unknown entity")
+	ErrDB            = errors.New("services: database error")
+	ErrNotFound      = errors.New("services: object not found")
+	ErrPageLocked    = errors.New("services: page is locked")
+	ErrUnknownEntity = errors.New("services: unknown entity")
 )
 
 // checkErrors picks and returns the first non-nil error, or nil if there's none
@@ -27,8 +26,8 @@ func checkErrors(errs ...error) error {
 	return nil
 }
 
-// translateErrors "translates" database errors into a service error, picking the first non-nil error
-func translateErrors(errs ...error) error {
+// translateDBErrors "translates" database errors into a service error, picking the first non-nil error
+func translateDBErrors(errs ...error) error {
 	switch checkErrors(errs...) {
 	case nil:
 		// No error

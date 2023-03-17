@@ -20,17 +20,6 @@ securityDefinitions:
 
 definitions:
 
-  apiResponseBase:
-    description: Base API response
-    type: object
-    readOnly: true
-    properties:
-      success:
-        type: boolean
-        x-omitempty: false
-      message:
-        type: string
-
   comment:
     type: object
     properties:
@@ -343,6 +332,7 @@ paths:
   /forgot:
     post:
       operationId: ForgotPassword
+      summary: Request owner or commenter password reset for specified email
       parameters:
         - in: body
           name: body
@@ -359,14 +349,13 @@ paths:
               entity:
                 $ref: "#/definitions/entity"
       responses:
-        200:
-          description: Success or failure response (see 'success' property)
-          schema:
-            $ref: "#/definitions/apiResponseBase"
+        204:
+          description: Reset email has been sent, if the email is known
 
   /reset:
     post:
       operationId: ResetPassword
+      summary: Reset owner's or commenter's password
       parameters:
         - in: body
           name: body
@@ -381,17 +370,14 @@ paths:
                 $ref: "#/definitions/hexId"
               password:
                 type: string
+                minLength: 1
+                maxLength: 63
       responses:
         200:
-          description: Success or failure response (see 'success' property)
+          description: Password has been reset
           schema:
             type: object
             properties:
-              success:
-                type: boolean
-                x-omitempty: false
-              message:
-                type: string
               entity:
                 $ref: "#/definitions/entity"
 
@@ -402,6 +388,7 @@ paths:
   /comment/approve:
     post:
       operationId: CommentApprove
+      summary: Approve specified unapproved comment
       parameters:
         - in: body
           name: body
@@ -417,14 +404,13 @@ paths:
               commentHex:
                 $ref: "#/definitions/hexId"
       responses:
-        200:
-          description: Success or failure response (see 'success' property)
-          schema:
-            $ref: "#/definitions/apiResponseBase"
+        204:
+          description: Comment has been approved
 
   /comment/count:
     post:
       operationId: CommentCount
+      summary: Request comment counts for specified paths on given domain
       parameters:
         - in: body
           name: body
@@ -455,6 +441,7 @@ paths:
   /comment/delete:
     post:
       operationId: CommentDelete
+      summary: Delete specified comment
       parameters:
         - in: body
           name: body
@@ -470,10 +457,8 @@ paths:
               commentHex:
                 $ref: "#/definitions/hexId"
       responses:
-        200:
-          description: Success or failure response (see 'success' property)
-          schema:
-            $ref: "#/definitions/apiResponseBase"
+        204:
+          description: Comment has been deleted
 
   /comment/edit:
     post:
@@ -497,21 +482,17 @@ paths:
                 type: string
       responses:
         200:
-          description: Success or failure response (see 'success' property)
+          description: Comment is updated, returning the resulting HTML
           schema:
             type: object
             properties:
-              success:
-                type: boolean
-                x-omitempty: false
-              message:
-                type: string
               html:
                 type: string
 
   /comment/list:
     post:
       operationId: CommentList
+      summary: Get a list of comments and commenters for the given domain/path combination
       parameters:
         - in: body
           name: body
@@ -531,13 +512,10 @@ paths:
                 type: string
       responses:
         200:
-          description: Success or failure response (see 'success' property)
+          description: Comment and commenter list
           schema:
             type: object
             properties:
-              success:
-                type: boolean
-                x-omitempty: false
               message:
                 type: string
               domain:
@@ -550,12 +528,16 @@ paths:
                 type: object # map[string]commenter
               requireModeration:
                 type: boolean
+                x-omitempty: false
               requireIdentification:
                 type: boolean
+                x-omitempty: false
               isFrozen:
                 type: boolean
+                x-omitempty: false
               isModerator:
                 type: boolean
+                x-omitempty: false
               defaultSortPolicy:
                 $ref: "#/definitions/sortPolicy"
               attributes:
@@ -566,6 +548,7 @@ paths:
   /comment/new:
     post:
       operationId: CommentNew
+      summary: Add a new comment
       parameters:
         - in: body
           name: body
@@ -590,13 +573,10 @@ paths:
                 type: string
       responses:
         200:
-          description: Success or failure response (see 'success' property)
+          description: Comment is added
           schema:
             type: object
             properties:
-              success:
-                type: boolean
-                x-omitempty: false
               message:
                 type: string
               commentHex:
@@ -609,6 +589,7 @@ paths:
   /comment/vote:
     post:
       operationId: CommentVote
+      summary: Vote for specified comment
       parameters:
         - in: body
           name: body
@@ -631,10 +612,8 @@ paths:
                   - 0
                   - 1
       responses:
-        200:
-          description: Success or failure response (see 'success' property)
-          schema:
-            $ref: "#/definitions/apiResponseBase"
+        204:
+          description: Vote has been applied
 
   #---------------------------------------------------------------------------------------------------------------------
   # Commenters
@@ -643,6 +622,7 @@ paths:
   /commenter/login:
     post:
       operationId: CommenterLogin
+      summary: Sign in as specified commenter
       parameters:
         - in: body
           name: body
@@ -661,15 +641,10 @@ paths:
                 minLength: 1
       responses:
         200:
-          description: Success or failure response (see 'success' property)
+          description: Logged in successfully
           schema:
             type: object
             properties:
-              success:
-                type: boolean
-                x-omitempty: false
-              message:
-                type: string
               commenterToken:
                 $ref: "#/definitions/commenterHexId"
               commenter:
@@ -680,6 +655,7 @@ paths:
   /commenter/new:
     post:
       operationId: CommenterNew
+      summary: Sign up as a new commenter
       parameters:
         - in: body
           name: body
@@ -693,30 +669,27 @@ paths:
             properties:
               name:
                 type: string
+                minLength: 1
+                maxLength: 63
               website:
                 type: string
+                minLength: 1
+                maxLength: 2083
               email:
                 type: string
                 format: email
               password:
                 type: string
+                minLength: 1
+                maxLength: 63
       responses:
-        200:
-          description: Success or failure response (see 'success' property)
-          schema:
-            type: object
-            properties:
-              success:
-                type: boolean
-                x-omitempty: false
-              message:
-                type: string
-              confirmEmail:
-                type: boolean
+        204:
+          description: Commenter signed up successfully
 
   /commenter/photo:
     get:
       operationId: CommenterPhoto
+      summary: Get an avatar for given commenter in JPEG format
       produces:
         - image/jpeg
       parameters:
@@ -734,6 +707,7 @@ paths:
   /commenter/self:
     post:
       operationId: CommenterSelf
+      summary: Request commenter's sign-in status and, if the commenter's signed in, their details
       parameters:
         - in: body
           name: body
@@ -746,8 +720,10 @@ paths:
               commenterToken:
                 $ref: "#/definitions/commenterHexId"
       responses:
+        204:
+          description: Commenter is not signed in
         200:
-          description: Authenticated commenter user, or an empty response if the user isn't authenticated
+          description: Commenter is signed in
           schema:
             type: object
             properties:
@@ -759,23 +735,20 @@ paths:
   /commenter/token/new:
     get:
       operationId: CommenterTokenNew
+      summary: Request a new anonymous, unique commenter token
       responses:
         200:
-          description: Success or failure response (see 'success' property)
+          description: Commenter token
           schema:
             type: object
             properties:
-              success:
-                type: boolean
-                x-omitempty: false
-              message:
-                type: string
               commenterToken:
                 $ref: "#/definitions/commenterHexId"
 
   /commenter/update:
     post:
       operationId: CommenterUpdate
+      summary: Update commenter details
       parameters:
         - in: body
           name: body
@@ -791,18 +764,22 @@ paths:
                 $ref: "#/definitions/commenterHexId"
               name:
                 type: string
+                minLength: 1
+                maxLength: 63
               email:
                 type: string
                 format: email
               link:
                 type: string
+                minLength: 1
+                maxLength: 2083
               photo:
                 type: string
+                minLength: 1
+                maxLength: 2083
       responses:
-        200:
-          description: Success or failure response (see 'success' property)
-          schema:
-            $ref: "#/definitions/apiResponseBase"
+        204:
+          description: Commenter details haven been updated
 
   #---------------------------------------------------------------------------------------------------------------------
   # Domains
@@ -811,6 +788,7 @@ paths:
   /domain/clear:
     post:
       operationId: DomainClear
+      summary: Clear all domain's pages/comments/votes
       parameters:
         - in: body
           name: body
@@ -825,15 +803,16 @@ paths:
                 $ref: "#/definitions/hexId"
               domain:
                 type: string
+                minLength: 1
+                maxLength: 253
       responses:
-        200:
-          description: Success or failure response (see 'success' property)
-          schema:
-            $ref: "#/definitions/apiResponseBase"
+        204:
+          description: Domain has been cleared
 
   /domain/delete:
     post:
       operationId: DomainDelete
+      summary: Delete specified domain
       parameters:
         - in: body
           name: body
@@ -848,15 +827,16 @@ paths:
                 $ref: "#/definitions/hexId"
               domain:
                 type: string
+                minLength: 1
+                maxLength: 253
       responses:
-        200:
-          description: Success or failure response (see 'success' property)
-          schema:
-            $ref: "#/definitions/apiResponseBase"
+        204:
+          description: Domain has been deleted
 
   /domain/export/begin:
     post:
       operationId: DomainExportBegin
+      summary: Initiate domain data export
       parameters:
         - in: body
           name: body
@@ -871,15 +851,16 @@ paths:
                 $ref: "#/definitions/hexId"
               domain:
                 type: string
+                minLength: 1
+                maxLength: 253
       responses:
-        200:
-          description: Success or failure response (see 'success' property)
-          schema:
-            $ref: "#/definitions/apiResponseBase"
+        204:
+          description: Export has been successfully started
 
   /domain/export/download:
     get:
       operationId: DomainExportDownload
+      summary: Download previously exported domain data
       produces:
         - application/gzip
       parameters:
@@ -901,6 +882,7 @@ paths:
   /domain/import/commento:
     post:
       operationId: DomainImportCommento
+      summary: Import comments and commenters into specified domain from a Commento export, downloaded from certain URL
       parameters:
         - in: body
           name: body
@@ -916,25 +898,26 @@ paths:
                 $ref: "#/definitions/hexId"
               domain:
                 type: string
+                minLength: 1
+                maxLength: 253
               url:
                 type: string
+                format: url
       responses:
         200:
-          description: Success or failure response (see 'success' property)
+          description: Import completed successfully
           schema:
             type: object
             properties:
-              success:
-                type: boolean
-                x-omitempty: false
-              message:
-                type: string
               numImported:
                 type: integer
+                description: Number of imported comments
+                x-omitempty: false
 
   /domain/import/disqus:
     post:
       operationId: DomainImportDisqus
+      summary: Import comments and commenters into specified domain from a Disqus export, downloaded from certain URL
       parameters:
         - in: body
           name: body
@@ -950,25 +933,26 @@ paths:
                 $ref: "#/definitions/hexId"
               domain:
                 type: string
+                minLength: 1
+                maxLength: 253
               url:
                 type: string
+                format: url
       responses:
         200:
-          description: Success or failure response (see 'success' property)
+          description: Import completed successfully
           schema:
             type: object
             properties:
-              success:
-                type: boolean
-                x-omitempty: false
-              message:
-                type: string
               numImported:
                 type: integer
+                description: Number of imported comments
+                x-omitempty: false
 
   /domain/list:
     post:
       operationId: DomainList
+      summary: Get a list of registered domains
       security:
         - ownerCookie: []
       parameters:
@@ -984,15 +968,10 @@ paths:
                 $ref: "#/definitions/hexId"
       responses:
         200:
-          description: Success or failure response (see 'success' property)
+          description: List of domains and configured identity providers
           schema:
             type: object
             properties:
-              success:
-                type: boolean
-                x-omitempty: false
-              message:
-                type: string
               domains:
                 type: array
                 items:
@@ -1003,6 +982,7 @@ paths:
   /domain/moderator/delete:
     post:
       operationId: DomainModeratorDelete
+      summary: Delete specified domain moderator
       parameters:
         - in: body
           name: body
@@ -1018,18 +998,19 @@ paths:
                 $ref: "#/definitions/hexId"
               domain:
                 type: string
+                minLength: 1
+                maxLength: 253
               email:
                 type: string
                 format: email
       responses:
-        200:
-          description: Success or failure response (see 'success' property)
-          schema:
-            $ref: "#/definitions/apiResponseBase"
+        204:
+          description: Domain moderator has been deleted
 
   /domain/moderator/new:
     post:
       operationId: DomainModeratorNew
+      summary: Add a new domain moderator
       parameters:
         - in: body
           name: body
@@ -1045,18 +1026,19 @@ paths:
                 $ref: "#/definitions/hexId"
               domain:
                 type: string
+                minLength: 1
+                maxLength: 253
               email:
                 type: string
                 format: email
       responses:
-        200:
-          description: Success or failure response (see 'success' property)
-          schema:
-            $ref: "#/definitions/apiResponseBase"
+        204:
+          description: Domain moderator has been added
 
   /domain/new:
     post:
       operationId: DomainNew
+      summary: Register a new domain
       parameters:
         - in: body
           name: body
@@ -1071,29 +1053,27 @@ paths:
               ownerToken:
                 $ref: "#/definitions/hexId"
               name:
+                description: Display name of the domain
                 type: string
                 minLength: 1
+                maxLength: 63
               domain:
                 type: string
                 minLength: 1
                 maxLength: 253 # Maximum length of a valid DNS entry
       responses:
         200:
-          description: Success or failure response (see 'success' property)
+          description: Domain added successfully
           schema:
             type: object
             properties:
-              success:
-                type: boolean
-                x-omitempty: false
-              message:
-                type: string
               domain:
                 type: string
 
   /domain/sso/new:
     post:
       operationId: DomainSsoSecretNew
+      summary: Generate an SSO secret for specified domain
       parameters:
         - in: body
           name: body
@@ -1108,23 +1088,21 @@ paths:
                 $ref: "#/definitions/hexId"
               domain:
                 type: string
+                minLength: 1
+                maxLength: 253
       responses:
         200:
-          description: Success or failure response (see 'success' property)
+          description: SSO secret has been generated for the domain
           schema:
             type: object
             properties:
-              success:
-                type: boolean
-                x-omitempty: false
-              message:
-                type: string
               ssoSecret:
                 $ref: "#/definitions/hexId"
 
   /domain/statistics:
     post:
       operationId: DomainStatistics
+      summary: Get comment and view statistics for specified domain
       parameters:
         - in: body
           name: body
@@ -1139,17 +1117,14 @@ paths:
                 $ref: "#/definitions/hexId"
               domain:
                 type: string
+                minLength: 1
+                maxLength: 253
       responses:
         200:
           description: Success or failure response (see 'success' property)
           schema:
             type: object
             properties:
-              success:
-                type: boolean
-                x-omitempty: false
-              message:
-                type: string
               viewsLast30Days:
                 type: array
                 items:
@@ -1162,6 +1137,7 @@ paths:
   /domain/update:
     post:
       operationId: DomainUpdate
+      summary: Update properties of specified domain
       parameters:
         - in: body
           name: body
@@ -1177,10 +1153,8 @@ paths:
               domain:
                 $ref: "#/definitions/domain"
       responses:
-        200:
-          description: Success or failure response (see 'success' property)
-          schema:
-            $ref: "#/definitions/apiResponseBase"
+        204:
+          description: Domain properties have been updated
 
   #---------------------------------------------------------------------------------------------------------------------
   # Emails
@@ -1189,6 +1163,7 @@ paths:
   /email/get:
     post:
       operationId: EmailGet
+      summary: Get email properties for specified unsubscribe token
       parameters:
         - in: body
           name: body
@@ -1202,21 +1177,17 @@ paths:
                 $ref: "#/definitions/hexId"
       responses:
         200:
-          description: Success or failure response (see 'success' property)
+          description: Email object
           schema:
             type: object
             properties:
-              success:
-                type: boolean
-                x-omitempty: false
-              message:
-                type: string
               email:
                 $ref: "#/definitions/email"
 
   /email/moderate:
     get:
       operationId: EmailModerate
+      summary: Apply a moderator action to specified comment
       parameters:
         - name: unsubscribeSecretHex
           in: query
@@ -1238,14 +1209,13 @@ paths:
           minLength: 64
           maxLength: 64
       responses:
-        200:
-          description: Success or failure response (see 'success' property)
-          schema:
-            $ref: "#/definitions/apiResponseBase"
+        204:
+          description: Action has been applied
 
   /email/update:
     post:
       operationId: EmailUpdate
+      summary: Update properties of specified email
       parameters:
         - in: body
           name: body
@@ -1258,10 +1228,8 @@ paths:
               email:
                 $ref: "#/definitions/email"
       responses:
-        200:
-          description: Success or failure response (see 'success' property)
-          schema:
-            $ref: "#/definitions/apiResponseBase"
+        204:
+          description: Email properties have been updated
 
   #---------------------------------------------------------------------------------------------------------------------
   # Owners
@@ -1270,6 +1238,7 @@ paths:
   /owner/confirm-hex:
     get:
       operationId: OwnerConfirmHex
+      summary: Confirm specified owner's email using the emailed token
       consumes:
         - application/x-www-form-urlencoded
       parameters:
@@ -1289,6 +1258,7 @@ paths:
   /owner/new:
     post:
       operationId: OwnerNew
+      summary: Sign up as a new owner
       parameters:
         - in: body
           name: body
@@ -1302,28 +1272,30 @@ paths:
             properties:
               name:
                 type: string
+                minLength: 1
+                maxLength: 63
               email:
                 type: string
                 format: email
               password:
                 type: string
+                minLength: 1
+                maxLength: 63
       responses:
         200:
-          description: Success or failure response (see 'success' property)
+          description: Owner has signed up successfully
           schema:
             type: object
             properties:
-              success:
-                type: boolean
-                x-omitempty: false
-              message:
-                type: string
               confirmEmail:
                 type: boolean
+                description: Whether a confirmation email was sent
+                x-omitempty: false
 
   /owner/login:
     post:
       operationId: OwnerLogin
+      summary: Sign in as an existing owner
       parameters:
         - in: body
           name: body
@@ -1339,23 +1311,21 @@ paths:
                 format: email
               password:
                 type: string
+                minLength: 1
+                maxLength: 63
       responses:
         200:
-          description: Success or failure response (see 'success' property)
+          description: Owner has signed in successfully
           schema:
             type: object
             properties:
-              success:
-                type: boolean
-                x-omitempty: false
-              message:
-                type: string
               ownerToken:
                 $ref: "#/definitions/hexId"
 
   /owner/self:
     post:
       operationId: OwnerSelf
+      summary: Request owner's sign-in status and, if the owner's signed in, their details
       parameters:
         - in: body
           name: body
@@ -1368,25 +1338,20 @@ paths:
               ownerToken:
                 $ref: "#/definitions/hexId"
       responses:
+        204:
+          description: Owner is not signed in
         200:
-          description: Success or failure response (see 'success' property)
+          description: Owner is signed in
           schema:
             type: object
             properties:
-              success:
-                type: boolean
-                x-omitempty: false
-              message:
-                type: string
-              loggedIn:
-                type: boolean
-                x-omitempty: false
               owner:
                 $ref: "#/definitions/owner"
 
   /owner/delete:
     post:
       operationId: OwnerDelete
+      summary: Delete current owner's account
       parameters:
         - in: body
           name: body
@@ -1399,10 +1364,8 @@ paths:
               ownerToken:
                 $ref: "#/definitions/hexId"
       responses:
-        200:
-          description: Success or failure response (see 'success' property)
-          schema:
-            $ref: "#/definitions/apiResponseBase"
+        204:
+          description: Owner's account has been deleted
 
   #---------------------------------------------------------------------------------------------------------------------
   # Pages
@@ -1411,6 +1374,7 @@ paths:
   /page/update:
     post:
       operationId: PageUpdate
+      summary: Update specified page's properties
       parameters:
         - in: body
           name: body
@@ -1426,15 +1390,17 @@ paths:
                 $ref: "#/definitions/commenterHexId"
               domain:
                 type: string
+                minLength: 1
+                maxLength: 253
               path:
                 type: string
+                minLength: 1
+                maxLength: 2083
               attributes:
                 $ref: "#/definitions/page"
       responses:
-        200:
-          description: Success or failure response (see 'success' property)
-          schema:
-            $ref: "#/definitions/apiResponseBase"
+        204:
+          description: Page properties have been updated
 
   #---------------------------------------------------------------------------------------------------------------------
   # OAuth
@@ -1452,6 +1418,8 @@ paths:
           name: commenterToken
           type: string
           required: true
+          minLength: 64
+          maxLength: 64
       responses:
         307:
           $ref: "#/responses/OAuthRedirect"
@@ -1468,37 +1436,14 @@ paths:
         - $ref: "#/parameters/federatedIdpId"
       responses:
         200:
-          description: Success or failure response (see 'success' property)
-          schema:
-            $ref: "#/definitions/apiResponseBase"
+          description: User has successfully signed in
         401:
           $ref: "#/responses/OAuthFailure"
 
-  /oauth/sso/callback:
+  /oauth/sso:
     get:
-      operationId: OauthSsoCallback
-      produces:
-        - text/html
-      parameters:
-        - in: query
-          name: payload
-          type: string
-          required: true
-        - in: query
-          name: hmac
-          type: string
-          required: true
-      responses:
-        200:
-          description: Success or failure response (see 'success' property)
-          schema:
-            $ref: "#/definitions/apiResponseBase"
-        401:
-          $ref: "#/responses/OAuthFailure"
-
-  /oauth/sso/redirect:
-    get:
-      operationId: OauthSsoRedirect
+      operationId: OauthSsoInit
+      summary: Initiate signing in using federated SSO authentication
       produces:
         - text/html # For an error response only, otherwise a redirect is issued
       parameters:
@@ -1506,9 +1451,34 @@ paths:
           name: commenterToken
           type: string
           required: true
+          minLength: 64
+          maxLength: 64
       responses:
         307:
           $ref: "#/responses/OAuthRedirect"
+        401:
+          $ref: "#/responses/OAuthFailure"
+
+  /oauth/sso/callback:
+    get:
+      operationId: OauthSsoCallback
+      summary: Endpoint that gets called back by the SSO authentication provider
+      produces:
+        - text/html
+      parameters:
+        - in: query
+          name: payload
+          type: string
+          required: true
+          minLength: 1
+        - in: query
+          name: hmac
+          type: string
+          required: true
+          minLength: 1
+      responses:
+        200:
+          description: User has successfully signed in
         401:
           $ref: "#/responses/OAuthFailure"
 
@@ -1521,7 +1491,6 @@ paths:
     post:
       operationId: E2eReset
       summary: Reset the backend (all settings and database) to testing defaults
-      security: []
       responses:
         204:
           description: The backend has been successfully reset

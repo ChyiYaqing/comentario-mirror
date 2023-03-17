@@ -27,7 +27,7 @@ func (svc *voteService) DeleteByDomain(domain string) error {
 	// Delete the records in the database
 	if err := db.Exec("delete from votes v using comments c where c.commentHex=v.commentHex and c.domain=$1;", domain); err != nil {
 		logger.Errorf("voteService.DeleteByDomain: Exec() failed: %v", err)
-		return translateErrors(err)
+		return translateDBErrors(err)
 	}
 
 	// Succeeded
@@ -47,7 +47,7 @@ func (svc *voteService) SetVote(commentHex models.HexID, commenterHex models.Com
 		time.Now().UTC())
 	if err != nil {
 		logger.Errorf("voteService.SetVote: Exec() failed: %v", err)
-		return translateErrors(err)
+		return translateDBErrors(err)
 	}
 
 	// Succeeded

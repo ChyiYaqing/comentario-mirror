@@ -18,10 +18,7 @@ func EmailGet(params operations.EmailGetParams) middleware.Responder {
 	}
 
 	// Succeeded
-	return operations.NewEmailGetOK().WithPayload(&operations.EmailGetOKBody{
-		Email:   email,
-		Success: true,
-	})
+	return operations.NewEmailGetOK().WithPayload(&operations.EmailGetOKBody{Email: email})
 }
 
 func EmailModerate(params operations.EmailModerateParams) middleware.Responder {
@@ -31,9 +28,9 @@ func EmailModerate(params operations.EmailModerateParams) middleware.Responder {
 		return respServiceError(err)
 	}
 
-	// If the comment is already deleted
+	// Verify the comment isn't deleted yet
 	if comment.Deleted {
-		return operations.NewGenericBadRequest().WithPayload(&operations.GenericBadRequestBody{Details: "Comment has already been deleted"})
+		return respBadRequest(util.ErrorCommentDeleted)
 	}
 
 	// Fetch the email by its unsubscribe token
@@ -42,39 +39,35 @@ func EmailModerate(params operations.EmailModerateParams) middleware.Responder {
 		return respServiceError(err)
 	}
 
-	// Verify the user is a moderator
-	if isModerator, err := svc.TheDomainService.IsDomainModerator(comment.Domain, string(email.Email)); err != nil {
+	// Verify the user is a domain moderator
+	if r := Verifier.UserIsDomainModerator(string(email.Email), comment.Domain); r != nil {
+		return r
+	}
+
+	// TODO this must be changed to using hex ID or IdP
+	// Find (any) commenter with that email
+	commenter, err := svc.TheUserService.FindCommenterByEmail(string(email.Email))
+	if err != nil {
 		return respServiceError(err)
-	} else if !isModerator {
-		return operations.NewGenericForbidden()
 	}
 
-	// TODO Do not use commenterGetByEmail here because we don't know which provider should be used. This was poor design on
-	// multiple fronts on my part, but let's deal with that later. For now, it suffices to match the deleter/approver
-	// with any account owned by the same email
-	row := svc.DB.QueryRow("select commenterHex from commenters where email = $1;", email.Email)
-	var commenterHex models.CommenterHexID
-	if err = row.Scan(&commenterHex); err != nil {
-		logger.Errorf("cannot retrieve commenterHex by email %q: %v", email.Email, err)
-		return operations.NewGenericInternalServerError()
-	}
-
+	// Perform the appropriate action
 	switch params.Action {
 	case "approve":
 		if err := svc.TheCommentService.Approve(comment.CommentHex); err != nil {
 			return respServiceError(err)
 		}
 	case "delete":
-		if err := svc.TheCommentService.MarkDeleted(comment.CommentHex, commenterHex); err != nil {
+		if err := svc.TheCommentService.MarkDeleted(comment.CommentHex, commenter.CommenterHexID()); err != nil {
 			return respServiceError(err)
 		}
 	default:
-		return operations.NewGenericBadRequest().WithPayload(&operations.GenericBadRequestBody{Details: util.ErrorInvalidAction.Error()})
+		return respBadRequest(util.ErrorInvalidAction)
 	}
 
 	// Succeeded
 	// TODO redirect to a proper page instead of letting the user see JSON response
-	return operations.NewEmailModerateOK().WithPayload(&models.APIResponseBase{Success: true})
+	return operations.NewEmailModerateNoContent()
 }
 
 func EmailUpdate(params operations.EmailUpdateParams) middleware.Responder {
@@ -89,7 +82,7 @@ func EmailUpdate(params operations.EmailUpdateParams) middleware.Responder {
 	}
 
 	// Succeeded
-	return operations.NewEmailUpdateOK().WithPayload(&models.APIResponseBase{Success: true})
+	return operations.NewEmailUpdateNoContent()
 }
 
 func emailNotificationModerator(d *models.Domain, path string, title string, commenterHex models.CommenterHexID, commentHex models.HexID, html string, state models.CommentState) {
@@ -118,14 +111,6 @@ func emailNotificationModerator(d *models.Domain, path string, title string, com
 		// Try to fetch the moderator's email to check whether the notifications are enabled
 		modEmail, err := svc.TheEmailService.FindByEmail(string(m.Email))
 		if err != nil || !modEmail.SendModeratorNotifications {
-			continue
-		}
-
-		row := svc.DB.QueryRow("select name from commenters where email = $1;", m.Email)
-		var name string
-		if err := row.Scan(&name); err != nil {
-			// The moderator has probably not created a commenter account.
-			// We should only send emails to people who signed up, so skip.
 			continue
 		}
 

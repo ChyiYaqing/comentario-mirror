@@ -40,16 +40,13 @@ func OauthInit(params operations.OauthInitParams) middleware.Responder {
 	// Map the provider to a goth provider
 	gothIdP := util.FederatedIdProviders[params.Provider]
 	if gothIdP == "" {
-		return operations.NewGenericBadRequest().
-			WithPayload(&operations.GenericBadRequestBody{Details: "unknown provider: " + params.Provider})
+		return respBadRequest(fmt.Errorf("unknown provider: %s", params.Provider))
 	}
 
 	// Get the registered provider instance by its name (coming from the path parameter)
 	provider, err := goth.GetProvider(gothIdP)
 	if err != nil {
-		return operations.NewGenericBadRequest().WithPayload(&operations.GenericBadRequestBody{
-			Details: fmt.Sprintf("%s (%s)", util.ErrorOAuthNotConfigured.Error(), params.Provider),
-		})
+		return respBadRequest(fmt.Errorf("%s (%s)", util.ErrorOAuthNotConfigured.Error(), params.Provider))
 	}
 
 	// Verify the provided commenter token
@@ -98,8 +95,7 @@ func OauthCallback(params operations.OauthCallbackParams) middleware.Responder {
 	// Map the provider to a goth provider
 	gothIdP := util.FederatedIdProviders[params.Provider]
 	if gothIdP == "" {
-		return operations.NewGenericBadRequest().
-			WithPayload(&operations.GenericBadRequestBody{Details: "unknown provider: " + params.Provider})
+		return respBadRequest(util.ErrorUnknownIdP)
 	}
 
 	// Get the registered provider instance by its name (coming from the path parameter)
@@ -175,12 +171,6 @@ func OauthCallback(params operations.OauthCallbackParams) middleware.Responder {
 	if fedUser.Name == "" {
 		return oauthFailure(errors.New("user name missing"))
 	}
-	// -- Avatar
-	avatar := fedUser.AvatarURL
-	if avatar == "" {
-		// TODO get rid of this crap
-		avatar = "undefined"
-	}
 
 	// Try to find the corresponding commenter by their token
 	if _, err := svc.TheUserService.FindCommenterByToken(commenterToken); err != nil && err != svc.ErrNotFound {
@@ -201,14 +191,14 @@ func OauthCallback(params operations.OauthCallbackParams) middleware.Responder {
 	// No such commenter yet: it's a signup
 	if commenterHex == "" {
 		// Create a new commenter
-		if c, err := svc.TheUserService.CreateCommenter(fedUser.Email, fedUser.Name, "undefined", avatar, params.Provider, ""); err != nil {
+		if c, err := svc.TheUserService.CreateCommenter(fedUser.Email, fedUser.Name, "", fedUser.AvatarURL, params.Provider, ""); err != nil {
 			return oauthFailure(err)
 		} else {
 			commenterHex = c.CommenterHexID()
 		}
 
 		// Commenter already exists: it's a login. Update commenter's details
-	} else if err := svc.TheUserService.UpdateCommenter(commenterHex, fedUser.Email, fedUser.Name, "", avatar, params.Provider); err != nil {
+	} else if err := svc.TheUserService.UpdateCommenter(commenterHex, fedUser.Email, fedUser.Name, "", fedUser.AvatarURL, params.Provider); err != nil {
 		return oauthFailure(err)
 	}
 
@@ -219,6 +209,75 @@ func OauthCallback(params operations.OauthCallbackParams) middleware.Responder {
 
 	// Succeeded: close the parent window, removing the auth session cookie
 	return NewCookieResponder(closeParentWindowResponse()).WithoutCookie(util.AuthSessionCookieName, "/")
+}
+
+func OauthSsoInit(params operations.OauthSsoInitParams) middleware.Responder {
+	domainURL, err := util.ParseAbsoluteURL(params.HTTPRequest.Header.Get("Referer"))
+	if err != nil {
+		return oauthFailure(err)
+	}
+
+	// Try to find the commenter by token
+	commenterToken := models.CommenterHexID(params.CommenterToken)
+	if _, err = svc.TheUserService.FindCommenterByToken(commenterToken); err != nil && err != svc.ErrNotFound {
+		return oauthFailure(err)
+	}
+
+	// Fetch the domain
+	domain, err := svc.TheDomainService.FindByName(domainURL.Host)
+	if err != nil {
+		return respServiceError(err)
+	}
+
+	// Make sure the domain allow SSO authentication
+	if !domain.Idps["sso"] {
+		return oauthFailure(fmt.Errorf("SSO not configured for %s", domain.Domain))
+	}
+
+	// Verify the domain's SSO config is complete
+	if domain.SsoSecret == "" || domain.SsoURL == "" {
+		return oauthFailure(util.ErrorMissingConfig)
+	}
+
+	key, err := hex.DecodeString(domain.SsoSecret)
+	if err != nil {
+		logger.Errorf("OauthSsoInit: failed to decode SSO secret: %v", err)
+		return oauthFailure(err)
+	}
+
+	// Create and persist a new SSO token
+	token, err := svc.TheDomainService.CreateSSOToken(domain.Domain, commenterToken)
+	if err != nil {
+		return oauthFailure(err)
+	}
+
+	tokenBytes, err := hex.DecodeString(string(token))
+	if err != nil {
+		logger.Errorf("OauthSsoInit: failed to decode SSO token: %v", err)
+		return oauthFailure(util.ErrorInternal)
+	}
+
+	// Parse the domain's SSO URL
+	ssoURL, err := util.ParseAbsoluteURL(domain.SsoURL)
+	if err != nil {
+		// this should really not be happening; we're checking if the passed URL is valid at domain update
+		logger.Errorf("OauthSsoInit: failed to parse SSO URL: %v", err)
+		return oauthFailure(util.ErrorInternal)
+	}
+
+	// Generate a new HMAC signature hash
+	h := hmac.New(sha256.New, key)
+	h.Write(tokenBytes)
+	signature := hex.EncodeToString(h.Sum(nil))
+
+	// Add the token and the signature to the SSO URL
+	q := ssoURL.Query()
+	q.Set("token", string(token))
+	q.Set("hmac", signature)
+	ssoURL.RawQuery = q.Encode()
+
+	// Succeeded: redirect to SSO
+	return operations.NewOauthSsoInitTemporaryRedirect().WithLocation(ssoURL.String())
 }
 
 func OauthSsoCallback(params operations.OauthSsoCallbackParams) middleware.Responder {
@@ -242,15 +301,8 @@ func OauthSsoCallback(params operations.OauthSsoCallbackParams) middleware.Respo
 		return oauthFailure(util.ErrorMissingField)
 	}
 
-	if payload.Link == "" {
-		payload.Link = "undefined"
-	}
-
-	if payload.Photo == "" {
-		payload.Photo = "undefined"
-	}
-
-	domainName, commenterToken, err := ssoTokenExtract(payload.Token)
+	// Fetch domain/commenter token for the token, removing the token
+	domainName, commenterToken, err := svc.TheDomainService.TakeSSOToken(models.HexID(payload.Token))
 	if err != nil {
 		return oauthFailure(err)
 	}
@@ -319,69 +371,6 @@ func OauthSsoCallback(params operations.OauthSsoCallbackParams) middleware.Respo
 	return closeParentWindowResponse()
 }
 
-func OauthSsoRedirect(params operations.OauthSsoRedirectParams) middleware.Responder {
-	domainURL, err := util.ParseAbsoluteURL(params.HTTPRequest.Header.Get("Referer"))
-	if err != nil {
-		return oauthFailure(err)
-	}
-
-	if _, err = svc.TheUserService.FindCommenterByToken(models.CommenterHexID(params.CommenterToken)); err != nil && err != svc.ErrNotFound {
-		return oauthFailure(err)
-	}
-
-	// Fetch the domain
-	domain, err := svc.TheDomainService.FindByName(domainURL.Host)
-	if err != nil {
-		return respServiceError(err)
-	}
-
-	// Make sure the domain allow SSO authentication
-	if !domain.Idps["sso"] {
-		return oauthFailure(fmt.Errorf("SSO not configured for %s", domain.Domain))
-	}
-
-	// Verify the domain's SSO config is complete
-	if domain.SsoSecret == "" || domain.SsoURL == "" {
-		return oauthFailure(util.ErrorMissingConfig)
-	}
-
-	key, err := hex.DecodeString(domain.SsoSecret)
-	if err != nil {
-		logger.Errorf("cannot decode SSO secret as hex: %v", err)
-		return oauthFailure(err)
-	}
-
-	token, err := ssoTokenNew(domain.Domain, params.CommenterToken)
-	if err != nil {
-		return oauthFailure(err)
-	}
-
-	tokenBytes, err := hex.DecodeString(string(token))
-	if err != nil {
-		logger.Errorf("cannot decode hex token: %v", err)
-		return oauthFailure(util.ErrorInternal)
-	}
-
-	h := hmac.New(sha256.New, key)
-	h.Write(tokenBytes)
-	signature := hex.EncodeToString(h.Sum(nil))
-
-	ssoURL, err := util.ParseAbsoluteURL(domain.SsoURL)
-	if err != nil {
-		// this should really not be happening; we're checking if the passed URL is valid at domain update
-		logger.Errorf("cannot parse URL: %v", err)
-		return oauthFailure(util.ErrorInternal)
-	}
-
-	q := ssoURL.Query()
-	q.Set("token", string(token))
-	q.Set("hmac", signature)
-	ssoURL.RawQuery = q.Encode()
-
-	// Succeeded
-	return operations.NewOauthSsoRedirectTemporaryRedirect().WithLocation(ssoURL.String())
-}
-
 // getSessionState extracts the state parameter from the given session's URL
 func getSessionState(sess goth.Session) (string, error) {
 	// Fetch the original session's URL
@@ -417,44 +406,6 @@ func oauthFailure(err error) middleware.Responder {
 				</html>`,
 				err.Error()))).
 		WithoutCookie(util.AuthSessionCookieName, "/")
-}
-
-func ssoTokenExtract(token string) (string, models.CommenterHexID, error) {
-	row := svc.DB.QueryRow("select domain, commenterToken from ssoTokens where token = $1;", token)
-
-	var domain string
-	var commenterToken models.CommenterHexID
-	if err := row.Scan(&domain, &commenterToken); err != nil {
-		return "", "", util.ErrorNoSuchToken
-	}
-
-	if err := svc.DB.Exec("delete from ssoTokens where token = $1;", token); err != nil {
-		logger.Errorf("cannot delete SSO token after usage: %v", err)
-		return "", "", util.ErrorInternal
-	}
-
-	return domain, commenterToken, nil
-}
-
-func ssoTokenNew(domain string, commenterToken string) (models.HexID, error) {
-	token, err := data.RandomHexID()
-	if err != nil {
-		logger.Errorf("error generating SSO token hex: %v", err)
-		return "", util.ErrorInternal
-	}
-
-	err = svc.DB.Exec(
-		"insert into ssoTokens(token, domain, commenterToken, creationDate) values($1, $2, $3, $4);",
-		token,
-		domain,
-		commenterToken,
-		time.Now().UTC())
-	if err != nil {
-		logger.Errorf("error inserting SSO token: %v", err)
-		return "", util.ErrorInternal
-	}
-
-	return token, nil
 }
 
 // validateAuthSessionState verifies the session token initially submitted, if any, is matching the one returned with

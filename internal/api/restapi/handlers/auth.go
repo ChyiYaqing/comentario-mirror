@@ -55,7 +55,7 @@ func ForgotPassword(params operations.ForgotPasswordParams) middleware.Responder
 	}
 
 	// Succeeded (or no user found)
-	return operations.NewForgotPasswordOK().WithPayload(&models.APIResponseBase{Success: true})
+	return operations.NewForgotPasswordNoContent()
 }
 
 func ResetPassword(params operations.ResetPasswordParams) middleware.Responder {
@@ -65,8 +65,5 @@ func ResetPassword(params operations.ResetPasswordParams) middleware.Responder {
 	}
 
 	// Succeeded
-	return operations.NewResetPasswordOK().WithPayload(&operations.ResetPasswordOKBody{
-		Entity:  entity,
-		Success: true,
-	})
+	return operations.NewResetPasswordOK().WithPayload(&operations.ResetPasswordOKBody{Entity: entity})
 }

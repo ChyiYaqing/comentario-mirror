@@ -8,6 +8,42 @@ import (
 	"testing"
 )
 
+func TestFixIdP(t *testing.T) {
+	tests := []struct {
+		name string
+		idp  string
+		want string
+	}{
+		{"empty", "", "commento"},
+		{"non-empty", "google", "google"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := FixIdP(tt.idp); got != tt.want {
+				t.Errorf("FixIdP() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestFixUndefined(t *testing.T) {
+	tests := []struct {
+		name string
+		s    string
+		want string
+	}{
+		{"empty", "", "undefined"},
+		{"non-empty", "foo", "foo"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := FixUndefined(tt.s); got != tt.want {
+				t.Errorf("FixUndefined() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestHTMLDocumentTitle(t *testing.T) {
 	tests := []struct {
 		name    string

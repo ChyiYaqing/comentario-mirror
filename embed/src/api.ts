@@ -1,16 +1,11 @@
 import { Comment, Commenter, Email, SortPolicy } from './models';
 
-export interface ApiResponseBase {
-    success: boolean;
-    message?: string;
-}
-
 export interface ApiSelfResponse {
     commenter?: Commenter;
     email?:     Email;
 }
 
-export interface ApiCommentListResponse extends ApiResponseBase {
+export interface ApiCommentListResponse {
     requireIdentification: boolean;
     isModerator:           boolean;
     isFrozen:              boolean;
@@ -21,23 +16,23 @@ export interface ApiCommentListResponse extends ApiResponseBase {
     defaultSortPolicy:     SortPolicy;
 }
 
-export interface ApiCommentNewResponse extends ApiResponseBase {
+export interface ApiCommentNewResponse {
     state:      'unapproved' | 'flagged';
     commentHex: string;
     html:       string;
 }
 
-export interface ApiCommentEditResponse extends ApiResponseBase {
+export interface ApiCommentEditResponse {
     state?:     'unapproved' | 'flagged';
     commentHex: string;
     html:       string;
 }
 
-export interface ApiCommenterTokenNewResponse extends ApiResponseBase {
+export interface ApiCommenterTokenNewResponse {
     commenterToken: string;
 }
 
-export interface ApiCommenterLoginResponse extends ApiResponseBase {
+export interface ApiCommenterLoginResponse {
     commenterToken: string;
     commenter:      Commenter;
     email:          Email;

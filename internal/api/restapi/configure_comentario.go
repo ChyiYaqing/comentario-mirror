@@ -104,7 +104,7 @@ func configureAPI(api *operations.ComentarioAPI) http.Handler {
 	api.OauthInitHandler = operations.OauthInitHandlerFunc(handlers.OauthInit)
 	api.OauthCallbackHandler = operations.OauthCallbackHandlerFunc(handlers.OauthCallback)
 	api.OauthSsoCallbackHandler = operations.OauthSsoCallbackHandlerFunc(handlers.OauthSsoCallback)
-	api.OauthSsoRedirectHandler = operations.OauthSsoRedirectHandlerFunc(handlers.OauthSsoRedirect)
+	api.OauthSsoInitHandler = operations.OauthSsoInitHandlerFunc(handlers.OauthSsoInit)
 	// Owner
 	api.OwnerConfirmHexHandler = operations.OwnerConfirmHexHandlerFunc(handlers.OwnerConfirmHex)
 	api.OwnerDeleteHandler = operations.OwnerDeleteHandlerFunc(handlers.OwnerDelete)

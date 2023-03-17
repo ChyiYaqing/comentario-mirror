@@ -2,10 +2,8 @@ package e2e
 
 // End2EndApp describes an application under e2e test
 type End2EndApp interface {
-	// DBExec executes the provided statement(s) against the database
-	DBExec(query string, args ...any) error
-	// DBInit initialises the database
-	DBInit() error
+	// RecreateDBSchema recreates the DB schema and fills it with the provided seed data
+	RecreateDBSchema(seedSQL string) error
 	// LogInfo outputs a record of level info to the log
 	LogInfo(fmt string, args ...any)
 	// LogWarning outputs a record of level warning to the log

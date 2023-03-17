@@ -39,7 +39,7 @@ func (svc *pageService) CommentCountsByPath(domain string, paths []string) (map[
 	rows, err := db.Query("select path, commentcount from pages where domain=$1 and path=any($2);", domain, pq.Array(paths))
 	if err != nil {
 		logger.Errorf("pageService.CommentCountsByPath: Query() failed: %v", err)
-		return nil, translateErrors(err)
+		return nil, translateDBErrors(err)
 	}
 	defer rows.Close()
 
@@ -50,9 +50,15 @@ func (svc *pageService) CommentCountsByPath(domain string, paths []string) (map[
 		var c int
 		if err = rows.Scan(&p, &c); err != nil {
 			logger.Errorf("pageService.CommentCountsByPath: rows.Scan() failed: %v", err)
-			return nil, translateErrors(err)
+			return nil, translateDBErrors(err)
 		}
 		res[p] = c
+	}
+
+	// Check that Next() didn't error
+	if err := rows.Err(); err != nil {
+		logger.Errorf("pageService.CommentCountsByPath: rows.Next() failed: %v", err)
+		return nil, translateDBErrors(err)
 	}
 
 	// Succeeded
@@ -65,7 +71,7 @@ func (svc *pageService) DeleteByDomain(domain string) error {
 	// Delete records from the database
 	if err := db.Exec("delete from pages where domain=$1;", domain); err != nil {
 		logger.Errorf("pageService.DeleteByDomain: Exec() failed: %v", err)
-		return translateErrors(err)
+		return translateDBErrors(err)
 	}
 
 	// Succeeded
@@ -94,7 +100,7 @@ func (svc *pageService) FindByDomainPath(domain, path string) (*models.Page, err
 	} else if err != nil {
 		// Any other database error
 		logger.Errorf("pageService.FindByDomainPath: Scan() failed: %v", err)
-		return nil, translateErrors(err)
+		return nil, translateDBErrors(err)
 	}
 
 	// Succeeded
@@ -116,7 +122,7 @@ func (svc *pageService) UpdateTitleByDomainPath(domain, path string) (string, er
 	// Update the page in the database
 	if err = db.Exec("update pages set title=$1 where domain=$2 and path=$3;", title, domain, path); err != nil {
 		logger.Errorf("pageService.UpdateTitleByDomainPath: Exec() failed: %v", err)
-		return "", translateErrors(err)
+		return "", translateDBErrors(err)
 	}
 
 	// Succeeded
@@ -145,7 +151,7 @@ func (svc *pageService) UpsertByDomainPath(domain, path string, isLocked bool, s
 		page.StickyCommentHex)
 	if err != nil {
 		logger.Errorf("pageService.UpsertByDomainPath: Exec() failed: %v", err)
-		return nil, translateErrors(err)
+		return nil, translateDBErrors(err)
 	}
 
 	// Succeeded

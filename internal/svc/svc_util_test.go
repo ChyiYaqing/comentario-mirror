@@ -43,8 +43,8 @@ func Test_translateError(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := translateErrors(tt.errs...); err != tt.wantErr {
-				t.Errorf("translateErrors() error = %v, wantErr = %v", err, tt.wantErr)
+			if err := translateDBErrors(tt.errs...); err != tt.wantErr {
+				t.Errorf("translateDBErrors() error = %v, wantErr = %v", err, tt.wantErr)
 			}
 		})
 	}

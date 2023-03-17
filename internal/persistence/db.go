@@ -270,6 +270,14 @@ func (db *Database) getInstalledMigrations() (map[string]bool, error) {
 		}
 		m[s] = true
 	}
+
+	// Check that Next() didn't error
+	if err := rows.Err(); err != nil {
+		logger.Errorf("getInstalledMigrations: Next() failed: %v", err)
+		return nil, err
+	}
+
+	// Succeeded
 	return m, nil
 }
 

@@ -7,6 +7,7 @@ import (
 	"gitlab.com/comentario/comentario/internal/api/restapi/operations"
 	"gitlab.com/comentario/comentario/internal/config"
 	"gitlab.com/comentario/comentario/internal/svc"
+	"gitlab.com/comentario/comentario/internal/util"
 	"net/http"
 	"time"
 )
@@ -94,8 +95,8 @@ func respBadRequest(err error) middleware.Responder {
 }
 
 // respForbidden returns a responder that responds with HTTP Forbidden error
-func respForbidden() middleware.Responder {
-	return operations.NewGenericForbidden()
+func respForbidden(err error) middleware.Responder {
+	return operations.NewGenericForbidden().WithPayload(&operations.GenericForbiddenBody{Details: err.Error()})
 }
 
 // respInternalError returns a responder that responds with HTTP Internal Server Error
@@ -103,17 +104,18 @@ func respInternalError() middleware.Responder {
 	return operations.NewGenericInternalServerError()
 }
 
+// respNotFound returns a responder that responds with HTTP Not Found error
+func respNotFound() middleware.Responder {
+	return operations.NewGenericNotFound()
+}
+
 // respServiceError translates the provided error, returned by a service, into an appropriate error responder
 func respServiceError(err error) middleware.Responder {
 	switch err {
-	case svc.ErrDuplicateEmail:
-		return operations.NewGenericBadRequest().
-			WithPayload(&operations.GenericBadRequestBody{Details: "Duplicate email"})
 	case svc.ErrNotFound:
 		return operations.NewGenericNotFound()
 	case svc.ErrPageLocked:
-		return operations.NewGenericBadRequest().
-			WithPayload(&operations.GenericBadRequestBody{Details: "Unable to add comment: the page is locked"})
+		return respBadRequest(util.ErrorPageLocked)
 	}
 
 	// Not recognised: return an internal error response

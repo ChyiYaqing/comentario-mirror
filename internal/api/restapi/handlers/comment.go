@@ -27,10 +27,8 @@ func CommentApprove(params operations.CommentApproveParams) middleware.Responder
 	}
 
 	// Verify the user is a domain moderator
-	if isModerator, err := svc.TheDomainService.IsDomainModerator(comment.Domain, commenter.Email); err != nil {
-		return respServiceError(err)
-	} else if !isModerator {
-		return operations.NewGenericForbidden()
+	if r := Verifier.UserIsDomainModerator(commenter.Email, comment.Domain); r != nil {
+		return r
 	}
 
 	// Update the comment's state in the database
@@ -39,7 +37,7 @@ func CommentApprove(params operations.CommentApproveParams) middleware.Responder
 	}
 
 	// Succeeded
-	return operations.NewCommentApproveOK().WithPayload(&models.APIResponseBase{Success: true})
+	return operations.NewCommentApproveNoContent()
 }
 
 func CommentCount(params operations.CommentCountParams) middleware.Responder {
@@ -68,10 +66,8 @@ func CommentDelete(params operations.CommentDeleteParams) middleware.Responder {
 
 	// If not deleting their own comment, the user must be a domain moderator
 	if comment.CommenterHex != commenter.CommenterHexID() {
-		if isModerator, err := svc.TheDomainService.IsDomainModerator(comment.Domain, commenter.Email); err != nil {
-			return respServiceError(err)
-		} else if !isModerator {
-			return operations.NewGenericForbidden()
+		if r := Verifier.UserIsDomainModerator(commenter.Email, comment.Domain); r != nil {
+			return r
 		}
 	}
 
@@ -81,7 +77,7 @@ func CommentDelete(params operations.CommentDeleteParams) middleware.Responder {
 	}
 
 	// Succeeded
-	return operations.NewCommentDeleteOK().WithPayload(&models.APIResponseBase{Success: true})
+	return operations.NewCommentDeleteNoContent()
 }
 
 func CommentEdit(params operations.CommentEditParams) middleware.Responder {
@@ -99,10 +95,8 @@ func CommentEdit(params operations.CommentEditParams) middleware.Responder {
 
 	// If not updating their own comment, the user must be a domain moderator
 	if comment.CommenterHex != commenter.CommenterHexID() {
-		if isModerator, err := svc.TheDomainService.IsDomainModerator(comment.Domain, commenter.Email); err != nil {
-			return respServiceError(err)
-		} else if !isModerator {
-			return operations.NewGenericForbidden()
+		if r := Verifier.UserIsDomainModerator(commenter.Email, comment.Domain); r != nil {
+			return r
 		}
 	}
 
@@ -112,14 +106,11 @@ func CommentEdit(params operations.CommentEditParams) middleware.Responder {
 
 	// Persist the edits in the database
 	if err := svc.TheCommentService.UpdateText(*params.Body.CommentHex, markdown, html); err != nil {
-		return operations.NewCommentEditOK().WithPayload(&operations.CommentEditOKBody{Message: err.Error()})
+		return respServiceError(err)
 	}
 
 	// Succeeded
-	return operations.NewCommentEditOK().WithPayload(&operations.CommentEditOKBody{
-		HTML:    html,
-		Success: true,
-	})
+	return operations.NewCommentEditOK().WithPayload(&operations.CommentEditOKBody{HTML: html})
 }
 
 func CommentList(params operations.CommentListParams) middleware.Responder {
@@ -162,7 +153,7 @@ func CommentList(params operations.CommentListParams) middleware.Responder {
 	}
 
 	// Fetch comment list
-	comments, commenters, err := svc.TheCommentService.ListByDomainPath(commenterHex, domain.Domain, params.Body.Path, isModerator)
+	comments, commenters, err := svc.TheCommentService.ListWithCommentersByDomainPath(commenterHex, domain.Domain, params.Body.Path, isModerator)
 	if err != nil {
 		return operations.NewCommentListOK().WithPayload(&operations.CommentListOKBody{Message: err.Error()})
 	}
@@ -193,7 +184,6 @@ func CommentList(params operations.CommentListParams) middleware.Responder {
 		IsModerator:           isModerator,
 		RequireIdentification: domain.RequireIdentification,
 		RequireModeration:     domain.RequireModeration,
-		Success:               true,
 	})
 }
 
@@ -206,12 +196,12 @@ func CommentNew(params operations.CommentNewParams) middleware.Responder {
 
 	// Verify the domain isn't frozen
 	if domain.State == models.DomainStateFrozen {
-		return operations.NewGenericBadRequest().WithPayload(&operations.GenericBadRequestBody{Details: util.ErrorDomainFrozen.Error()})
+		return respBadRequest(util.ErrorDomainFrozen)
 	}
 
 	// Verify that either the domain allows anonymous commenting or the user is authenticated
 	if domain.RequireIdentification && *params.Body.CommenterToken == data.AnonymousCommenterHexID {
-		return operations.NewGenericUnauthorized()
+		return respUnauthorized(util.ErrorUnauthenticated)
 	}
 
 	commenterHex := data.AnonymousCommenterHexID
@@ -243,7 +233,16 @@ func CommentNew(params operations.CommentNewParams) middleware.Responder {
 		state = models.CommentStateApproved
 	} else if domain.RequireModeration || commenterHex == data.AnonymousCommenterHexID && domain.ModerateAllAnonymous {
 		state = models.CommentStateUnapproved
-	} else if domain.AutoSpamFilter && checkForSpam(*params.Body.Domain, util.UserIP(params.HTTPRequest), util.UserAgent(params.HTTPRequest), commenterName, string(commenterEmail), commenterWebsite, *params.Body.Markdown) {
+	} else if domain.AutoSpamFilter &&
+		svc.TheAntispamService.CheckForSpam(
+			domain.Domain,
+			util.UserIP(params.HTTPRequest),
+			util.UserAgent(params.HTTPRequest),
+			commenterName,
+			string(commenterEmail),
+			commenterWebsite,
+			*params.Body.Markdown,
+		) {
 		state = models.CommentStateFlagged
 	} else {
 		state = models.CommentStateApproved
@@ -270,7 +269,6 @@ func CommentNew(params operations.CommentNewParams) middleware.Responder {
 		CommentHex: comment.CommentHex,
 		HTML:       comment.HTML,
 		State:      state,
-		Success:    true,
 	})
 }
 
@@ -297,7 +295,7 @@ func CommentVote(params operations.CommentVoteParams) middleware.Responder {
 
 	// Make sure the commenter is not voting for their own comment
 	if comment.CommenterHex == commenter.CommenterHexID() {
-		return operations.NewGenericForbidden().WithPayload(&operations.GenericForbiddenBody{Details: util.ErrorSelfVote.Error()})
+		return respForbidden(util.ErrorSelfVote)
 	}
 
 	// Update the vote in the database
@@ -306,5 +304,5 @@ func CommentVote(params operations.CommentVoteParams) middleware.Responder {
 	}
 
 	// Succeeded
-	return operations.NewCommentVoteOK().WithPayload(&models.APIResponseBase{Success: true})
+	return operations.NewCommentVoteNoContent()
 }

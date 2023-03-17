@@ -7,7 +7,6 @@ import (
 	"github.com/go-openapi/swag"
 	"gitlab.com/comentario/comentario/internal/api/models"
 	"gitlab.com/comentario/comentario/internal/api/restapi/operations"
-	"gitlab.com/comentario/comentario/internal/config"
 	"gitlab.com/comentario/comentario/internal/data"
 	"gitlab.com/comentario/comentario/internal/svc"
 	"gitlab.com/comentario/comentario/internal/util"
@@ -18,17 +17,20 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 )
 
 func CommenterLogin(params operations.CommenterLoginParams) middleware.Responder {
 	// Try to find a local user with the given email
 	commenter, err := svc.TheUserService.FindCommenterByIdPEmail("", data.EmailToString(params.Body.Email), true)
 	if err != nil {
+		time.Sleep(util.WrongAuthDelay)
 		return respUnauthorized(util.ErrorInvalidEmailPassword)
 	}
 
 	// Verify the provided password
 	if err := bcrypt.CompareHashAndPassword([]byte(commenter.PasswordHash), []byte(swag.StringValue(params.Body.Password))); err != nil {
+		time.Sleep(util.WrongAuthDelay)
 		return respUnauthorized(util.ErrorInvalidEmailPassword)
 	}
 
@@ -49,7 +51,6 @@ func CommenterLogin(params operations.CommenterLoginParams) middleware.Responder
 		Commenter:      commenter.ToCommenter(),
 		CommenterToken: commenterToken,
 		Email:          email,
-		Success:        true,
 	})
 }
 
@@ -58,20 +59,18 @@ func CommenterNew(params operations.CommenterNewParams) middleware.Responder {
 	name := data.TrimmedString(params.Body.Name)
 	website := strings.TrimSpace(params.Body.Website)
 
-	// TODO this is awful
-	if website == "" {
-		website = "undefined"
+	// Since the local authentication is used, verify the email is unique
+	if r := Verifier.CommenterLocalEmaiUnique(email); r != nil {
+		return r
 	}
 
-	if _, err := svc.TheUserService.CreateCommenter(email, name, website, "undefined", "", *params.Body.Password); err != nil {
+	// Create a commenter record in the database
+	if _, err := svc.TheUserService.CreateCommenter(email, name, website, "", "", *params.Body.Password); err != nil {
 		return respServiceError(err)
 	}
 
 	// Succeeded
-	return operations.NewCommenterNewOK().WithPayload(&operations.CommenterNewOKBody{
-		ConfirmEmail: config.SMTPConfigured,
-		Success:      true,
-	})
+	return operations.NewCommenterNewNoContent()
 }
 
 func CommenterPhoto(params operations.CommenterPhotoParams) middleware.Responder {
@@ -84,7 +83,7 @@ func CommenterPhoto(params operations.CommenterPhotoParams) middleware.Responder
 	// Fetch the image pointed to by the PhotoURL
 	resp, err := http.Get(commenter.PhotoURL)
 	if err != nil {
-		return operations.NewGenericNotFound()
+		return respNotFound()
 	}
 	defer resp.Body.Close()
 
@@ -126,7 +125,7 @@ func CommenterSelf(params operations.CommenterSelfParams) middleware.Responder {
 	commenter, err := svc.TheUserService.FindCommenterByToken(*params.Body.CommenterToken)
 	if err == svc.ErrNotFound {
 		// Not logged in or session doesn't exist
-		return operations.NewCommenterSelfOK()
+		return operations.NewCommenterSelfNoContent()
 
 	} else if err != nil {
 		// Any other error
@@ -154,10 +153,7 @@ func CommenterTokenNew(operations.CommenterTokenNewParams) middleware.Responder 
 	}
 
 	// Succeeded
-	return operations.NewCommenterTokenNewOK().WithPayload(&operations.CommenterTokenNewOKBody{
-		CommenterToken: token,
-		Success:        true,
-	})
+	return operations.NewCommenterTokenNewOK().WithPayload(&operations.CommenterTokenNewOKBody{CommenterToken: token})
 }
 
 func CommenterUpdate(params operations.CommenterUpdateParams) middleware.Responder {
@@ -185,5 +181,5 @@ func CommenterUpdate(params operations.CommenterUpdateParams) middleware.Respond
 	}
 
 	// Succeeded
-	return operations.NewCommenterUpdateOK().WithPayload(&models.APIResponseBase{Success: true})
+	return operations.NewCommenterUpdateNoContent()
 }

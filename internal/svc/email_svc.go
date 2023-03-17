@@ -51,7 +51,7 @@ func (svc *emailService) Create(email string) (*models.Email, error) {
 		e.Email, e.UnsubscribeSecretHex, e.LastEmailNotificationDate)
 	if err != nil {
 		logger.Errorf("emailService.Create: Exec() failed: %v", err)
-		return nil, translateErrors(err)
+		return nil, translateDBErrors(err)
 	}
 
 	return &e, nil
@@ -69,7 +69,7 @@ func (svc *emailService) FindByEmail(email string) (*models.Email, error) {
 
 	// Fetch the email
 	if e, err := svc.fetchEmail(row); err != nil {
-		return nil, translateErrors(err)
+		return nil, translateDBErrors(err)
 	} else {
 		return e, nil
 	}
@@ -87,7 +87,7 @@ func (svc *emailService) FindByUnsubscribeToken(token models.HexID) (*models.Ema
 
 	// Fetch the email
 	if e, err := svc.fetchEmail(row); err != nil {
-		return nil, translateErrors(err)
+		return nil, translateDBErrors(err)
 	} else {
 		return e, nil
 	}
@@ -105,7 +105,7 @@ func (svc *emailService) UpdateByEmailToken(email string, token models.HexID, se
 		token)
 	if err != nil {
 		logger.Errorf("emailService.UpdateByEmailToken: Exec() failed: %v", err)
-		return translateErrors(err)
+		return translateDBErrors(err)
 	}
 
 	// Succeeded

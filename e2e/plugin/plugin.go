@@ -19,8 +19,8 @@ type handler struct {
 func (h *handler) Init(app e2e.End2EndApp) error {
 	h.app = app
 
-	// Install the seed
-	if err := h.dbSeed(); err != nil {
+	// Reinit the DB to install the seed
+	if err := h.app.RecreateDBSchema(dbSeedSQL); err != nil {
 		return err
 	}
 
@@ -32,21 +32,5 @@ func (h *handler) HandleReset() error {
 	h.app.LogInfo("Recreating the database schema")
 
 	// Drop and recreate the public schema
-	if err := h.app.DBExec("drop schema public cascade; create schema public;"); err != nil {
-		return err
-	}
-
-	// Init the DB
-	if err := h.app.DBInit(); err != nil {
-		return err
-	}
-
-	// Install the seed
-	return h.dbSeed()
-}
-
-// dbSeed installs seed data in the database
-func (h *handler) dbSeed() error {
-	h.app.LogInfo("Seeding the database")
-	return h.app.DBExec(dbSeedSQL)
+	return h.app.RecreateDBSchema(dbSeedSQL)
 }

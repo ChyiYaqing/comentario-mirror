@@ -1,4 +1,4 @@
-import { HttpClient } from './http-client';
+import { HttpClient, HttpClientError } from './http-client';
 import { Comment, CommenterMap, CommentsGroupedByHex, SortPolicy, StringBooleanMap } from './models';
 import {
     ApiCommentEditResponse,
@@ -6,7 +6,6 @@ import {
     ApiCommenterTokenNewResponse,
     ApiCommentListResponse,
     ApiCommentNewResponse,
-    ApiResponseBase,
     ApiSelfResponse,
 } from './api';
 import { Wrap } from './element-wrap';
@@ -312,30 +311,46 @@ export class Comentario {
 
     /**
      * Set and display (message is given) or clean (message is falsy) an error message in the error panel.
-     * @param message Message to set. If falsy, the error panel gets removed.
+     * @param error Error object to set. If falsy, the error panel gets removed.
      * @private
      */
-    private setError(message?: string | boolean) {
-        if (message) {
-            if (!this.error) {
-                this.root!.prepend(this.error = UIToolkit.div('error-box'));
-            }
-            this.error.inner(`Error: ${message}.`);
-        } else {
+    private setError(error?: any) {
+        // No error means removing any error
+        if (!error) {
             this.error?.remove();
             this.error = undefined;
+            return;
         }
-    }
 
-    /**
-     * Check the provided response for error status and set the error message if it is, otherwise remove the error panel.
-     * @param response Response to check.
-     * @return Whether there was an error.
-     * @private
-     */
-    private checkError(response: ApiResponseBase): boolean {
-        this.setError(!response.success && response.message);
-        return !response.success;
+        // Insert an error element, if necessary
+        if (!this.error) {
+            this.root!.prepend(this.error = UIToolkit.div('error-box'));
+        }
+
+        // Figure out the error message
+        let msg = '';
+        if (error instanceof HttpClientError) {
+            // If there's a response, try to parse it
+            if (typeof error.response === 'string') {
+                try {
+                    const resp = JSON.parse(error.response);
+                    msg = resp?.details;
+                } catch (e) {
+                    // Do nothing
+                }
+            }
+
+            // No details, just use the message
+            if (!msg) {
+                msg = error.message;
+            }
+        } else {
+            // TODO put this under "technical details"
+            msg = JSON.stringify(error);
+        }
+
+        // Set error text
+        this.error.inner(`Error: ${msg}.`);
     }
 
     /**
@@ -439,6 +454,15 @@ export class Comentario {
         // Kill any existing editor
         this.cancelCommentEdits();
 
+        const trySubmit = async (editor: CommentEditor) => {
+            this.setError();
+            try {
+                await this.submitNewComment(parentCard, editor.markdown, editor.anonymous);
+            } catch (e) {
+                this.setError(e);
+            }
+        };
+
         // Create a new editor
         this.editor = new CommentEditor(
             parentCard?.children || this.addCommentHost!,
@@ -448,7 +472,7 @@ export class Comentario {
             this.requireIdentification,
             this.anonymousOnly,
             () => this.cancelCommentEdits(),
-            editor => this.submitNewComment(parentCard, editor.markdown, editor.anonymous));
+            trySubmit);
     }
 
     /**
@@ -460,6 +484,15 @@ export class Comentario {
         // Kill any existing editor
         this.cancelCommentEdits();
 
+        const trySubmit = async (editor: CommentEditor) => {
+            this.setError();
+            try {
+                await this.submitCommentEdits(card, editor.markdown);
+            } catch (e) {
+                this.setError(e);
+            }
+        };
+
         // Create a new editor
         this.editor = new CommentEditor(
             card,
@@ -469,7 +502,7 @@ export class Comentario {
             true,
             false,
             () => this.cancelCommentEdits(),
-            editor => this.submitCommentEdits(card, editor.markdown));
+            trySubmit);
     }
 
     /**
@@ -498,9 +531,6 @@ export class Comentario {
                 parentHex,
                 markdown,
             });
-            if (this.checkError(r)) {
-                return;
-            }
 
             // Add a new comment card
             const comment: Comment = {
@@ -549,9 +579,6 @@ export class Comentario {
         const r = await this.apiClient.post<ApiCommentEditResponse>(
             'comment/edit',
             {commenterToken: this.token, commentHex: card.comment.commentHex, markdown});
-        if (this.checkError(r)) {
-            return;
-        }
 
         // Update the locally stored comment's data
         card.comment.markdown = markdown;
@@ -582,9 +609,13 @@ export class Comentario {
      */
     private async signup(name: string, website: string, email: string, password: string): Promise<void> {
         // Sign the user up
-        const r = await this.apiClient.post<ApiResponseBase>('commenter/new', {name, website, email, password});
-        if (this.checkError(r)) {
-            return Promise.reject();
+        try {
+            this.setError();
+            await this.apiClient.post<void>('commenter/new', {name, website, email, password});
+
+        } catch (e) {
+            this.setError(e);
+            throw e;
         }
 
         // Log the user in
@@ -598,9 +629,14 @@ export class Comentario {
      */
     private async authenticateLocally(email: string, password: string): Promise<void> {
         // Log the user in
-        const r = await this.apiClient.post<ApiCommenterLoginResponse>('commenter/login', {email, password});
-        if (this.checkError(r)) {
-            return Promise.reject();
+        let r: ApiCommenterLoginResponse;
+        try {
+            this.setError();
+            r = await this.apiClient.post<ApiCommenterLoginResponse>('commenter/login', {email, password});
+
+        } catch (e) {
+            this.setError(e);
+            throw e;
         }
 
         // Store the authenticated token in a cookie
@@ -623,9 +659,14 @@ export class Comentario {
      */
     private async openOAuthPopup(idp: string): Promise<void> {
         // Request a token
-        const r = await this.apiClient.get<ApiCommenterTokenNewResponse>('commenter/token/new');
-        if (this.checkError(r)) {
-            return this.reject(r.message!);
+        let r: ApiCommenterTokenNewResponse;
+        try {
+            this.setError();
+            r = await this.apiClient.get<ApiCommenterTokenNewResponse>('commenter/token/new');
+
+        } catch (e) {
+            this.setError(e);
+            throw e;
         }
 
         // Store the obtained auth token
@@ -677,15 +718,20 @@ export class Comentario {
      */
     private async loadPageData(): Promise<void> {
         // Retrieve page settings and a comment list from the backend
-        const r = await this.apiClient.post<ApiCommentListResponse>('comment/list', {
-            commenterToken: this.token,
-            domain:         parent.location.host,
-            path:           this.pageId,
-        });
-        if (this.checkError(r)) {
+        let r: ApiCommentListResponse;
+        try {
+            this.setError();
+            r = await this.apiClient.post<ApiCommentListResponse>('comment/list', {
+                commenterToken: this.token,
+                domain:         parent.location.host,
+                path:           this.pageId,
+            });
+
+        } catch (e) {
             // Disable login on error
             this.profileBar!.authMethods = undefined;
-            return this.reject(`Failed to load page data: ${r.message}`);
+            this.setError(e);
+            throw e;
         }
 
         // Store page- and backend-related properties
@@ -740,11 +786,15 @@ export class Comentario {
      */
     private async approveComment(card: CommentCard): Promise<void> {
         // Submit the approval to the backend
-        const r = await this.apiClient.post<ApiResponseBase>(
-            'comment/approve',
-            {commenterToken: this.token, commentHex: card.comment.commentHex});
-        if (this.checkError(r)) {
-            return;
+        try {
+            this.setError();
+            await this.apiClient.post<void>(
+                'comment/approve',
+                {commenterToken: this.token, commentHex: card.comment.commentHex});
+
+        } catch (e) {
+            this.setError(e);
+            throw e;
         }
 
         // Update the comment and card
@@ -758,11 +808,15 @@ export class Comentario {
      */
     private async deleteComment(card: CommentCard): Promise<void> {
         // Run deletion with the backend
-        const r = await this.apiClient.post<ApiResponseBase>(
-            'comment/delete',
-            {commenterToken: this.token, commentHex: card.comment.commentHex});
-        if (this.checkError(r)) {
-            return;
+        try {
+            this.setError();
+            await this.apiClient.post<void>(
+                'comment/delete',
+                {commenterToken: this.token, commentHex: card.comment.commentHex});
+
+        } catch (e) {
+            this.setError(e);
+            throw e;
         }
 
         // Update the comment and card
@@ -799,11 +853,15 @@ export class Comentario {
         }
 
         // Run the vote with the API
-        const r = await this.apiClient.post<ApiResponseBase>(
-            'comment/vote',
-            {commenterToken: this.token, commentHex: card.comment.commentHex, direction});
-        if (this.checkError(r)) {
-            return Promise.reject();
+        try {
+            this.setError();
+            await this.apiClient.post<void>(
+                'comment/vote',
+                {commenterToken: this.token, commentHex: card.comment.commentHex, direction});
+
+        } catch (e) {
+            this.setError(e);
+            throw e;
         }
 
         // Update the vote and the score
@@ -819,13 +877,19 @@ export class Comentario {
      * @private
      */
     private async submitPageAttrs(): Promise<void> {
-        const r = await this.apiClient.post<ApiResponseBase>('page/update', {
-            commenterToken: this.token,
-            domain:         parent.location.host,
-            path:           this.pageId,
-            attributes:     {isLocked: this.isLocked, stickyCommentHex: this.stickyCommentHex},
-        });
-        this.checkError(r);
+        try {
+            this.setError();
+            await this.apiClient.post<void>('page/update', {
+                commenterToken: this.token,
+                domain:         parent.location.host,
+                path:           this.pageId,
+                attributes:     {isLocked: this.isLocked, stickyCommentHex: this.stickyCommentHex},
+            });
+
+        } catch (e) {
+            this.setError(e);
+            throw e;
+        }
     }
 
     /**

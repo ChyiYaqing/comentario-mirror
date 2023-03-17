@@ -2,8 +2,8 @@ package handlers
 
 import (
 	"github.com/go-openapi/runtime/middleware"
-	"gitlab.com/comentario/comentario/internal/api/models"
 	"gitlab.com/comentario/comentario/internal/api/restapi/operations"
+	"gitlab.com/comentario/comentario/internal/data"
 	"gitlab.com/comentario/comentario/internal/svc"
 )
 
@@ -14,16 +14,15 @@ func PageUpdate(params operations.PageUpdateParams) middleware.Responder {
 		return respServiceError(err)
 	}
 
-	// Verify the user is a moderator
-	if isModerator, err := svc.TheDomainService.IsDomainModerator(*params.Body.Domain, commenter.Email); err != nil {
-		return respServiceError(err)
-	} else if !isModerator {
-		return operations.NewGenericForbidden()
+	// Verify the user is a domain moderator
+	domain := data.TrimmedString(params.Body.Domain)
+	if r := Verifier.UserIsDomainModerator(commenter.Email, domain); r != nil {
+		return r
 	}
 
 	// Insert or update the page
 	_, err = svc.ThePageService.UpsertByDomainPath(
-		*params.Body.Domain,
+		domain,
 		params.Body.Path,
 		params.Body.Attributes.IsLocked,
 		params.Body.Attributes.StickyCommentHex)
@@ -32,5 +31,5 @@ func PageUpdate(params operations.PageUpdateParams) middleware.Responder {
 	}
 
 	// Succeeded
-	return operations.NewPageUpdateOK().WithPayload(&models.APIResponseBase{Success: true})
+	return operations.NewPageUpdateNoContent()
 }
