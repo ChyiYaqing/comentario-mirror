@@ -120,9 +120,9 @@ func (svc *commentService) FindByHexID(commentHex models.HexID) (*models.Comment
 
 	// Query the database
 	row := db.QueryRow(
-		"select commentHex, commenterHex, markdown, html, parentHex, score, state, deleted, creationDate "+
+		"select commenthex, commenterhex, markdown, html, parenthex, score, state, deleted, creationdate "+
 			"from comments "+
-			"where commentHex=$1;",
+			"where commenthex=$1;",
 		commentHex)
 
 	// Fetch the comment
@@ -178,13 +178,13 @@ func (svc *commentService) ListWithCommentersByDomainPath(commenterHex models.Co
 		"select " +
 			"c.commenthex, c.commenterhex, c.markdown, c.html, c.parenthex, c.score, c.state, c.deleted, c.creationdate, " +
 			"coalesce(v.direction, 0), " +
-			"coalesce(r.commenterHex, ''), " +
+			"coalesce(r.commenterhex, ''), " +
 			"coalesce(r.email, ''), " +
 			"coalesce(r.name, ''), " +
 			"coalesce(r.link, ''), " +
 			"coalesce(r.photo, ''), " +
 			"coalesce(r.provider, ''), " +
-			"coalesce(r.joinDate, CURRENT_TIMESTAMP) " +
+			"coalesce(r.joindate, CURRENT_TIMESTAMP) " +
 			"from comments c " +
 			"left join votes v on v.commenthex=c.commenthex and v.commenterhex=$1 " +
 			"left join commenters r on r.commenterhex=c.commenterhex " +

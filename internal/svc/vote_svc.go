@@ -25,7 +25,7 @@ func (svc *voteService) DeleteByDomain(domain string) error {
 	logger.Debugf("voteService.DeleteByDomain(%s)", domain)
 
 	// Delete the records in the database
-	if err := db.Exec("delete from votes v using comments c where c.commentHex=v.commentHex and c.domain=$1;", domain); err != nil {
+	if err := db.Exec("delete from votes v using comments c where c.commenthex=v.commenthex and c.domain=$1;", domain); err != nil {
 		logger.Errorf("voteService.DeleteByDomain: Exec() failed: %v", err)
 		return translateDBErrors(err)
 	}
@@ -39,8 +39,8 @@ func (svc *voteService) SetVote(commentHex models.HexID, commenterHex models.Com
 
 	// Upsert a row
 	err := db.Exec(
-		"insert into votes(commentHex, commenterHex, direction, voteDate) values($1, $2, $3, $4) "+
-			"on conflict (commentHex, commenterHex) do update set direction = $3;",
+		"insert into votes(commenthex, commenterhex, direction, votedate) values($1, $2, $3, $4) "+
+			"on conflict (commenthex, commenterhex) do update set direction = $3;",
 		commentHex,
 		commenterHex,
 		direction,

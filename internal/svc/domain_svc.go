@@ -87,7 +87,7 @@ func (svc *domainService) Create(ownerHex models.HexID, name, domain string) (*m
 		OwnerHex:     ownerHex,
 	}
 	err := db.Exec(
-		"insert into domains(ownerHex, name, domain, creationDate) values($1, $2, $3, $4);",
+		"insert into domains(ownerhex, name, domain, creationdate) values($1, $2, $3, $4);",
 		d.OwnerHex, d.Name, d.Domain, d.CreationDate)
 	if err != nil {
 		logger.Errorf("domainService.Create: Exec() failed: %v", err)
@@ -112,7 +112,7 @@ func (svc *domainService) CreateModerator(domain, email string) (*models.DomainM
 		Domain:  domain,
 		Email:   strfmt.Email(email),
 	}
-	err := db.Exec("insert into moderators(domain, email, addDate) values($1, $2, $3);", dm.Domain, dm.Email, dm.AddDate)
+	err := db.Exec("insert into moderators(domain, email, adddate) values($1, $2, $3);", dm.Domain, dm.Email, dm.AddDate)
 	if err != nil {
 		logger.Errorf("domainService.CreateModerator: Exec() failed: %v", err)
 		return nil, translateDBErrors(err)
@@ -170,9 +170,11 @@ func (svc *domainService) Delete(domain string) error {
 
 	// Remove the domain's view stats, moderators, ssotokens
 	err := checkErrors(
-		db.Exec("delete from views where domain=$1;", domain),
-		db.Exec("delete from moderators where domain=$1;", domain),
-		db.Exec("delete from ssotokens where domain=$1;", domain))
+		db.Exec(
+			"delete from views where domain=$1;"+
+				"delete from moderators where domain=$1;"+
+				"delete from ssotokens where domain=$1;",
+			domain))
 	if err != nil {
 		logger.Errorf("domainService.Delete: Exec() failed for dependent object: %v", err)
 		return translateDBErrors(err)
@@ -321,7 +323,7 @@ func (svc *domainService) StatsForComments(domain string) ([]int64, error) {
 
 	// Query the data from the database, grouped by day
 	rows, err := db.Query(
-		"select count(c.creationDate) "+
+		"select count(c.creationdate) "+
 			"from (select to_char(date_trunc('day', (current_date-offs)), 'YYYY-MM-DD') as date from generate_series(0, 30, 1) as offs) d "+
 			"left join comments c on d.date=to_char(date_trunc('day', c.creationdate), 'YYYY-MM-DD') and c.domain=$1 "+
 			"group by d.date "+
@@ -390,10 +392,10 @@ func (svc *domainService) Update(domain *models.Domain) error {
 	// Update the domain
 	err := db.Exec(
 		"update domains "+
-			"set name=$1, state=$2, autoSpamFilter=$3, requireModeration=$4, requireIdentification=$5, "+
-			"moderateAllAnonymous=$6, emailNotificationPolicy=$7, commentoProvider=$8, googleProvider=$9, "+
-			"githubProvider=$10, gitlabProvider=$11, twitterProvider=$12, ssoProvider=$13, ssoUrl=$14, "+
-			"defaultSortPolicy=$15 "+
+			"set name=$1, state=$2, autospamfilter=$3, requiremoderation=$4, requireidentification=$5, "+
+			"moderateallanonymous=$6, emailnotificationpolicy=$7, commentoprovider=$8, googleprovider=$9, "+
+			"githubprovider=$10, gitlabprovider=$11, twitterprovider=$12, ssoprovider=$13, ssourl=$14, "+
+			"defaultsortpolicy=$15 "+
 			"where domain=$16;",
 		domain.Name,
 		domain.State,

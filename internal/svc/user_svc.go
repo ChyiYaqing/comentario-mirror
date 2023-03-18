@@ -134,7 +134,7 @@ func (svc *userService) CreateCommenter(email, name, websiteURL, photoURL, idp, 
 
 	// Insert a commenter record
 	err := db.Exec(
-		"insert into commenters(commenterHex, email, name, link, photo, provider, passwordHash, joinDate) values($1, $2, $3, $4, $5, $6, $7, $8);",
+		"insert into commenters(commenterhex, email, name, link, photo, provider, passwordhash, joindate) values($1, $2, $3, $4, $5, $6, $7, $8);",
 		uc.HexID,
 		uc.Email,
 		uc.Name,
@@ -273,7 +273,7 @@ func (svc *userService) CreateResetToken(userID models.HexID, entity models.Enti
 
 	// Persist the token
 	err = db.Exec(
-		"insert into resetHexes(resetHex, hex, entity, sendDate) values($1, $2, $3, $4);",
+		"insert into resethexes(resethex, hex, entity, senddate) values($1, $2, $3, $4);",
 		token,
 		userID,
 		entity,

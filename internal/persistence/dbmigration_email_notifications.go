@@ -33,7 +33,7 @@ func migrateEmails(db *Database) error {
 		}
 
 		err = db.Exec(
-			"insert into emails(email, unsubscribeSecretHex, lastEmailNotificationDate) values ($1, $2, $3) "+
+			"insert into emails(email, unsubscribesecrethex, lastemailnotificationdate) values ($1, $2, $3) "+
 				"on conflict do nothing;",
 			email,
 			unsubscribeSecretHex,
