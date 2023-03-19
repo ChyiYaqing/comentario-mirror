@@ -13,7 +13,7 @@ type VoteService interface {
 	// DeleteByDomain deletes all votes for the specified domain
 	DeleteByDomain(domain string) error
 	// SetVote inserts or updates a vote for the given comment and commenter
-	SetVote(commentHex models.HexID, commenterHex models.CommenterHexID, direction int) error
+	SetVote(commentHex, commenterHex models.HexID, direction int) error
 }
 
 //----------------------------------------------------------------------------------------------------------------------
@@ -34,7 +34,7 @@ func (svc *voteService) DeleteByDomain(domain string) error {
 	return nil
 }
 
-func (svc *voteService) SetVote(commentHex models.HexID, commenterHex models.CommenterHexID, direction int) error {
+func (svc *voteService) SetVote(commentHex, commenterHex models.HexID, direction int) error {
 	logger.Debugf("voteService.SetVote(%s, %s, %d)", commentHex, commenterHex, direction)
 
 	// Upsert a row

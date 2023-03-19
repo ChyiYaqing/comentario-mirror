@@ -23,7 +23,7 @@ type DomainService interface {
 	// CreateSSOSecret generates a new SSO secret token for the given domain and saves that in the domain properties
 	CreateSSOSecret(domain string) (models.HexID, error)
 	// CreateSSOToken generates, persists, and returns a new SSO token for the given domain and commenter token
-	CreateSSOToken(domain string, commenterToken models.CommenterHexID) (models.HexID, error)
+	CreateSSOToken(domain string, commenterToken models.HexID) (models.HexID, error)
 	// Delete deletes the specified domain
 	Delete(domain string) error
 	// DeleteModerator deletes the specified domain moderator
@@ -38,13 +38,13 @@ type DomainService interface {
 	ListByOwner(ownerHex models.HexID) ([]*models.Domain, error)
 	// RegisterView records a domain view in the database. commenterHex should be "anonymous" for an unauthenticated
 	// viewer
-	RegisterView(domain string, commenterHex models.CommenterHexID) error
+	RegisterView(domain string, commenter *data.UserCommenter) error
 	// StatsForComments collects and returns comment statistics for the given domain
 	StatsForComments(domain string) ([]int64, error)
 	// StatsForViews collects and returns view statistics for the given domain
 	StatsForViews(domain string) ([]int64, error)
 	// TakeSSOToken queries and removes the provided token from the database, returning its domain and commenter token
-	TakeSSOToken(token models.HexID) (string, models.CommenterHexID, error)
+	TakeSSOToken(token models.HexID) (string, models.HexID, error)
 	// Update updates the domain record in the database
 	Update(domain *models.Domain) error
 }
@@ -142,7 +142,7 @@ func (svc *domainService) CreateSSOSecret(domain string) (models.HexID, error) {
 	return token, nil
 }
 
-func (svc *domainService) CreateSSOToken(domain string, commenterToken models.CommenterHexID) (models.HexID, error) {
+func (svc *domainService) CreateSSOToken(domain string, commenterToken models.HexID) (models.HexID, error) {
 	logger.Debugf("domainService.CreateSSOToken(%s, %s)", domain, commenterToken)
 
 	// Generate a new token
@@ -302,13 +302,13 @@ func (svc *domainService) ListByOwner(ownerHex models.HexID) ([]*models.Domain, 
 	}
 }
 
-func (svc *domainService) RegisterView(domain string, commenterHex models.CommenterHexID) error {
-	logger.Debugf("domainService.RegisterView(%s, %s)", domain, commenterHex)
+func (svc *domainService) RegisterView(domain string, commenter *data.UserCommenter) error {
+	logger.Debugf("domainService.RegisterView(%s, [%s])", domain, commenter.HexID)
 
 	// Insert a new view record
 	err := db.Exec(
 		"insert into views(domain, commenterhex, viewdate) values ($1, $2, $3);",
-		domain, commenterHex, time.Now().UTC())
+		domain, fixCommenterHex(commenter.HexID), time.Now().UTC())
 	if err != nil {
 		logger.Warningf("domainService.RegisterView: Exec() failed: %v", err)
 		return translateDBErrors(err)
@@ -370,13 +370,13 @@ func (svc *domainService) StatsForViews(domain string) ([]int64, error) {
 	}
 }
 
-func (svc *domainService) TakeSSOToken(token models.HexID) (string, models.CommenterHexID, error) {
+func (svc *domainService) TakeSSOToken(token models.HexID) (string, models.HexID, error) {
 	logger.Debugf("domainService.TakeSSOToken(%s)", token)
 
 	// Fetch and delete the token
 	row := db.QueryRow("delete from ssotokens where token=$1 returning domain, commentertoken;", token)
 	var domain string
-	var commenterToken models.CommenterHexID
+	var commenterToken models.HexID
 	if err := row.Scan(&domain, &commenterToken); err != nil {
 		logger.Errorf("domainService.TakeSSOToken: Scan() failed: %v", err)
 		return "", "", translateDBErrors(err)

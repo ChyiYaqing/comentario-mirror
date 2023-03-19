@@ -1,5 +1,5 @@
 import { Wrap } from './element-wrap';
-import { Comment, CommenterMap, CommentsGroupedByHex, sortingProps, SortPolicy } from './models';
+import { AnonymousCommenterId, Comment, CommenterMap, CommentsGroupedByHex, sortingProps, SortPolicy } from './models';
 import { UIToolkit } from './ui-toolkit';
 import { Utils } from './utils';
 import { ConfirmDialog } from './confirm-dialog';
@@ -206,33 +206,33 @@ export class CommentCard extends Wrap<HTMLDivElement> {
     private render(ctx: CommentRenderingContext): void {
         const hex = this.comment.commentHex;
         const commenter = ctx.commenters[this.comment.commenterHex];
+        const anonymous = this.comment.commenterHex === AnonymousCommenterId;
 
         // Figure out if the commenter has a profile link
-        const commLink = !commenter.link || commenter.link === 'undefined' || commenter.link === 'https://undefined' ? undefined : commenter.link;
+        const commLink = !commenter.link ? undefined : commenter.link;
 
         // Pick a color for the commenter
-        const idxColor = Utils.colourIndex(`${this.comment.commenterHex}-${commenter.name}`);
+        const bgColor = anonymous ? 'anonymous' : Utils.colourIndex(`${this.comment.commenterHex}-${commenter.name}`);
 
         // Render children
         this.children = UIToolkit.div('card-children').append(...new CommentTree().render(ctx, hex));
 
         // Render a card
         this.id(`card-${hex}`) // ID for scrolling to
-            .classes('card', `border-${idxColor}`)
+            .classes('card', `border-${bgColor}`)
             .append(
                 // Card header
                 this.eHeader = UIToolkit.div('card-header')
                     .append(
                         // Avatar
-                        commenter.photo === 'undefined' ?
-                            UIToolkit.div('avatar', `bg-${idxColor}`)
-                                .html(this.comment.commenterHex === 'anonymous' ? '?' : commenter.name![0].toUpperCase()) :
+                        !anonymous && commenter.photo ?
                             Wrap.new('img')
                                 .classes('avatar-img')
                                 .attr({
                                     src: `${ctx.apiUrl}/commenter/photo?commenterHex=${commenter.commenterHex}`,
                                     alt: '',
-                                }),
+                                }) :
+                            UIToolkit.div('avatar', `bg-${bgColor}`).html(anonymous ? '' : commenter.name![0].toUpperCase()),
                         // Name and subtitle
                         UIToolkit.div('name-container')
                             .append(

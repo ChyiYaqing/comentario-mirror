@@ -182,13 +182,14 @@ func (svc *importExportService) ImportCommento(domain, dataURL string) (int64, e
 	}
 
 	// Check if imported commentedHex or email exists, creating a map of commenterHex (old hex, new hex)
-	commenterHex := map[models.CommenterHexID]models.CommenterHexID{data.AnonymousCommenterHexID: data.AnonymousCommenterHexID}
+	commenterHex := map[models.HexID]models.HexID{data.AnonymousCommenter.HexID: data.AnonymousCommenter.HexID}
 	for _, commenter := range exp.Commenters {
 		// Try to find an existing commenter with the same email
 		if c, err := TheUserService.FindCommenterByIdPEmail("", string(commenter.Email), false); err == nil {
 			// Commenter already exists. Add its hex ID to the map and proceed to the next record
-			commenterHex[commenter.CommenterHex] = c.CommenterHexID()
+			commenterHex[commenter.CommenterHex] = c.HexID
 			continue
+
 		} else if err != ErrNotFound {
 			// Any other error than "not found"
 			return 0, err
@@ -206,7 +207,7 @@ func (svc *importExportService) ImportCommento(domain, dataURL string) (int64, e
 			return 0, err
 		} else {
 			// Save the new commenter's hex ID in the map
-			commenterHex[commenter.CommenterHex] = c.CommenterHexID()
+			commenterHex[commenter.CommenterHex] = c.HexID
 		}
 	}
 
@@ -288,7 +289,7 @@ func (svc *importExportService) ImportDisqus(domain, dataURL string) (int64, err
 
 	// Map Disqus emails to commenterHex (if not available, create a new one with a random password that can be reset
 	// later)
-	commenterHex := map[string]models.CommenterHexID{}
+	commenterHex := map[string]models.HexID{}
 	for _, post := range exp.Posts {
 		if post.IsDeleted || post.IsSpam {
 			continue
@@ -303,7 +304,7 @@ func (svc *importExportService) ImportDisqus(domain, dataURL string) (int64, err
 		// Try to find an existing commenter with this email
 		if c, err := TheUserService.FindCommenterByIdPEmail("", email, false); err == nil {
 			// Commenter already exists. Add its hex ID to the map and proceed to the next record
-			commenterHex[email] = c.CommenterHexID()
+			commenterHex[email] = c.HexID
 			continue
 		} else if err != ErrNotFound {
 			// Any other error than "not found"
@@ -322,7 +323,7 @@ func (svc *importExportService) ImportDisqus(domain, dataURL string) (int64, err
 			return 0, err
 		} else {
 			// Save the new commenter's hex ID in the map
-			commenterHex[email] = c.CommenterHexID()
+			commenterHex[email] = c.HexID
 		}
 	}
 
@@ -336,7 +337,7 @@ func (svc *importExportService) ImportDisqus(domain, dataURL string) (int64, err
 		}
 
 		// Find the commenter hex ID by their email
-		cHex := data.AnonymousCommenterHexID
+		cHex := data.AnonymousCommenter.HexID
 		if !post.Author.IsAnonymous {
 			cHex = commenterHex[fmt.Sprintf("%s@disqus.com", post.Author.Username)]
 		}

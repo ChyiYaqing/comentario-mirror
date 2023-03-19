@@ -1,7 +1,7 @@
 package main
 
 //go:generate rm -rf internal/api/models internal/api/restapi/operations
-//go:generate swagger generate server --exclude-main --name Comentario --target internal/api --spec ./swagger/swagger.yml --principal gitlab.com/comentario/comentario/internal/data.User
+//go:generate swagger generate server --exclude-main --name Comentario --target internal/api --spec ./swagger/swagger.yml --principal gitlab.com/comentario/comentario/internal/data.Principal --principal-is-interface
 
 import (
 	"fmt"

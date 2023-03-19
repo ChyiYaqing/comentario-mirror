@@ -65,7 +65,8 @@ func configureAPI(api *operations.ComentarioAPI) http.Handler {
 	}
 
 	// Set up auth handlers
-	api.OwnerCookieAuth = FindOwnerByCookieHeader
+	api.CommenterTokenHeaderAuth = AuthCommenterByTokenHeader
+	api.OwnerCookieAuth = AuthOwnerByCookieHeader
 
 	// Comment
 	api.CommentApproveHandler = operations.CommentApproveHandlerFunc(handlers.CommentApprove)
@@ -77,6 +78,7 @@ func configureAPI(api *operations.ComentarioAPI) http.Handler {
 	api.CommentVoteHandler = operations.CommentVoteHandlerFunc(handlers.CommentVote)
 	// Commenter
 	api.CommenterLoginHandler = operations.CommenterLoginHandlerFunc(handlers.CommenterLogin)
+	api.CommenterLogoutHandler = operations.CommenterLogoutHandlerFunc(handlers.CommenterLogout)
 	api.CommenterNewHandler = operations.CommenterNewHandlerFunc(handlers.CommenterNew)
 	api.CommenterPhotoHandler = operations.CommenterPhotoHandlerFunc(handlers.CommenterPhoto)
 	api.CommenterSelfHandler = operations.CommenterSelfHandlerFunc(handlers.CommenterSelf)

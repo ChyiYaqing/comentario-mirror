@@ -50,7 +50,7 @@ func OauthInit(params operations.OauthInitParams) middleware.Responder {
 	}
 
 	// Verify the provided commenter token
-	if _, err = svc.TheUserService.FindCommenterByToken(models.CommenterHexID(params.CommenterToken)); err != nil && err != svc.ErrNotFound {
+	if _, err = svc.TheUserService.FindCommenterByToken(models.HexID(params.CommenterToken)); err != nil && err != svc.ErrNotFound {
 		return oauthFailure(err)
 	}
 
@@ -83,7 +83,7 @@ func OauthInit(params operations.OauthInitParams) middleware.Responder {
 	// Succeeded: redirect the user to the federated identity provider, setting the state cookie
 	return NewCookieResponder(operations.NewOauthInitTemporaryRedirect().WithLocation(sessURL)).
 		WithCookie(
-			util.AuthSessionCookieName,
+			util.CookieNameAuthSession,
 			string(sessID),
 			"/",
 			time.Hour, // One hour must be sufficient to complete authentication
@@ -108,7 +108,7 @@ func OauthCallback(params operations.OauthCallbackParams) middleware.Responder {
 	// Obtain the auth session ID from the cookie
 	var sess goth.Session
 	var sessID models.HexID
-	if cookie, err := params.HTTPRequest.Cookie(util.AuthSessionCookieName); err != nil {
+	if cookie, err := params.HTTPRequest.Cookie(util.CookieNameAuthSession); err != nil {
 		logger.Debugf("Auth session cookie error: %v", err)
 		return oauthFailure(errors.New("auth session cookie missing"))
 	} else {
@@ -148,10 +148,10 @@ func OauthCallback(params operations.OauthCallbackParams) middleware.Responder {
 
 	// Obtain the commenter token: if it isn't present in the state param (Twitter doesn't support state), try to find
 	// it in the token store
-	commenterToken := models.CommenterHexID(reqParams.Get("state"))
+	commenterToken := models.HexID(reqParams.Get("state"))
 	if commenterToken == "" {
 		if t, ok := commenterTokens.Take(sessID); ok {
-			commenterToken = models.CommenterHexID(t)
+			commenterToken = models.HexID(t)
 		}
 	}
 	if commenterToken == "" {
@@ -178,10 +178,10 @@ func OauthCallback(params operations.OauthCallbackParams) middleware.Responder {
 	}
 
 	// Now try to find an existing commenter by their email
-	var commenterHex models.CommenterHexID
+	var commenterHex models.HexID
 	if commenter, err := svc.TheUserService.FindCommenterByIdPEmail(params.Provider, fedUser.Email, false); err == nil {
 		// Commenter found
-		commenterHex = commenter.CommenterHexID()
+		commenterHex = commenter.HexID
 
 	} else if err != svc.ErrNotFound {
 		// Any other error than "not found"
@@ -194,7 +194,7 @@ func OauthCallback(params operations.OauthCallbackParams) middleware.Responder {
 		if c, err := svc.TheUserService.CreateCommenter(fedUser.Email, fedUser.Name, "", fedUser.AvatarURL, params.Provider, ""); err != nil {
 			return oauthFailure(err)
 		} else {
-			commenterHex = c.CommenterHexID()
+			commenterHex = c.HexID
 		}
 
 		// Commenter already exists: it's a login. Update commenter's details
@@ -208,7 +208,7 @@ func OauthCallback(params operations.OauthCallbackParams) middleware.Responder {
 	}
 
 	// Succeeded: close the parent window, removing the auth session cookie
-	return NewCookieResponder(closeParentWindowResponse()).WithoutCookie(util.AuthSessionCookieName, "/")
+	return NewCookieResponder(closeParentWindowResponse()).WithoutCookie(util.CookieNameAuthSession, "/")
 }
 
 func OauthSsoInit(params operations.OauthSsoInitParams) middleware.Responder {
@@ -218,7 +218,7 @@ func OauthSsoInit(params operations.OauthSsoInitParams) middleware.Responder {
 	}
 
 	// Try to find the commenter by token
-	commenterToken := models.CommenterHexID(params.CommenterToken)
+	commenterToken := models.HexID(params.CommenterToken)
 	if _, err = svc.TheUserService.FindCommenterByToken(commenterToken); err != nil && err != svc.ErrNotFound {
 		return oauthFailure(err)
 	}
@@ -337,11 +337,11 @@ func OauthSsoCallback(params operations.OauthSsoCallbackParams) middleware.Respo
 	}
 
 	// Now try to find an existing commenter by their email
-	var commenterHex models.CommenterHexID
+	var commenterHex models.HexID
 	idp := "sso:" + domain.Domain
 	if commenter, err := svc.TheUserService.FindCommenterByIdPEmail(idp, payload.Email, false); err == nil {
 		// Commenter found
-		commenterHex = commenter.CommenterHexID()
+		commenterHex = commenter.HexID
 
 	} else if err != svc.ErrNotFound {
 		// Any other error than "not found"
@@ -354,7 +354,7 @@ func OauthSsoCallback(params operations.OauthSsoCallbackParams) middleware.Respo
 		if c, err := svc.TheUserService.CreateCommenter(payload.Email, payload.Name, payload.Link, payload.Photo, idp, ""); err != nil {
 			return oauthFailure(err)
 		} else {
-			commenterHex = c.CommenterHexID()
+			commenterHex = c.HexID
 		}
 
 		// Commenter already exists: it's a login. Update commenter's details
@@ -405,7 +405,7 @@ func oauthFailure(err error) middleware.Responder {
 				</body>
 				</html>`,
 				err.Error()))).
-		WithoutCookie(util.AuthSessionCookieName, "/")
+		WithoutCookie(util.CookieNameAuthSession, "/")
 }
 
 // validateAuthSessionState verifies the session token initially submitted, if any, is matching the one returned with

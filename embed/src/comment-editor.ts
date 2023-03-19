@@ -15,6 +15,7 @@ export class CommentEditor extends Wrap<HTMLFormElement>{
      * @param root Root element (for the markdown help popup).
      * @param isEdit Whether it's adding a new comment (false) or editing an existing one (true).
      * @param initialText Initial text to insert into the editor.
+     * @param isAuthenticated Whether the user is authenticated.
      * @param requireAuth Whether the user must be authenticated in order to add comments (ignored unless isEdit is false).
      * @param anonymousOnly Whether comments can only be added anonymously (ignored unless isEdit and requireAuth are both false).
      * @param onCancel Cancel callback.
@@ -25,6 +26,7 @@ export class CommentEditor extends Wrap<HTMLFormElement>{
         root: Wrap<any>,
         isEdit: boolean,
         initialText: string,
+        isAuthenticated: boolean,
         requireAuth: boolean,
         anonymousOnly: boolean,
         onCancel: CommentEditorCallback,
@@ -34,7 +36,7 @@ export class CommentEditor extends Wrap<HTMLFormElement>{
 
         // "Comment anonymously" checkbox
         let anonContainer: Wrap<any> | undefined;
-        if (!requireAuth && !isEdit) {
+        if (!isAuthenticated && !requireAuth && !isEdit) {
             this.cbAnonymous = Wrap.new('input').id(`anonymous-${Math.random()}`).attr({type: 'checkbox'});
             if (anonymousOnly) {
                 this.cbAnonymous.checked(true).attr({disabled: 'true'});

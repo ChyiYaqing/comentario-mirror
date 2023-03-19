@@ -3,6 +3,7 @@ package handlers
 import (
 	"github.com/go-openapi/runtime/middleware"
 	"gitlab.com/comentario/comentario/internal/api/models"
+	"gitlab.com/comentario/comentario/internal/data"
 	"gitlab.com/comentario/comentario/internal/svc"
 	"gitlab.com/comentario/comentario/internal/util"
 )
@@ -17,6 +18,8 @@ type VerifierService interface {
 	CommenterLocalEmaiUnique(email string) middleware.Responder
 	// OwnerEmaiUnique verifies there's no existing owner user with the given email
 	OwnerEmaiUnique(email string) middleware.Responder
+	// PrincipalIsAuthenticated verifies the given principal is an authenticated one
+	PrincipalIsAuthenticated(principal data.Principal) middleware.Responder
 	// UserIsDomainModerator verifies the owner with the given email is a moderator in the specified domain
 	UserIsDomainModerator(email, domainName string) middleware.Responder
 	// UserOwnsDomain verifies the owner with the given hex ID owns the specified domain
@@ -43,6 +46,13 @@ func (v *verifier) OwnerEmaiUnique(email string) middleware.Responder {
 		return respBadRequest(util.ErrorEmailAlreadyExists)
 	} else if err != svc.ErrNotFound {
 		return respServiceError(err)
+	}
+	return nil
+}
+
+func (v *verifier) PrincipalIsAuthenticated(principal data.Principal) middleware.Responder {
+	if principal.IsAnonymous() {
+		return respUnauthorized(util.ErrorUnauthenticated)
 	}
 	return nil
 }

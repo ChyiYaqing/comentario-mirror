@@ -4,6 +4,7 @@ import (
 	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/op/go-logging"
+	"gitlab.com/comentario/comentario/internal/api/models"
 	"gitlab.com/comentario/comentario/internal/api/restapi/operations"
 	"gitlab.com/comentario/comentario/internal/config"
 	"gitlab.com/comentario/comentario/internal/svc"
@@ -14,6 +15,19 @@ import (
 
 // logger represents a package-wide logger instance
 var logger = logging.MustGetLogger("handlers")
+
+// ExtractOwnerTokenFromCookie extracts an owner token from the corresponding cookie, contained in the given request.
+// Returns an empty string on error
+func ExtractOwnerTokenFromCookie(r *http.Request) models.HexID {
+	// Extract a token from the cookie
+	if cookie, err := r.Cookie(util.CookieNameUserToken); err == nil {
+		// Validate the token
+		if token := models.HexID(cookie.Value); token.Validate(nil) == nil {
+			return token
+		}
+	}
+	return ""
+}
 
 // closeParentWindowResponse returns a responder that renders an HTML script closing the parent window
 func closeParentWindowResponse() middleware.Responder {
@@ -114,8 +128,6 @@ func respServiceError(err error) middleware.Responder {
 	switch err {
 	case svc.ErrNotFound:
 		return operations.NewGenericNotFound()
-	case svc.ErrPageLocked:
-		return respBadRequest(util.ErrorPageLocked)
 	}
 
 	// Not recognised: return an internal error response

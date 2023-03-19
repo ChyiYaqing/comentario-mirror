@@ -79,23 +79,6 @@ func DownloadGzip(dataURL string) ([]byte, error) {
 	}
 }
 
-// FixIdP handles default value (ie. local authentication) for the identity provider. TODO get rid of this
-func FixIdP(idp string) string {
-	// IdP defaults to local
-	if idp == "" {
-		return "commento"
-	}
-	return idp
-}
-
-// FixUndefined returns "undefined" if s is empty. TODO get rid of this
-func FixUndefined(s string) string {
-	if s == "" {
-		return "undefined"
-	}
-	return s
-}
-
 // HTMLDocumentTitle parses and returns the title of an HTML document
 func HTMLDocumentTitle(body io.Reader) (string, error) {
 	// Iterate the body's tokens

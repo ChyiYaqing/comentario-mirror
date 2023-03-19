@@ -49,9 +49,8 @@ func (w *notFoundBypassWriter) Write(p []byte) (int, error) {
 // corsHandler returns a middleware that adds CORS headers to responses
 func corsHandler(next http.Handler) http.Handler {
 	return handlers.CORS(
-		handlers.AllowedOrigins([]string{"*"}),
-		handlers.AllowedHeaders([]string{"Content-Type", "X-Requested-With"}),
-		handlers.AllowedMethods([]string{http.MethodGet, http.MethodPost}))(next)
+		handlers.AllowedHeaders([]string{"Content-Type", "X-Requested-With", util.HeaderCommenterToken}),
+	)(next)
 }
 
 // fallbackHandler returns a middleware that is called in case all other handlers failed
@@ -137,7 +136,7 @@ func redirectToLangRootHandler(next http.Handler) http.Handler {
 	})
 }
 
-// serveFileWithPlaceholders serves out files that contain placeholders, ie. HTML, CSS, and JS files
+// serveFileWithPlaceholders serves out files that contain placeholders, i.e. HTML, CSS, and JS files
 func serveFileWithPlaceholders(filePath string, w http.ResponseWriter) {
 	logger.Debugf("Serving file /%s replacing placeholders", filePath)
 

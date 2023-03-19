@@ -6,8 +6,26 @@ import (
 	"time"
 )
 
-const RootParentHexID = models.ParentHexID("root")                 // The "root" parent hex
-const AnonymousCommenterHexID = models.CommenterHexID("anonymous") // The "anonymous" commenter hex ID or token
+const RootParentHexID = models.ParentHexID("root") // The "root" parent hex
+
+// AnonymousCommenter is a fake, anonymous, commenter instance, which doesn't exist in the database, but is nonetheless
+// referenced by comments ¯\_(ツ)_/¯
+var AnonymousCommenter = UserCommenter{
+	User: User{
+		HexID: "0000000000000000000000000000000000000000000000000000000000000000",
+		Name:  "Anonymous",
+	},
+}
+
+// Principal represents user's identity for the API
+type Principal interface {
+	// GetHexID returns the underlying user's hex ID
+	GetHexID() models.HexID
+	// GetUser returns the underlying User instance
+	GetUser() *User
+	// IsAnonymous returns whether the underlying user is anonymous
+	IsAnonymous() bool
+}
 
 // User is a base user type
 type User struct {
@@ -16,6 +34,18 @@ type User struct {
 	Created      time.Time    // Timestamp when user was created, in UTC
 	Name         string       // User's full name
 	PasswordHash string       // User's hashed password
+}
+
+func (u *User) GetHexID() models.HexID {
+	return u.HexID
+}
+
+func (u *User) GetUser() *User {
+	return u
+}
+
+func (u *User) IsAnonymous() bool {
+	return u.HexID == AnonymousCommenter.HexID
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -48,15 +78,10 @@ type UserCommenter struct {
 	Provider    string // User's federated provider ID
 }
 
-// CommenterHexID returns the ID of the user converted into a CommenterHexID
-func (u *UserCommenter) CommenterHexID() models.CommenterHexID {
-	return models.CommenterHexID(u.HexID)
-}
-
 // ToCommenter converts this user into models.Commenter model
 func (u *UserCommenter) ToCommenter() *models.Commenter {
 	return &models.Commenter{
-		CommenterHex: u.CommenterHexID(),
+		CommenterHex: u.HexID,
 		Email:        strfmt.Email(u.Email),
 		IsModerator:  u.IsModerator,
 		JoinDate:     strfmt.DateTime(u.Created),

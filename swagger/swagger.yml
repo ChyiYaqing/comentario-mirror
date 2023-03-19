@@ -11,6 +11,12 @@ swagger: "2.0"
 basePath: /api
 
 securityDefinitions:
+  # Cookie authentication for commenters
+  commenterTokenHeader:
+    type: apiKey
+    in: header
+    name: X-Commenter-Token
+
   # Cookie authentication for owners. Uses the apiKey type for the lack of a proper cookie-based authentication in
   # Swagger 2
   ownerCookie:
@@ -26,7 +32,7 @@ definitions:
       commentHex:
         $ref: "#/definitions/hexId"
       commenterHex:
-        $ref: "#/definitions/commenterHexId"
+        $ref: "#/definitions/hexId"
       parentHex:
         $ref: "#/definitions/parentHexId"
       domain:
@@ -56,7 +62,7 @@ definitions:
     type: object
     properties:
       commenterHex:
-        $ref: "#/definitions/commenterHexId"
+        $ref: "#/definitions/hexId"
       email:
         type: string
         format: email
@@ -74,12 +80,6 @@ definitions:
       isModerator:
         type: boolean
         x-omitempty: false
-
-  commenterHexId:
-    description: Commenter hex ID/token, which can also be 'anonymous' when commenting anonymously
-    type: string
-    maxLength: 64
-    pattern: 'anonymous|[0-9a-f]{64}'
 
   commentState:
     description: Comment state
@@ -389,6 +389,8 @@ paths:
     post:
       operationId: CommentApprove
       summary: Approve specified unapproved comment
+      security:
+        - commenterTokenHeader: []
       parameters:
         - in: body
           name: body
@@ -396,11 +398,8 @@ paths:
           schema:
             type: object
             required:
-              - commenterToken
               - commentHex
             properties:
-              commenterToken:
-                $ref: "#/definitions/commenterHexId"
               commentHex:
                 $ref: "#/definitions/hexId"
       responses:
@@ -442,6 +441,8 @@ paths:
     post:
       operationId: CommentDelete
       summary: Delete specified comment
+      security:
+        - commenterTokenHeader: []
       parameters:
         - in: body
           name: body
@@ -449,11 +450,8 @@ paths:
           schema:
             type: object
             required:
-              - commenterToken
               - commentHex
             properties:
-              commenterToken:
-                $ref: "#/definitions/commenterHexId"
               commentHex:
                 $ref: "#/definitions/hexId"
       responses:
@@ -463,6 +461,8 @@ paths:
   /comment/edit:
     post:
       operationId: CommentEdit
+      security:
+        - commenterTokenHeader: []
       parameters:
         - in: body
           name: body
@@ -470,12 +470,9 @@ paths:
           schema:
             type: object
             required:
-              - commenterToken
               - commentHex
               - markdown
             properties:
-              commenterToken:
-                $ref: "#/definitions/commenterHexId"
               commentHex:
                 $ref: "#/definitions/hexId"
               markdown:
@@ -493,6 +490,8 @@ paths:
     post:
       operationId: CommentList
       summary: Get a list of comments and commenters for the given domain/path combination
+      security:
+        - commenterTokenHeader: []
       parameters:
         - in: body
           name: body
@@ -500,11 +499,8 @@ paths:
           schema:
             type: object
             required:
-              - commenterToken
               - domain
             properties:
-              commenterToken:
-                $ref: "#/definitions/commenterHexId"
               domain:
                 type: string
                 minLength: 1
@@ -516,8 +512,6 @@ paths:
           schema:
             type: object
             properties:
-              message:
-                type: string
               domain:
                 type: string
               comments:
@@ -549,6 +543,8 @@ paths:
     post:
       operationId: CommentNew
       summary: Add a new comment
+      security:
+        - commenterTokenHeader: []
       parameters:
         - in: body
           name: body
@@ -556,13 +552,10 @@ paths:
           schema:
             type: object
             required:
-              - commenterToken
               - domain
               - parentHex
               - markdown
             properties:
-              commenterToken:
-                $ref: "#/definitions/commenterHexId"
               domain:
                 type: string
               path:
@@ -577,9 +570,9 @@ paths:
           schema:
             type: object
             properties:
-              message:
-                type: string
               commentHex:
+                $ref: "#/definitions/hexId"
+              commenterHex:
                 $ref: "#/definitions/hexId"
               html:
                 type: string
@@ -590,6 +583,8 @@ paths:
     post:
       operationId: CommentVote
       summary: Vote for specified comment
+      security:
+        - commenterTokenHeader: []
       parameters:
         - in: body
           name: body
@@ -597,12 +592,9 @@ paths:
           schema:
             type: object
             required:
-              - commenterToken
               - commentHex
               - direction
             properties:
-              commenterToken:
-                $ref: "#/definitions/commenterHexId"
               commentHex:
                 $ref: "#/definitions/hexId"
               direction:
@@ -646,11 +638,21 @@ paths:
             type: object
             properties:
               commenterToken:
-                $ref: "#/definitions/commenterHexId"
+                $ref: "#/definitions/hexId"
               commenter:
                 $ref: "#/definitions/commenter"
               email:
                 $ref: "#/definitions/email"
+
+  /commenter/logout:
+    post:
+      operationId: CommenterLogout
+      summary: Log the currently signed-in commenter out
+      security:
+        - commenterTokenHeader: []
+      responses:
+        204:
+          description: Logged out successfully
 
   /commenter/new:
     post:
@@ -697,7 +699,9 @@ paths:
           in: query
           type: string
           required: true
+          minLength: 64
           maxLength: 64
+          pattern: '[0-9a-f]{64}'
       responses:
         200:
           description: Success or failure response (see 'success' property)
@@ -708,17 +712,6 @@ paths:
     post:
       operationId: CommenterSelf
       summary: Request commenter's sign-in status and, if the commenter's signed in, their details
-      parameters:
-        - in: body
-          name: body
-          required: true
-          schema:
-            type: object
-            required:
-              - commenterToken
-            properties:
-              commenterToken:
-                $ref: "#/definitions/commenterHexId"
       responses:
         204:
           description: Commenter is not signed in
@@ -733,7 +726,7 @@ paths:
                 $ref: "#/definitions/email"
 
   /commenter/token/new:
-    get:
+    post:
       operationId: CommenterTokenNew
       summary: Request a new anonymous, unique commenter token
       responses:
@@ -743,12 +736,14 @@ paths:
             type: object
             properties:
               commenterToken:
-                $ref: "#/definitions/commenterHexId"
+                $ref: "#/definitions/hexId"
 
   /commenter/update:
     post:
       operationId: CommenterUpdate
       summary: Update commenter details
+      security:
+        - commenterTokenHeader: []
       parameters:
         - in: body
           name: body
@@ -756,12 +751,9 @@ paths:
           schema:
             type: object
             required:
-              - commenterToken
               - name
               - email
             properties:
-              commenterToken:
-                $ref: "#/definitions/commenterHexId"
               name:
                 type: string
                 minLength: 1
@@ -1375,6 +1367,8 @@ paths:
     post:
       operationId: PageUpdate
       summary: Update specified page's properties
+      security:
+        - commenterTokenHeader: []
       parameters:
         - in: body
           name: body
@@ -1382,12 +1376,9 @@ paths:
           schema:
             type: object
             required:
-              - commenterToken
               - domain
               - attributes
             properties:
-              commenterToken:
-                $ref: "#/definitions/commenterHexId"
               domain:
                 type: string
                 minLength: 1
@@ -1420,6 +1411,7 @@ paths:
           required: true
           minLength: 64
           maxLength: 64
+          pattern: '[0-9a-f]{64}'
       responses:
         307:
           $ref: "#/responses/OAuthRedirect"
@@ -1453,6 +1445,7 @@ paths:
           required: true
           minLength: 64
           maxLength: 64
+          pattern: '[0-9a-f]{64}'
       responses:
         307:
           $ref: "#/responses/OAuthRedirect"

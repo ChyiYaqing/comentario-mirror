@@ -49,6 +49,8 @@ export interface SortPolicyProps<T> {
     comparator: ComparatorFunc<T>;
 }
 
+export const AnonymousCommenterId = '0000000000000000000000000000000000000000000000000000000000000000';
+
 export const sortingProps: { [k in SortPolicy]: SortPolicyProps<Comment> } = {
     'score-desc':        {label: 'Upvotes', comparator: (a, b) => b.score - a.score},
     'creationdate-desc': {label: 'Newest',  comparator: (a, b) => a.creationMs! < b.creationMs! ? 1 : -1},

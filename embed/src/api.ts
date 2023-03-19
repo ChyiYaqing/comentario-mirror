@@ -17,9 +17,10 @@ export interface ApiCommentListResponse {
 }
 
 export interface ApiCommentNewResponse {
-    state:      'unapproved' | 'flagged';
-    commentHex: string;
-    html:       string;
+    state:        'unapproved' | 'flagged';
+    commentHex:   string;
+    commenterHex: string;
+    html:         string;
 }
 
 export interface ApiCommentEditResponse {

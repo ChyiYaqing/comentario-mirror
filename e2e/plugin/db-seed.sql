@@ -39,7 +39,7 @@ insert into domains(domain, ownerhex, name, creationdate, state, importedcomment
                     gitlabprovider, ssoprovider, ssosecret, ssourl, defaultsortpolicy)
     values
         ('localhost:8000', '0000000000000000000000000000000000000000000000000000000000000001', 'Test Domain',
-         '2023-01-17 17:56:10.966890', 'unfrozen', 'false', true, false, true, 0, true, 'pending-moderation', true, true,
+         '2023-01-17 17:56:10.966890', 'unfrozen', 'false', true, false, false, 0, false, 'pending-moderation', true, true,
          true, true, true, false, '', '', 'score-desc');
 
 insert into emails(email, unsubscribesecrethex, lastemailnotificationdate, pendingemails, sendreplynotifications, sendmoderatornotifications)

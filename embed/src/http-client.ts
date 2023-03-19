@@ -15,10 +15,11 @@ export class HttpClient {
     /**
      * Run an HTTP POST request to the given endpoint.
      * @param path Endpoint path, relative to the client's baseURl.
+     * @param commenterToken Optional commenter token to set in the request header.
      * @param body Optional request body.
      */
-    post<T>(path: string, body?: any): Promise<T> {
-        return this.request<T>('POST', path, body);
+    post<T>(path: string, commenterToken?: string, body?: any): Promise<T> {
+        return this.request<T>('POST', path, body, commenterToken ? {'X-Commenter-Token': commenterToken} : undefined);
     }
 
     /**
@@ -39,7 +40,7 @@ export class HttpClient {
         return this.baseUrl + (this.baseUrl.endsWith('/') ? '' : '/') + (path.startsWith('/') ? path.substring(1) : path);
     }
 
-    private request<T>(method: 'POST' | 'GET', path: string, body?: any): Promise<T> {
+    private request<T>(method: 'POST' | 'GET', path: string, body?: any, headers?: { [k: string]: string }): Promise<T> {
         return new Promise((resolve, reject) => {
             try {
                 // Prepare an XMLHttpRequest
@@ -47,6 +48,11 @@ export class HttpClient {
                 req.open(method, this.getEndpointUrl(path), true);
                 if (body) {
                     req.setRequestHeader('Content-type', 'application/json');
+                }
+
+                // Add necessary headers
+                if (headers) {
+                    Object.entries(headers).forEach(([k, v]) => req.setRequestHeader(k, v as string));
                 }
 
                 // Resolve or reject the promise on load, based on the return status

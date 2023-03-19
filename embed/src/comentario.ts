@@ -1,5 +1,12 @@
 import { HttpClient, HttpClientError } from './http-client';
-import { Comment, CommenterMap, CommentsGroupedByHex, SortPolicy, StringBooleanMap } from './models';
+import {
+    AnonymousCommenterId,
+    Comment,
+    CommenterMap,
+    CommentsGroupedByHex,
+    SortPolicy,
+    StringBooleanMap
+} from './models';
 import {
     ApiCommentEditResponse,
     ApiCommenterLoginResponse,
@@ -88,10 +95,10 @@ export class Comentario {
     }
 
     /**
-     * Retrieve a token of the authenticated user. If the user isn't authenticated, return 'anonymous'.
+     * Retrieve a token of the authenticated user. If the user isn't authenticated, return the fake anonymous commenter token.
      */
     get token(): string {
-        return `; ${this.doc.cookie}`.split('; comentario_auth_token=').pop()?.split(';').shift() || 'anonymous';
+        return `; ${this.doc.cookie}`.split('; comentario_auth_token=').pop()?.split(';').shift() || AnonymousCommenterId;
     }
 
     /**
@@ -365,13 +372,13 @@ export class Comentario {
 
         // If we're not already (knowingly) anonymous
         const token = this.token;
-        if (token !== 'anonymous') {
+        if (token !== AnonymousCommenterId) {
             // Fetch the status from the backend
             try {
-                const r = await this.apiClient.post<ApiSelfResponse>('commenter/self', {commenterToken: token});
+                const r = await this.apiClient.post<ApiSelfResponse>('commenter/self', token);
                 if (!r.commenter || !r.email) {
                     // Commenter isn't authenticated
-                    this.token = 'anonymous';
+                    this.token = AnonymousCommenterId;
                 } else {
                     // Commenter is authenticated: update the profile bar
                     this.profileBar!.authenticated(r.commenter, r.email, token, () => this.logout());
@@ -469,6 +476,7 @@ export class Comentario {
             this.root!,
             false,
             '',
+            this.isAuthenticated,
             this.requireIdentification,
             this.anonymousOnly,
             () => this.cancelCommentEdits(),
@@ -500,6 +508,7 @@ export class Comentario {
             true,
             card.comment.markdown!,
             true,
+            true,
             false,
             () => this.cancelCommentEdits(),
             trySubmit);
@@ -522,10 +531,8 @@ export class Comentario {
         // If we can proceed: user logged in or that wasn't required
         if (this.isAuthenticated || !auth) {
             // Submit the comment to the backend
-            const commenterToken = this.isAuthenticated ? this.token : 'anonymous';
             const parentHex = parentCard?.comment.commentHex || 'root';
-            const r = await this.apiClient.post<ApiCommentNewResponse>('comment/new', {
-                commenterToken,
+            const r = await this.apiClient.post<ApiCommentNewResponse>('comment/new', this.token, {
                 domain:    parent.location.host,
                 path:      this.pageId,
                 parentHex,
@@ -535,7 +542,7 @@ export class Comentario {
             // Add a new comment card
             const comment: Comment = {
                 commentHex:   r.commentHex,
-                commenterHex: this.selfHex === undefined || commenterToken === 'anonymous' ? 'anonymous' : this.selfHex,
+                commenterHex: r.commenterHex,
                 markdown,
                 html:         r.html,
                 parentHex,
@@ -576,9 +583,7 @@ export class Comentario {
      */
     private async submitCommentEdits(card: CommentCard, markdown: string): Promise<void> {
         // Submit the edit to the backend
-        const r = await this.apiClient.post<ApiCommentEditResponse>(
-            'comment/edit',
-            {commenterToken: this.token, commentHex: card.comment.commentHex, markdown});
+        const r = await this.apiClient.post<ApiCommentEditResponse>('comment/edit', this.token, {commentHex: card.comment.commentHex, markdown});
 
         // Update the locally stored comment's data
         card.comment.markdown = markdown;
@@ -611,7 +616,7 @@ export class Comentario {
         // Sign the user up
         try {
             this.setError();
-            await this.apiClient.post<void>('commenter/new', {name, website, email, password});
+            await this.apiClient.post<void>('commenter/new', undefined, {name, website, email, password});
 
         } catch (e) {
             this.setError(e);
@@ -632,7 +637,7 @@ export class Comentario {
         let r: ApiCommenterLoginResponse;
         try {
             this.setError();
-            r = await this.apiClient.post<ApiCommenterLoginResponse>('commenter/login', {email, password});
+            r = await this.apiClient.post<ApiCommenterLoginResponse>('commenter/login', undefined, {email, password});
 
         } catch (e) {
             this.setError(e);
@@ -662,7 +667,7 @@ export class Comentario {
         let r: ApiCommenterTokenNewResponse;
         try {
             this.setError();
-            r = await this.apiClient.get<ApiCommenterTokenNewResponse>('commenter/token/new');
+            r = await this.apiClient.post<ApiCommenterTokenNewResponse>('commenter/token/new');
 
         } catch (e) {
             this.setError(e);
@@ -707,8 +712,13 @@ export class Comentario {
      * @private
      */
     private async logout(): Promise<void> {
-        this.token = 'anonymous';
+        // Terminate the server session
+        await this.apiClient.post<ApiCommentListResponse>('commenter/logout', this.token);
+        // Wipe the token cookie
+        this.token = AnonymousCommenterId;
+        // Update auth status controls
         await this.getAuthStatus();
+        // Reload the comments and other stuff
         return this.reload();
     }
 
@@ -721,10 +731,9 @@ export class Comentario {
         let r: ApiCommentListResponse;
         try {
             this.setError();
-            r = await this.apiClient.post<ApiCommentListResponse>('comment/list', {
-                commenterToken: this.token,
-                domain:         parent.location.host,
-                path:           this.pageId,
+            r = await this.apiClient.post<ApiCommentListResponse>('comment/list', this.token, {
+                domain: parent.location.host,
+                path:   this.pageId,
             });
 
         } catch (e) {
@@ -788,9 +797,7 @@ export class Comentario {
         // Submit the approval to the backend
         try {
             this.setError();
-            await this.apiClient.post<void>(
-                'comment/approve',
-                {commenterToken: this.token, commentHex: card.comment.commentHex});
+            await this.apiClient.post<void>('comment/approve', this.token, {commentHex: card.comment.commentHex});
 
         } catch (e) {
             this.setError(e);
@@ -810,9 +817,7 @@ export class Comentario {
         // Run deletion with the backend
         try {
             this.setError();
-            await this.apiClient.post<void>(
-                'comment/delete',
-                {commenterToken: this.token, commentHex: card.comment.commentHex});
+            await this.apiClient.post<void>('comment/delete', this.token, {commentHex: card.comment.commentHex});
 
         } catch (e) {
             this.setError(e);
@@ -855,9 +860,7 @@ export class Comentario {
         // Run the vote with the API
         try {
             this.setError();
-            await this.apiClient.post<void>(
-                'comment/vote',
-                {commenterToken: this.token, commentHex: card.comment.commentHex, direction});
+            await this.apiClient.post<void>('comment/vote', this.token, {commentHex: card.comment.commentHex, direction});
 
         } catch (e) {
             this.setError(e);
@@ -879,11 +882,10 @@ export class Comentario {
     private async submitPageAttrs(): Promise<void> {
         try {
             this.setError();
-            await this.apiClient.post<void>('page/update', {
-                commenterToken: this.token,
-                domain:         parent.location.host,
-                path:           this.pageId,
-                attributes:     {isLocked: this.isLocked, stickyCommentHex: this.stickyCommentHex},
+            await this.apiClient.post<void>('page/update', this.token, {
+                domain:     parent.location.host,
+                path:       this.pageId,
+                attributes: {isLocked: this.isLocked, stickyCommentHex: this.stickyCommentHex},
             });
 
         } catch (e) {

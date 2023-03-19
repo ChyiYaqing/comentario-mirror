@@ -16,7 +16,7 @@ type CommentService interface {
 	// Approve sets the status of a comment with the given hex ID to 'approved'
 	Approve(commentHex models.HexID) error
 	// Create creates, persists, and returns a new comment
-	Create(commenterHex models.CommenterHexID, domain, path, markdown string, parentHex models.ParentHexID, state models.CommentState, creationDate strfmt.DateTime) (*models.Comment, error)
+	Create(commenterHex models.HexID, domain, path, markdown string, parentHex models.ParentHexID, state models.CommentState, creationDate strfmt.DateTime) (*models.Comment, error)
 	// DeleteByDomain deletes all comments for the specified domain
 	DeleteByDomain(domain string) error
 	// FindByHexID finds and returns a comment with the given hex ID
@@ -24,10 +24,10 @@ type CommentService interface {
 	// ListByDomain returns a list of all comments for the given domain
 	ListByDomain(domain string) ([]models.Comment, error)
 	// ListWithCommentersByDomainPath returns a list of comments and related commenters for the given domain and path
-	// combination. commenterHex should be "anonymous" for an unauthenticated user
-	ListWithCommentersByDomainPath(commenterHex models.CommenterHexID, domain, path string, isModerator bool) ([]*models.Comment, map[models.CommenterHexID]*models.Commenter, error)
+	// combination. commenter is the current (un)authenticated user
+	ListWithCommentersByDomainPath(commenter *data.UserCommenter, domain, path string) ([]*models.Comment, map[models.HexID]*models.Commenter, error)
 	// MarkDeleted mark a comment with the given hex ID deleted in the database
-	MarkDeleted(commentHex models.HexID, deleterHex models.CommenterHexID) error
+	MarkDeleted(commentHex models.HexID, deleterHex models.HexID) error
 	// UpdateText updates the markdown and the HTML of a comment with the given hex ID in the database
 	UpdateText(commentHex models.HexID, markdown, html string) error
 }
@@ -41,7 +41,7 @@ func (svc *commentService) Approve(commentHex models.HexID) error {
 	logger.Debugf("commentService.Approve(%s)", commentHex)
 
 	// Update the record in the database
-	if err := db.Exec("update comments set state=$1 where commentHex=$2;", models.CommentStateApproved, commentHex); err != nil {
+	if err := db.Exec("update comments set state=$1 where commenthex=$2;", models.CommentStateApproved, commentHex); err != nil {
 		logger.Errorf("commentService.Approve: Exec() failed: %v", err)
 		return translateDBErrors(err)
 	}
@@ -50,19 +50,8 @@ func (svc *commentService) Approve(commentHex models.HexID) error {
 	return nil
 }
 
-func (svc *commentService) Create(commenterHex models.CommenterHexID, domain, path, markdown string, parentHex models.ParentHexID, state models.CommentState, creationDate strfmt.DateTime) (*models.Comment, error) {
-	logger.Debugf("commentService.Create(%s, %s, %s, ...)", commenterHex, domain, path)
-
-	// Fetch the related page
-	page, err := ThePageService.FindByDomainPath(domain, path)
-	if err != nil {
-		return nil, err
-	}
-
-	// Make sure the page isn't locked
-	if page.IsLocked {
-		return nil, ErrPageLocked
-	}
+func (svc *commentService) Create(commenterHex models.HexID, domain, path, markdown string, parentHex models.ParentHexID, state models.CommentState, creationDate strfmt.DateTime) (*models.Comment, error) {
+	logger.Debugf("commentService.Create(%s, %s, %s, ..., %s, %s, ...)", commenterHex, domain, path, parentHex, state)
 
 	// Generate a new comment hex ID
 	commentHex, err := data.RandomHexID()
@@ -93,7 +82,7 @@ func (svc *commentService) Create(commenterHex models.CommenterHexID, domain, pa
 	err = db.Exec(
 		"insert into comments(commentHex, domain, path, commenterHex, parentHex, markdown, html, creationDate, state) "+
 			"values($1, $2, $3, $4, $5, $6, $7, $8, $9);",
-		c.CommentHex, c.Domain, c.URL, c.CommenterHex, c.ParentHex, c.Markdown, c.HTML, c.CreationDate, c.State)
+		c.CommentHex, c.Domain, c.URL, fixCommenterHex(c.CommenterHex), c.ParentHex, c.Markdown, c.HTML, c.CreationDate, c.State)
 	if err != nil {
 		logger.Errorf("commentService.Create: Exec() failed: %v", err)
 		return nil, translateDBErrors(err)
@@ -127,10 +116,14 @@ func (svc *commentService) FindByHexID(commentHex models.HexID) (*models.Comment
 
 	// Fetch the comment
 	var c models.Comment
-	err := row.Scan(&c.CommentHex, &c.CommenterHex, &c.Markdown, &c.HTML, &c.ParentHex, &c.Score, &c.State, &c.Deleted, &c.CreationDate)
+	var crHex string
+	err := row.Scan(&c.CommentHex, &crHex, &c.Markdown, &c.HTML, &c.ParentHex, &c.Score, &c.State, &c.Deleted, &c.CreationDate)
 	if err != nil {
 		return nil, translateDBErrors(err)
 	}
+
+	// Apply necessary conversions
+	c.CommenterHex = unfixCommenterHex(crHex)
 
 	// Succeeded
 	return &c, nil
@@ -153,10 +146,16 @@ func (svc *commentService) ListByDomain(domain string) ([]models.Comment, error)
 	var res []models.Comment
 	for rows.Next() {
 		c := models.Comment{}
-		if err = rows.Scan(&c.CommentHex, &c.Domain, &c.URL, &c.CommenterHex, &c.Markdown, &c.ParentHex, &c.Score, &c.State, &c.CreationDate); err != nil {
+		var crHex string
+		if err = rows.Scan(&c.CommentHex, &c.Domain, &c.URL, &crHex, &c.Markdown, &c.ParentHex, &c.Score, &c.State, &c.CreationDate); err != nil {
 			logger.Errorf("commentService.ListByDomain: rows.Scan() failed: %v", err)
 			return nil, translateDBErrors(err)
 		}
+
+		// Apply necessary conversions
+		c.CommenterHex = unfixCommenterHex(crHex)
+
+		// Add the comment to the list
 		res = append(res, c)
 	}
 
@@ -170,8 +169,8 @@ func (svc *commentService) ListByDomain(domain string) ([]models.Comment, error)
 	return res, nil
 }
 
-func (svc *commentService) ListWithCommentersByDomainPath(commenterHex models.CommenterHexID, domain, path string, isModerator bool) ([]*models.Comment, map[models.CommenterHexID]*models.Commenter, error) {
-	logger.Debugf("commentService.ListWithCommentersByDomainPath(%s, %s, %s, %v)", commenterHex, domain, path, isModerator)
+func (svc *commentService) ListWithCommentersByDomainPath(commenter *data.UserCommenter, domain, path string) ([]*models.Comment, map[models.HexID]*models.Commenter, error) {
+	logger.Debugf("commentService.ListWithCommentersByDomainPath([%s], %s, %s)", commenter.HexID, domain, path)
 
 	// Prepare a query
 	statement :=
@@ -189,14 +188,14 @@ func (svc *commentService) ListWithCommentersByDomainPath(commenterHex models.Co
 			"left join votes v on v.commenthex=c.commenthex and v.commenterhex=$1 " +
 			"left join commenters r on r.commenterhex=c.commenterhex " +
 			"where c.domain=$2 and c.path=$3 and c.deleted=false"
-	params := []any{commenterHex, domain, path}
+	params := []any{commenter.HexID, domain, path}
 
 	// Anonymous commenter: only include approved
-	if commenterHex == data.AnonymousCommenterHexID {
+	if commenter.IsAnonymous() {
 		statement += " and c.state=$4"
 		params = append(params, models.CommentStateApproved)
 
-	} else if !isModerator {
+	} else if !commenter.IsModerator {
 		// Authenticated, non-moderator commenter: show only approved and all own comments
 		statement += " and (c.state=$4 or c.commenterHex=$1)"
 		params = append(params, models.CommentStateApproved)
@@ -212,15 +211,8 @@ func (svc *commentService) ListWithCommentersByDomainPath(commenterHex models.Co
 	defer rs.Close()
 
 	// Prepare commenter map: begin with only the "anonymous" one
-	commenters := map[models.CommenterHexID]*models.Commenter{
-		data.AnonymousCommenterHexID: {
-			CommenterHex: data.AnonymousCommenterHexID,
-			Email:        strfmt.Email(util.FixUndefined("")),
-			Name:         "Anonymous",
-			Link:         util.FixUndefined(""),
-			Photo:        util.FixUndefined(""),
-			Provider:     util.FixIdP(""),
-		},
+	commenters := map[models.HexID]*models.Commenter{
+		data.AnonymousCommenter.HexID: data.AnonymousCommenter.ToCommenter(),
 	}
 
 	// Iterate result rows
@@ -229,9 +221,10 @@ func (svc *commentService) ListWithCommentersByDomainPath(commenterHex models.Co
 		// Fetch the comment and the related commenter
 		comment := models.Comment{}
 		uc := data.UserCommenter{}
+		var crHex, ucWebsiteURL, ucPhotoURL, ucProvider string
 		err := rs.Scan(
 			&comment.CommentHex,
-			&comment.CommenterHex,
+			&crHex,
 			&comment.Markdown,
 			&comment.HTML,
 			&comment.ParentHex,
@@ -243,34 +236,40 @@ func (svc *commentService) ListWithCommentersByDomainPath(commenterHex models.Co
 			&uc.HexID,
 			&uc.Email,
 			&uc.Name,
-			&uc.WebsiteURL,
-			&uc.PhotoURL,
-			&uc.Provider,
+			&ucWebsiteURL,
+			&ucPhotoURL,
+			&ucProvider,
 			&uc.Created)
 		if err != nil {
 			logger.Errorf("commentService.ListWithCommentersByDomainPath: Scan() failed: %v", err)
 			return nil, nil, translateDBErrors(err)
 		}
 
+		// Apply necessary conversions
+		comment.CommenterHex = unfixCommenterHex(crHex)
+		if uc.HexID != "" {
+			uc.WebsiteURL = unfixUndefined(ucWebsiteURL)
+			uc.PhotoURL = unfixUndefined(ucPhotoURL)
+			uc.Provider = unfixIdP(ucProvider)
+
+			// Add the commenter to the map
+			if _, ok := commenters[comment.CommenterHex]; !ok {
+				commenters[comment.CommenterHex] = uc.ToCommenter()
+			}
+		}
+
 		// Do not include the original markdown for anonymous and other commenters, unless it's a moderator
-		if commenterHex == data.AnonymousCommenterHexID || !isModerator && commenterHex != comment.CommenterHex {
+		if uc.IsAnonymous() || !commenter.IsModerator && commenter.HexID != comment.CommenterHex {
 			comment.Markdown = ""
 		}
 
 		// Also, do not report comment state for non-moderators
-		if !isModerator {
+		if !commenter.IsModerator {
 			comment.State = ""
 		}
 
 		// Append the comment to the list
 		comments = append(comments, &comment)
-
-		// Add the commenter, if any, to the map
-		if uc.HexID != "" {
-			if _, ok := commenters[comment.CommenterHex]; !ok {
-				commenters[comment.CommenterHex] = uc.ToCommenter()
-			}
-		}
 	}
 
 	// Check that Next() didn't error
@@ -282,7 +281,7 @@ func (svc *commentService) ListWithCommentersByDomainPath(commenterHex models.Co
 	return comments, commenters, nil
 }
 
-func (svc *commentService) MarkDeleted(commentHex models.HexID, deleterHex models.CommenterHexID) error {
+func (svc *commentService) MarkDeleted(commentHex models.HexID, deleterHex models.HexID) error {
 	logger.Debugf("commentService.MarkDeleted(%s, %s)", commentHex, deleterHex)
 
 	// Update the record in the database

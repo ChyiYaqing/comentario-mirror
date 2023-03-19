@@ -3,6 +3,7 @@ package svc
 import (
 	"database/sql"
 	"errors"
+	"gitlab.com/comentario/comentario/internal/api/models"
 	"testing"
 )
 
@@ -21,6 +22,61 @@ func Test_checkErrors(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if err := checkErrors(tt.errs...); err != tt.wantErr {
 				t.Errorf("checkErrors() error = %v, wantErr = %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func Test_fixCommenterHex(t *testing.T) {
+	tests := []struct {
+		name string
+		id   models.HexID
+		want string
+	}{
+		{"empty", "", ""},
+		{"anonymous", "0000000000000000000000000000000000000000000000000000000000000000", "anonymous"},
+		{"non-anonymous", "0000000000000000000000000000000000000000000000000000000000000001", "0000000000000000000000000000000000000000000000000000000000000001"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := fixCommenterHex(tt.id); got != tt.want {
+				t.Errorf("fixCommenterHex() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_fixIdP(t *testing.T) {
+	tests := []struct {
+		name string
+		idp  string
+		want string
+	}{
+		{"empty", "", "commento"},
+		{"non-empty", "google", "google"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := fixIdP(tt.idp); got != tt.want {
+				t.Errorf("fixIdP() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_fixUndefined(t *testing.T) {
+	tests := []struct {
+		name string
+		s    string
+		want string
+	}{
+		{"empty", "", "undefined"},
+		{"non-empty", "foo", "foo"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := fixUndefined(tt.s); got != tt.want {
+				t.Errorf("fixUndefined() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -45,6 +101,61 @@ func Test_translateError(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if err := translateDBErrors(tt.errs...); err != tt.wantErr {
 				t.Errorf("translateDBErrors() error = %v, wantErr = %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func Test_unfixCommenterHex(t *testing.T) {
+	tests := []struct {
+		name string
+		s    string
+		want models.HexID
+	}{
+		{"empty", "", ""},
+		{"anonymous", "anonymous", "0000000000000000000000000000000000000000000000000000000000000000"},
+		{"non-anonymous", "0000000000000000000000000000000000000000000000000000000000000001", "0000000000000000000000000000000000000000000000000000000000000001"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := unfixCommenterHex(tt.s); got != tt.want {
+				t.Errorf("unfixCommenterHex() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_unfixIdP(t *testing.T) {
+	tests := []struct {
+		name string
+		idp  string
+		want string
+	}{
+		{"commento", "commento", ""},
+		{"non-empty", "google", "google"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := unfixIdP(tt.idp); got != tt.want {
+				t.Errorf("unfixIdP() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_unfixUndefined(t *testing.T) {
+	tests := []struct {
+		name string
+		s    string
+		want string
+	}{
+		{"undefined", "undefined", ""},
+		{"non-empty", "foo", "foo"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := unfixUndefined(tt.s); got != tt.want {
+				t.Errorf("unfixUndefined() = %v, want %v", got, tt.want)
 			}
 		})
 	}

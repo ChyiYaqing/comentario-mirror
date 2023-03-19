@@ -21,7 +21,7 @@ type UserService interface {
 	// CreateCommenter creates and persists a new commenter. If no idp is provided, the local auth provider is assumed
 	CreateCommenter(email, name, websiteURL, photoURL, idp, password string) (*data.UserCommenter, error)
 	// CreateCommenterSession creates and persists a new commenter session record, returning session token
-	CreateCommenterSession(id models.CommenterHexID) (models.CommenterHexID, error)
+	CreateCommenterSession(id models.HexID) (models.HexID, error)
 	// CreateOwner creates and persists a new owner user
 	CreateOwner(email, name, password string) (*data.UserOwner, error)
 	// CreateOwnerConfirmationToken creates, persists, and returns a new owner confirmation token
@@ -30,6 +30,8 @@ type UserService interface {
 	CreateOwnerSession(id models.HexID) (models.HexID, error)
 	// CreateResetToken creates and persists a new password reset token for the user of given kind ('entity') and hex ID
 	CreateResetToken(userID models.HexID, entity models.Entity) (models.HexID, error)
+	// DeleteCommenterSession removes a commenter session by hex ID and token from the database
+	DeleteCommenterSession(id, token models.HexID) error
 	// DeleteOwnerByID removes an owner user by their hex ID
 	DeleteOwnerByID(id models.HexID) error
 	// DeleteResetTokens removes all password reset tokens for the given user
@@ -38,12 +40,12 @@ type UserService interface {
 	// provider (this is a shortcoming of the inherited implementation)
 	FindCommenterByEmail(email string) (*data.UserCommenter, error)
 	// FindCommenterByID finds and returns a commenter user by their hex ID
-	FindCommenterByID(id models.CommenterHexID) (*data.UserCommenter, error)
+	FindCommenterByID(id models.HexID) (*data.UserCommenter, error)
 	// FindCommenterByIdPEmail finds and returns a commenter user by their email and identity provider. If no idp is
 	// provided, the local auth provider (Comentario) is assumed
 	FindCommenterByIdPEmail(idp, email string, readPwdHash bool) (*data.UserCommenter, error)
 	// FindCommenterByToken finds and returns a commenter user by their token
-	FindCommenterByToken(token models.CommenterHexID) (*data.UserCommenter, error)
+	FindCommenterByToken(token models.HexID) (*data.UserCommenter, error)
 	// FindOwnerByEmail finds and returns an owner user by their email
 	FindOwnerByEmail(email string, readPwdHash bool) (*data.UserOwner, error)
 	// FindOwnerByID finds and returns an owner user by their hex ID
@@ -57,9 +59,9 @@ type UserService interface {
 	ResetUserPasswordByToken(token models.HexID, password string) (models.Entity, error)
 	// UpdateCommenter updates the given commenter's data in the database. If no idp is provided, the local auth
 	// provider is assumed
-	UpdateCommenter(commenterHex models.CommenterHexID, email, name, websiteURL, photoURL, idp string) error
+	UpdateCommenter(commenterHex models.HexID, email, name, websiteURL, photoURL, idp string) error
 	// UpdateCommenterSession links a commenter token to the given commenter, by updating the session record
-	UpdateCommenterSession(token, id models.CommenterHexID) error
+	UpdateCommenterSession(token, id models.HexID) error
 }
 
 //----------------------------------------------------------------------------------------------------------------------
@@ -111,9 +113,9 @@ func (svc *userService) CreateCommenter(email, name, websiteURL, photoURL, idp, 
 			Created: time.Now().UTC(),
 			Name:    name,
 		},
-		WebsiteURL: util.FixUndefined(websiteURL),
-		PhotoURL:   util.FixUndefined(photoURL),
-		Provider:   util.FixIdP(idp),
+		WebsiteURL: websiteURL,
+		PhotoURL:   photoURL,
+		Provider:   idp,
 	}
 
 	// Generate a random hex ID
@@ -138,9 +140,9 @@ func (svc *userService) CreateCommenter(email, name, websiteURL, photoURL, idp, 
 		uc.HexID,
 		uc.Email,
 		uc.Name,
-		uc.WebsiteURL,
-		uc.PhotoURL,
-		uc.Provider,
+		fixUndefined(uc.WebsiteURL),
+		fixUndefined(uc.PhotoURL),
+		fixIdP(uc.Provider),
 		uc.PasswordHash,
 		time.Now().UTC())
 	if err != nil {
@@ -152,7 +154,7 @@ func (svc *userService) CreateCommenter(email, name, websiteURL, photoURL, idp, 
 	return &uc, nil
 }
 
-func (svc *userService) CreateCommenterSession(id models.CommenterHexID) (models.CommenterHexID, error) {
+func (svc *userService) CreateCommenterSession(id models.HexID) (models.HexID, error) {
 	logger.Debugf("userService.CreateCommenterSession(%s)", id)
 
 	// Generate a new random token
@@ -172,7 +174,7 @@ func (svc *userService) CreateCommenterSession(id models.CommenterHexID) (models
 	}
 
 	// Succeeded
-	return models.CommenterHexID(token), nil
+	return token, nil
 }
 
 func (svc *userService) CreateOwner(email, name, password string) (*data.UserOwner, error) {
@@ -287,6 +289,19 @@ func (svc *userService) CreateResetToken(userID models.HexID, entity models.Enti
 	return token, nil
 }
 
+func (svc *userService) DeleteCommenterSession(id, token models.HexID) error {
+	logger.Debugf("userService.DeleteCommenterSession(%s, %s)", id, token)
+
+	// Delete the record
+	if err := db.Exec("delete from commentersessions where commenterhex=$1 and commentertoken=$2;", id, token); err != nil {
+		logger.Errorf("userService.DeleteCommenterSession: Exec() failed: %v", err)
+		return translateDBErrors(err)
+	}
+
+	// Succeeded
+	return nil
+}
+
 func (svc *userService) DeleteOwnerByID(id models.HexID) error {
 	logger.Debugf("userService.DeleteOwnerByID(%s)", id)
 
@@ -340,11 +355,11 @@ func (svc *userService) FindCommenterByEmail(email string) (*data.UserCommenter,
 	}
 }
 
-func (svc *userService) FindCommenterByID(id models.CommenterHexID) (*data.UserCommenter, error) {
+func (svc *userService) FindCommenterByID(id models.HexID) (*data.UserCommenter, error) {
 	logger.Debugf("userService.FindCommenterByID(%s)", id)
 
 	// Make sure we don't try to find an "anonymous" commenter
-	if id == data.AnonymousCommenterHexID {
+	if id == data.AnonymousCommenter.HexID {
 		return nil, ErrNotFound
 	}
 
@@ -369,7 +384,7 @@ func (svc *userService) FindCommenterByIdPEmail(idp, email string, readPwdHash b
 		"select commenterhex, email, name, link, photo, provider, joindate, passwordhash "+
 			"from commenters "+
 			"where provider=$1 and email=$2;",
-		util.FixIdP(idp),
+		fixIdP(idp),
 		email)
 
 	// Fetch the commenter user
@@ -380,11 +395,11 @@ func (svc *userService) FindCommenterByIdPEmail(idp, email string, readPwdHash b
 	}
 }
 
-func (svc *userService) FindCommenterByToken(token models.CommenterHexID) (*data.UserCommenter, error) {
+func (svc *userService) FindCommenterByToken(token models.HexID) (*data.UserCommenter, error) {
 	logger.Debugf("userService.FindCommenterByToken(%s)", token)
 
 	// Make sure we don't try to find an "anonymous" commenter
-	if token == data.AnonymousCommenterHexID {
+	if token == data.AnonymousCommenter.HexID {
 		return nil, ErrNotFound
 	}
 
@@ -468,12 +483,20 @@ func (svc *userService) ListCommentersByDomain(domain string) ([]models.Commente
 
 	// Fetch the comments
 	var res []models.Commenter
+	var link, photo, provider string
 	for rows.Next() {
 		r := models.Commenter{}
-		if err = rows.Scan(&r.CommenterHex, &r.Email, &r.Name, &r.Link, &r.Photo, &r.Provider, &r.JoinDate); err != nil {
+		if err = rows.Scan(&r.CommenterHex, &r.Email, &r.Name, &link, &photo, &provider, &r.JoinDate); err != nil {
 			logger.Errorf("commentService.ListCommentersByDomain: rows.Scan() failed: %v", err)
 			return nil, translateDBErrors(err)
 		}
+
+		// Apply necessary conversions
+		r.Link = unfixUndefined(link)
+		r.Photo = unfixUndefined(photo)
+		r.Provider = unfixIdP(provider)
+
+		// Add the commenter to the result
 		res = append(res, r)
 	}
 
@@ -522,7 +545,7 @@ func (svc *userService) ResetUserPasswordByToken(token models.HexID, password st
 
 	// Commenter
 	case models.EntityCommenter:
-		if _, err := svc.FindCommenterByID(models.CommenterHexID(userID)); err != nil {
+		if _, err := svc.FindCommenterByID(userID); err != nil {
 			return "", err
 		} else if err := db.Exec("update commenters set passwordhash=$1 where commenterhex=$2;", string(hash), userID); err != nil {
 			logger.Errorf("userService.ResetUserPasswordByToken: Exec() failed for commenter: %v", err)
@@ -541,13 +564,13 @@ func (svc *userService) ResetUserPasswordByToken(token models.HexID, password st
 	return entity, nil
 }
 
-func (svc *userService) UpdateCommenter(commenterHex models.CommenterHexID, email, name, websiteURL, photoURL, idp string) error {
+func (svc *userService) UpdateCommenter(commenterHex models.HexID, email, name, websiteURL, photoURL, idp string) error {
 	logger.Debugf("userService.UpdateCommenter(%s, %s, %s, %s, %s, %s)", commenterHex, email, name, websiteURL, photoURL, idp)
 
 	// Update the database record
 	err := db.Exec(
 		"update commenters set email=$1, name=$2, link=$3, photo=$4 where commenterhex=$5 and provider=$6;",
-		email, name, util.FixUndefined(websiteURL), util.FixUndefined(photoURL), commenterHex, util.FixIdP(idp))
+		email, name, fixUndefined(websiteURL), fixUndefined(photoURL), commenterHex, fixIdP(idp))
 	if err != nil {
 		logger.Errorf("userService.UpdateCommenter: Exec() failed: %v", err)
 		return translateDBErrors(err)
@@ -557,7 +580,7 @@ func (svc *userService) UpdateCommenter(commenterHex models.CommenterHexID, emai
 	return nil
 }
 
-func (svc *userService) UpdateCommenterSession(token, id models.CommenterHexID) error {
+func (svc *userService) UpdateCommenterSession(token, id models.HexID) error {
 	logger.Debugf("userService.UpdateCommenterSession(%s, %s)", token, id)
 
 	// Update the record
@@ -573,14 +596,21 @@ func (svc *userService) UpdateCommenterSession(token, id models.CommenterHexID) 
 // fetchCommenter returns a new commenter user from the provided database row
 func (svc *userService) fetchCommenter(s util.Scanner, readPwdHash bool) (*data.UserCommenter, error) {
 	u := data.UserCommenter{}
-	var pwdHash string
-	if err := s.Scan(&u.HexID, &u.Email, &u.Name, &u.WebsiteURL, &u.PhotoURL, &u.Provider, &u.Created, &pwdHash); err != nil {
+	var pwdHash, websiteURL, photoURL, provider string
+	if err := s.Scan(&u.HexID, &u.Email, &u.Name, &websiteURL, &photoURL, &provider, &u.Created, &pwdHash); err != nil {
 		// Log "not found" errors only in debug
 		if err != sql.ErrNoRows || logger.IsEnabledFor(logging.DEBUG) {
 			logger.Errorf("userService.fetchCommenter: Scan() failed: %v", err)
 		}
 		return nil, err
 	}
+
+	// Apply necessary conversions
+	u.WebsiteURL = unfixUndefined(websiteURL)
+	u.PhotoURL = unfixUndefined(photoURL)
+	u.Provider = unfixIdP(provider)
+
+	// Copy password hash, if requested
 	if readPwdHash {
 		u.PasswordHash = pwdHash
 	}

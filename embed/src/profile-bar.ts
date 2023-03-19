@@ -48,18 +48,17 @@ export class ProfileBar extends Wrap<HTMLDivElement> {
 
         // Create an avatar element
         const idxColor = Utils.colourIndex(`${commenter.commenterHex}-${commenter.name}`);
-        const avatar = commenter.photo === 'undefined' ?
-            UIToolkit.div('avatar', `bg-${idxColor}`).html(commenter.name![0].toUpperCase()) :
+        const avatar = commenter.photo ?
             Wrap.new('img')
                 .classes('avatar-img')
                 .attr({
                     src: `${this.baseUrl}/api/commenter/photo?commenterHex=${commenter.commenterHex}`,
                     loading: 'lazy',
                     alt: '',
-                });
+                }) :
+            UIToolkit.div('avatar', `bg-${idxColor}`).html(commenter.name![0].toUpperCase());
 
         // Recreate the content
-        const link = !commenter.link || commenter.link === 'undefined' ? undefined : commenter.link;
         this.html('')
             .append(
                 // Commenter avatar and name
@@ -68,10 +67,10 @@ export class ProfileBar extends Wrap<HTMLDivElement> {
                         // Avatar
                         avatar,
                         // Name and link
-                        Wrap.new(link ? 'a' : 'div')
+                        Wrap.new(commenter.link ? 'a' : 'div')
                             .classes('name')
                             .inner(commenter.name!)
-                            .attr({href: link, rel: link && 'nofollow noopener noreferrer'})),
+                            .attr({href: commenter.link, rel: commenter.link && 'nofollow noopener noreferrer'})),
                 // Buttons on the right
                 UIToolkit.div()
                     .append(

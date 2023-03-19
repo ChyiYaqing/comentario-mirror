@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"github.com/go-openapi/runtime/middleware"
-	"github.com/go-openapi/strfmt"
 	"gitlab.com/comentario/comentario/internal/api/models"
 	"gitlab.com/comentario/comentario/internal/api/restapi/operations"
 	"gitlab.com/comentario/comentario/internal/data"
@@ -58,7 +57,7 @@ func EmailModerate(params operations.EmailModerateParams) middleware.Responder {
 			return respServiceError(err)
 		}
 	case "delete":
-		if err := svc.TheCommentService.MarkDeleted(comment.CommentHex, commenter.CommenterHexID()); err != nil {
+		if err := svc.TheCommentService.MarkDeleted(comment.CommentHex, commenter.HexID); err != nil {
 			return respServiceError(err)
 		}
 	default:
@@ -85,26 +84,26 @@ func EmailUpdate(params operations.EmailUpdateParams) middleware.Responder {
 	return operations.NewEmailUpdateNoContent()
 }
 
-func emailNotificationModerator(d *models.Domain, path string, title string, commenterHex models.CommenterHexID, commentHex models.HexID, html string, state models.CommentState) {
-	commenterName := "Anonymous"
-	var commenterEmail strfmt.Email
-	if commenterHex != data.AnonymousCommenterHexID {
-		if commenter, err := svc.TheUserService.FindCommenterByID(commenterHex); err != nil {
+func emailNotificationModerator(d *models.Domain, path string, title string, commenterHex models.HexID, commentHex models.HexID, html string, state models.CommentState) {
+	// Find the related commenter
+	commenter := &data.AnonymousCommenter
+	if commenterHex != data.AnonymousCommenter.HexID {
+		var err error
+		if commenter, err = svc.TheUserService.FindCommenterByID(commenterHex); err != nil {
+			// Failed to retrieve, give up
 			return
-		} else {
-			commenterName = commenter.Name
-			commenterEmail = strfmt.Email(commenter.Email)
 		}
 	}
 
+	// Determine notification kind
 	kind := d.EmailNotificationPolicy
 	if state != models.CommentStateApproved {
 		kind = models.EmailNotificationPolicyPendingDashModeration
 	}
 
 	for _, m := range d.Moderators {
-		// Do not email the commenting moderator their own comment.
-		if commenterEmail != "" && m.Email == commenterEmail {
+		// Do not email the commenting moderator their own comment
+		if commenter.Email != "" && string(m.Email) == commenter.Email {
 			continue
 		}
 
@@ -120,7 +119,7 @@ func emailNotificationModerator(d *models.Domain, path string, title string, com
 			string(kind),
 			d.Domain,
 			path,
-			commenterName,
+			commenter.Name,
 			title,
 			html,
 			commentHex,
@@ -128,7 +127,7 @@ func emailNotificationModerator(d *models.Domain, path string, title string, com
 	}
 }
 
-func emailNotificationReply(d *models.Domain, path string, title string, commenterHex models.CommenterHexID, commentHex models.HexID, html string, parentHex models.HexID) {
+func emailNotificationReply(d *models.Domain, path string, title string, commenterHex, commentHex, parentHex models.HexID, html string) {
 	// Fetch the parent comment
 	parentComment, err := svc.TheCommentService.FindByHexID(parentHex)
 	if err != nil {
@@ -136,7 +135,7 @@ func emailNotificationReply(d *models.Domain, path string, title string, comment
 	}
 
 	// No reply notification emails for anonymous users and self replies
-	if parentComment.CommenterHex == data.AnonymousCommenterHexID || parentComment.CommenterHex == commenterHex {
+	if parentComment.CommenterHex == data.AnonymousCommenter.HexID || parentComment.CommenterHex == commenterHex {
 		return
 	}
 
@@ -146,12 +145,11 @@ func emailNotificationReply(d *models.Domain, path string, title string, comment
 		return
 	}
 
-	commenterName := "Anonymous"
-	if commenterHex != data.AnonymousCommenterHexID {
-		if commenter, err := svc.TheUserService.FindCommenterByID(commenterHex); err != nil {
+	// Find the commenter for the comment in question
+	commenter := &data.AnonymousCommenter
+	if commenterHex != data.AnonymousCommenter.HexID {
+		if commenter, err = svc.TheUserService.FindCommenterByID(commenterHex); err != nil {
 			return
-		} else {
-			commenterName = commenter.Name
 		}
 	}
 
@@ -169,7 +167,7 @@ func emailNotificationReply(d *models.Domain, path string, title string, comment
 			"reply",
 			d.Domain,
 			path,
-			commenterName,
+			commenter.Name,
 			title,
 			html,
 			commentHex,
@@ -201,6 +199,6 @@ func emailNotificationNew(d *models.Domain, c *models.Comment) {
 
 	// If it's a reply and the comment is approved, send out a reply notifications
 	if c.ParentHex != data.RootParentHexID && c.State == models.CommentStateApproved {
-		emailNotificationReply(d, c.URL, page.Title, c.CommenterHex, c.CommentHex, c.HTML, models.HexID(c.ParentHex))
+		emailNotificationReply(d, c.URL, page.Title, c.CommenterHex, c.CommentHex, models.HexID(c.ParentHex), c.HTML)
 	}
 }

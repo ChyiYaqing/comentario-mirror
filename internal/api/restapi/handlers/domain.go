@@ -54,9 +54,9 @@ func DomainDelete(params operations.DomainDeleteParams) middleware.Responder {
 	return operations.NewDomainDeleteNoContent()
 }
 
-func DomainList(_ operations.DomainListParams, user *data.User) middleware.Responder {
+func DomainList(_ operations.DomainListParams, principal data.Principal) middleware.Responder {
 	// Fetch domains by the owner
-	domains, err := svc.TheDomainService.ListByOwner(user.HexID)
+	domains, err := svc.TheDomainService.ListByOwner(principal.GetUser().HexID)
 	if err != nil {
 		return respServiceError(err)
 	}

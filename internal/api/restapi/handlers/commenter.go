@@ -35,7 +35,7 @@ func CommenterLogin(params operations.CommenterLoginParams) middleware.Responder
 	}
 
 	// Create a new commenter session
-	commenterToken, err := svc.TheUserService.CreateCommenterSession(commenter.CommenterHexID())
+	commenterToken, err := svc.TheUserService.CreateCommenterSession(commenter.HexID)
 	if err != nil {
 		return respServiceError(err)
 	}
@@ -52,6 +52,22 @@ func CommenterLogin(params operations.CommenterLoginParams) middleware.Responder
 		CommenterToken: commenterToken,
 		Email:          email,
 	})
+}
+
+func CommenterLogout(params operations.CommenterLogoutParams, principal data.Principal) middleware.Responder {
+	// Verify the commenter is authenticated
+	if r := Verifier.PrincipalIsAuthenticated(principal); r != nil {
+		return r
+	}
+
+	// Extract a commenter token from the corresponding header, if any
+	if token := models.HexID(params.HTTPRequest.Header.Get(util.HeaderCommenterToken)); token.Validate(nil) == nil {
+		// Delete the commenter token, ignoring any error
+		_ = svc.TheUserService.DeleteCommenterSession(principal.GetHexID(), token)
+	}
+
+	// Regardless of whether the above was successful, return a success response
+	return operations.NewCommenterLogoutNoContent()
 }
 
 func CommenterNew(params operations.CommenterNewParams) middleware.Responder {
@@ -74,8 +90,14 @@ func CommenterNew(params operations.CommenterNewParams) middleware.Responder {
 }
 
 func CommenterPhoto(params operations.CommenterPhotoParams) middleware.Responder {
+	// Validate the passed commenter hex ID
+	id := models.HexID(params.CommenterHex)
+	if err := id.Validate(nil); err != nil {
+		return respBadRequest(err)
+	}
+
 	// Find the commenter user
-	commenter, err := svc.TheUserService.FindCommenterByID(models.CommenterHexID(params.CommenterHex))
+	commenter, err := svc.TheUserService.FindCommenterByID(id)
 	if err != nil {
 		return respServiceError(err)
 	}
@@ -121,28 +143,30 @@ func CommenterPhoto(params operations.CommenterPhotoParams) middleware.Responder
 }
 
 func CommenterSelf(params operations.CommenterSelfParams) middleware.Responder {
-	// Find the commenter
-	commenter, err := svc.TheUserService.FindCommenterByToken(*params.Body.CommenterToken)
-	if err == svc.ErrNotFound {
-		// Not logged in or session doesn't exist
-		return operations.NewCommenterSelfNoContent()
+	// Extract a commenter token from the corresponding header, if any
+	if token := models.HexID(params.HTTPRequest.Header.Get(util.HeaderCommenterToken)); token.Validate(nil) == nil {
+		// Find the commenter
+		if commenter, err := svc.TheUserService.FindCommenterByToken(token); err != nil && err != svc.ErrNotFound {
+			// Any error except "not found"
+			return respServiceError(err)
 
-	} else if err != nil {
-		// Any other error
-		return respServiceError(err)
+		} else if err == nil {
+			// Fetch the commenter's email
+			email, err := svc.TheEmailService.FindByEmail(commenter.Email)
+			if err != nil {
+				return respServiceError(err)
+			}
+
+			// Succeeded
+			return operations.NewCommenterSelfOK().WithPayload(&operations.CommenterSelfOKBody{
+				Commenter: commenter.ToCommenter(),
+				Email:     email,
+			})
+		}
 	}
 
-	// Fetch the commenter's email
-	email, err := svc.TheEmailService.FindByEmail(commenter.Email)
-	if err != nil {
-		return respServiceError(err)
-	}
-
-	// Succeeded
-	return operations.NewCommenterSelfOK().WithPayload(&operations.CommenterSelfOKBody{
-		Commenter: commenter.ToCommenter(),
-		Email:     email,
-	})
+	// Not logged in, bad token, commenter is anonymous or doesn't exist
+	return operations.NewCommenterSelfNoContent()
 }
 
 func CommenterTokenNew(operations.CommenterTokenNewParams) middleware.Responder {
@@ -156,21 +180,21 @@ func CommenterTokenNew(operations.CommenterTokenNewParams) middleware.Responder 
 	return operations.NewCommenterTokenNewOK().WithPayload(&operations.CommenterTokenNewOKBody{CommenterToken: token})
 }
 
-func CommenterUpdate(params operations.CommenterUpdateParams) middleware.Responder {
-	// Find the commenter
-	commenter, err := svc.TheUserService.FindCommenterByToken(*params.Body.CommenterToken)
-	if err != nil {
-		return respServiceError(err)
+func CommenterUpdate(params operations.CommenterUpdateParams, principal data.Principal) middleware.Responder {
+	// Verify the commenter is authenticated
+	if r := Verifier.PrincipalIsAuthenticated(principal); r != nil {
+		return r
 	}
+	commenter := principal.(*data.UserCommenter)
 
 	// Only locally authenticated users can be updated
-	if commenter.Provider != "commento" {
+	if commenter.Provider != "" {
 		return respBadRequest(util.ErrorCannotUpdateOauthProfile)
 	}
 
 	// Update the commenter in the database
-	err = svc.TheUserService.UpdateCommenter(
-		commenter.CommenterHexID(),
+	err := svc.TheUserService.UpdateCommenter(
+		commenter.HexID,
 		commenter.Email,
 		data.TrimmedString(params.Body.Name),
 		strings.TrimSpace(params.Body.Link),
