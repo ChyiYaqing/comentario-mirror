@@ -77,12 +77,12 @@ func (svc *commentService) Create(commenterHex models.HexID, domain, path, markd
 		Markdown:     markdown,
 		ParentHex:    parentHex,
 		State:        state,
-		URL:          path,
+		Path:         path,
 	}
 	err = db.Exec(
 		"insert into comments(commentHex, domain, path, commenterHex, parentHex, markdown, html, creationDate, state) "+
 			"values($1, $2, $3, $4, $5, $6, $7, $8, $9);",
-		c.CommentHex, c.Domain, c.URL, fixCommenterHex(c.CommenterHex), c.ParentHex, c.Markdown, c.HTML, c.CreationDate, c.State)
+		c.CommentHex, c.Domain, c.Path, fixCommenterHex(c.CommenterHex), c.ParentHex, c.Markdown, c.HTML, c.CreationDate, c.State)
 	if err != nil {
 		logger.Errorf("commentService.Create: Exec() failed: %v", err)
 		return nil, translateDBErrors(err)
@@ -147,7 +147,7 @@ func (svc *commentService) ListByDomain(domain string) ([]models.Comment, error)
 	for rows.Next() {
 		c := models.Comment{}
 		var crHex string
-		if err = rows.Scan(&c.CommentHex, &c.Domain, &c.URL, &crHex, &c.Markdown, &c.ParentHex, &c.Score, &c.State, &c.CreationDate); err != nil {
+		if err = rows.Scan(&c.CommentHex, &c.Domain, &c.Path, &crHex, &c.Markdown, &c.ParentHex, &c.Score, &c.State, &c.CreationDate); err != nil {
 			logger.Errorf("commentService.ListByDomain: rows.Scan() failed: %v", err)
 			return nil, translateDBErrors(err)
 		}

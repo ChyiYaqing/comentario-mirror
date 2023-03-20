@@ -258,7 +258,7 @@ func OauthSsoInit(params operations.OauthSsoInitParams) middleware.Responder {
 	}
 
 	// Parse the domain's SSO URL
-	ssoURL, err := util.ParseAbsoluteURL(domain.SsoURL)
+	ssoURL, err := util.ParseAbsoluteURL(string(domain.SsoURL))
 	if err != nil {
 		// this should really not be happening; we're checking if the passed URL is valid at domain update
 		logger.Errorf("OauthSsoInit: failed to parse SSO URL: %v", err)

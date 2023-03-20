@@ -2,6 +2,7 @@ package svc
 
 import (
 	"database/sql"
+	"github.com/go-openapi/strfmt"
 	"github.com/op/go-logging"
 	"gitlab.com/comentario/comentario/internal/api/models"
 	"gitlab.com/comentario/comentario/internal/config"
@@ -492,8 +493,8 @@ func (svc *userService) ListCommentersByDomain(domain string) ([]models.Commente
 		}
 
 		// Apply necessary conversions
-		r.Link = unfixUndefined(link)
-		r.Photo = unfixUndefined(photo)
+		r.WebsiteURL = strfmt.URI(unfixUndefined(link))
+		r.AvatarURL = strfmt.URI(unfixUndefined(photo))
 		r.Provider = unfixIdP(provider)
 
 		// Add the commenter to the result

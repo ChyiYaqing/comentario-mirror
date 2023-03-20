@@ -35,6 +35,37 @@ func TestHTMLDocumentTitle(t *testing.T) {
 	}
 }
 
+func TestIsValidURL(t *testing.T) {
+	tests := []struct {
+		name string
+		s    string
+		want bool
+	}{
+		{"empty             ", "", false},
+		{"root path         ", "/", false},
+		{"path only         ", "/path", false},
+		{"path#             ", "/path#foo", false},
+		{"schemaless        ", "//example.org/path#foo", false},
+		{"ftp URL root      ", "ftp://example.org/path#foo", false},
+		{"ftp URL path      ", "ftp://example.org/path", false},
+		{"ftp URL path#     ", "ftp://example.org/path#foo", false},
+		{"http URL root     ", "http://example.org/path#foo", true},
+		{"http URL path     ", "http://example.org/path", true},
+		{"http URL path,#   ", "http://example.org/path#foo", true},
+		{"http URL path,?,# ", "http://example.org/path?param=value&x=42#foo", true},
+		{"https URL root    ", "https://example.org/path#foo", true},
+		{"https URL path    ", "https://example.org/path", true},
+		{"https URL path,?,#", "https://example.org/path?param=value&x=42#foo", true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := IsValidURL(tt.s); got != tt.want {
+				t.Errorf("IsValidURL() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestIsValidEmail(t *testing.T) {
 	tests := []struct {
 		s    string

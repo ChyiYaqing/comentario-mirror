@@ -3,6 +3,7 @@
 textarea,
 input[type=text],
 input[type=email],
+input[type=url],
 input[type=password] {
     background-color: $white;
     border: 1px solid rgba(50, 50, 93, .1);

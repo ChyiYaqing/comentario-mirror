@@ -16,7 +16,6 @@ import (
 	"image/draw"
 	"io"
 	"net/http"
-	"strings"
 	"time"
 )
 
@@ -73,7 +72,7 @@ func CommenterLogout(params operations.CommenterLogoutParams, principal data.Pri
 func CommenterNew(params operations.CommenterNewParams) middleware.Responder {
 	email := data.EmailToString(params.Body.Email)
 	name := data.TrimmedString(params.Body.Name)
-	website := strings.TrimSpace(params.Body.Website)
+	website := string(params.Body.WebsiteURL)
 
 	// Since the local authentication is used, verify the email is unique
 	if r := Verifier.CommenterLocalEmaiUnique(email); r != nil {
@@ -197,8 +196,8 @@ func CommenterUpdate(params operations.CommenterUpdateParams, principal data.Pri
 		commenter.HexID,
 		commenter.Email,
 		data.TrimmedString(params.Body.Name),
-		strings.TrimSpace(params.Body.Link),
-		strings.TrimSpace(params.Body.Photo),
+		string(params.Body.WebsiteURL),
+		string(params.Body.AvatarURL),
 		commenter.Provider)
 	if err != nil {
 		return respServiceError(err)

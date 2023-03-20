@@ -177,7 +177,7 @@ func emailNotificationReply(d *models.Domain, path string, title string, comment
 
 func emailNotificationNew(d *models.Domain, c *models.Comment) {
 	// Fetch the page
-	page, err := svc.ThePageService.FindByDomainPath(d.Domain, c.URL)
+	page, err := svc.ThePageService.FindByDomainPath(d.Domain, c.Path)
 	if err != nil {
 		logger.Errorf("cannot get page to send email notification: %v", err)
 		return
@@ -185,7 +185,7 @@ func emailNotificationNew(d *models.Domain, c *models.Comment) {
 
 	// If the page has no title, try to fetch it
 	if page.Title == "" {
-		if page.Title, err = svc.ThePageService.UpdateTitleByDomainPath(d.Domain, c.URL); err != nil {
+		if page.Title, err = svc.ThePageService.UpdateTitleByDomainPath(d.Domain, c.Path); err != nil {
 			// Failed, just use the domain name
 			page.Title = d.Domain
 		}
@@ -194,11 +194,11 @@ func emailNotificationNew(d *models.Domain, c *models.Comment) {
 	// Send an email notification to moderators, if we notify about every comment or comments pending moderation and
 	// the comment isn't approved yet
 	if d.EmailNotificationPolicy == models.EmailNotificationPolicyAll || d.EmailNotificationPolicy == models.EmailNotificationPolicyPendingDashModeration && c.State != models.CommentStateApproved {
-		emailNotificationModerator(d, c.URL, page.Title, c.CommenterHex, c.CommentHex, c.HTML, c.State)
+		emailNotificationModerator(d, c.Path, page.Title, c.CommenterHex, c.CommentHex, c.HTML, c.State)
 	}
 
 	// If it's a reply and the comment is approved, send out a reply notifications
 	if c.ParentHex != data.RootParentHexID && c.State == models.CommentStateApproved {
-		emailNotificationReply(d, c.URL, page.Title, c.CommenterHex, c.CommentHex, models.HexID(c.ParentHex), c.HTML)
+		emailNotificationReply(d, c.Path, page.Title, c.CommenterHex, c.CommentHex, models.HexID(c.ParentHex), c.HTML)
 	}
 }

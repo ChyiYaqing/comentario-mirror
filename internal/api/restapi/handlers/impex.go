@@ -64,7 +64,7 @@ func DomainImportCommento(params operations.DomainImportCommentoParams) middlewa
 	}
 
 	// Perform import
-	count, err := svc.TheImportExportService.ImportCommento(domain, *params.Body.URL)
+	count, err := svc.TheImportExportService.ImportCommento(domain, data.URIToString(params.Body.URL))
 	if err != nil {
 		return respServiceError(err)
 	}
@@ -86,7 +86,7 @@ func DomainImportDisqus(params operations.DomainImportDisqusParams) middleware.R
 	}
 
 	// Perform import
-	count, err := svc.TheImportExportService.ImportDisqus(domain, *params.Body.URL)
+	count, err := svc.TheImportExportService.ImportDisqus(domain, data.URIToString(params.Body.URL))
 	if err != nil {
 		return respServiceError(err)
 	}

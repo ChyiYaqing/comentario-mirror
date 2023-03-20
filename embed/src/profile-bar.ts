@@ -1,12 +1,14 @@
 import { Wrap } from './element-wrap';
 import { UIToolkit } from './ui-toolkit';
-import { Commenter, Email, StringBooleanMap } from './models';
+import { Commenter, CommenterSettings, Email, SignupData, StringBooleanMap } from './models';
 import { Utils } from './utils';
 import { LoginDialog } from './login-dialog';
 import { SignupDialog } from './signup-dialog';
+import { SettingsDialog } from './settings-dialog';
 
 export class ProfileBar extends Wrap<HTMLDivElement> {
 
+    private btnSettings?: Wrap<HTMLAnchorElement>;
     private btnLogin?: Wrap<HTMLButtonElement>;
     private _authMethods?: StringBooleanMap;
 
@@ -16,13 +18,15 @@ export class ProfileBar extends Wrap<HTMLDivElement> {
      * @param onLocalAuth Callback for executing a local authentication.
      * @param onOAuth Callback for executing external (OAuth) authentication.
      * @param onSignup Callback for executing user registration.
+     * @param onSaveSettings Callback for saving user profile settings.
      */
     constructor(
         private readonly baseUrl: string,
         private readonly root: Wrap<any>,
         private readonly onLocalAuth: (email: string, password: string) => Promise<void>,
         private readonly onOAuth: (idp: string) => Promise<void>,
-        private readonly onSignup: (name: string, website: string, email: string, password: string) => Promise<void>,
+        private readonly onSignup: (data: SignupData) => Promise<void>,
+        private readonly onSaveSettings: (data: CommenterSettings) => Promise<void>,
     ) {
         super(UIToolkit.div('profile-bar').element);
     }
@@ -48,7 +52,7 @@ export class ProfileBar extends Wrap<HTMLDivElement> {
 
         // Create an avatar element
         const idxColor = Utils.colourIndex(`${commenter.commenterHex}-${commenter.name}`);
-        const avatar = commenter.photo ?
+        const avatar = commenter.avatarUrl ?
             Wrap.new('img')
                 .classes('avatar-img')
                 .attr({
@@ -67,26 +71,24 @@ export class ProfileBar extends Wrap<HTMLDivElement> {
                         // Avatar
                         avatar,
                         // Name and link
-                        Wrap.new(commenter.link ? 'a' : 'div')
+                        Wrap.new(commenter.websiteUrl ? 'a' : 'div')
                             .classes('name')
                             .inner(commenter.name!)
-                            .attr({href: commenter.link, rel: commenter.link && 'nofollow noopener noreferrer'})),
+                            .attr({
+                                href: commenter.websiteUrl,
+                                rel:  commenter.websiteUrl && 'nofollow noopener noreferrer',
+                            })),
                 // Buttons on the right
                 UIToolkit.div()
                     .append(
-                        // If it's a local user, add a Profile link
-                        commenter.provider === 'commento' &&
-                        Wrap.new('a')
+                        // Settings link
+                        this.btnSettings = Wrap.new('a')
                             .classes('profile-link')
-                            .inner('Profile')
-                            .attr({href: `${this.baseUrl}/profile?commenterToken=${token}`, target: '_blank'}),
-                        // Notifications link
-                        Wrap.new('a')
-                            .classes('profile-link')
-                            .inner('Notifications')
-                            .attr({
-                                href: `${this.baseUrl}/unsubscribe?unsubscribeSecretHex=${email.unsubscribeSecretHex}`,
-                                target: '_blank',
+                            .inner('Settings')
+                            .click((_, e) => {
+                                // Prevent the page from being reloaded because of the empty href
+                                e.preventDefault();
+                                return this.editSettings(commenter);
                             }),
                         // Logout link
                         Wrap.new('a')
@@ -151,6 +153,18 @@ export class ProfileBar extends Wrap<HTMLDivElement> {
      */
     async signupUser(): Promise<void> {
         const dlg = await SignupDialog.run(this.root, {ref: this.btnLogin!, placement: 'bottom-end'});
-        return void dlg.confirmed && await this.onSignup(dlg.name, dlg.website, dlg.email, dlg.password);
+        if (dlg.confirmed) {
+            await this.onSignup(dlg.data);
+        }
+    }
+
+    /**
+     * Show the settings dialog and return a promise that's resolved when the dialog is closed.
+     */
+    async editSettings(commenter: Commenter): Promise<void> {
+        const dlg = await SettingsDialog.run(this.root, {ref: this.btnSettings!, placement: 'bottom-end'}, commenter);
+        if (dlg.confirmed) {
+            await this.onSaveSettings(dlg.data);
+        }
     }
 }

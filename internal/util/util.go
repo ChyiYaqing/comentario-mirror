@@ -129,6 +129,12 @@ func HTMLTitleFromURL(url string) (string, error) {
 	return HTMLDocumentTitle(resp.Body)
 }
 
+// IsValidURL returns whether the passed string is a valid absolute URL
+func IsValidURL(s string) bool {
+	_, err := ParseAbsoluteURL(s)
+	return err == nil
+}
+
 // IsValidEmail returns whether the passed string is a valid email address
 func IsValidEmail(s string) bool {
 	// First validate the part before the '@'

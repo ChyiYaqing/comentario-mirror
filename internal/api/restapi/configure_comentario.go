@@ -53,6 +53,10 @@ func configureAPI(api *operations.ComentarioAPI) http.Handler {
 	eml := strfmt.Email("")
 	api.Formats().Add("email", &eml, util.IsValidEmail)
 
+	// Validate URI as an absolute URL
+	uri := strfmt.URI("")
+	api.Formats().Add("uri", &uri, util.IsValidURL)
+
 	// Update the config based on the CLI flags
 	if err := config.CLIParsed(); err != nil {
 		logger.Fatalf("Failed to process configuration: %v", err)

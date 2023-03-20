@@ -20,9 +20,10 @@ export interface Comment {
 
 export interface Commenter {
     readonly commenterHex?: string;
+    readonly email?:        string;
     readonly name?:         string;
-    readonly link?:         string;
-    readonly photo?:        string;
+    readonly websiteUrl?:   string;
+    readonly avatarUrl?:    string;
     readonly provider?:     string;
     readonly joinDate?:     string;
     readonly isModerator?:  boolean;
@@ -47,6 +48,20 @@ export type SortPolicy = 'score-desc' | 'creationdate-desc' | 'creationdate-asc'
 export interface SortPolicyProps<T> {
     label:      string;
     comparator: ComparatorFunc<T>;
+}
+
+export interface SignupData {
+    email:       string;
+    name:        string;
+    password:    string;
+    websiteUrl?: string;
+}
+
+export interface CommenterSettings {
+    email:       string;
+    name:        string;
+    websiteUrl?: string;
+    avatarUrl?:  string;
 }
 
 export const AnonymousCommenterId = '0000000000000000000000000000000000000000000000000000000000000000';

@@ -67,3 +67,22 @@ func TestTrimmedString(t *testing.T) {
 		})
 	}
 }
+
+func TestURIToString(t *testing.T) {
+	v := strfmt.URI("https://ouch.org")
+	tests := []struct {
+		name string
+		v    *strfmt.URI
+		want string
+	}{
+		{"nil  ", nil, ""},
+		{"value", &v, "https://ouch.org"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := URIToString(tt.v); got != tt.want {
+				t.Errorf("URIToString() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

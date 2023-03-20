@@ -203,7 +203,7 @@ func (svc *importExportService) ImportCommento(domain, dataURL string) (int64, e
 		}
 
 		// Persist a new commenter instance
-		if c, err := TheUserService.CreateCommenter(string(commenter.Email), commenter.Name, commenter.Link, commenter.Photo, "", string(randomPassword)); err != nil {
+		if c, err := TheUserService.CreateCommenter(string(commenter.Email), commenter.Name, string(commenter.WebsiteURL), string(commenter.AvatarURL), "", string(randomPassword)); err != nil {
 			return 0, err
 		} else {
 			// Save the new commenter's hex ID in the map
@@ -238,7 +238,7 @@ func (svc *importExportService) ImportCommento(domain, dataURL string) (int64, e
 			}
 
 			// Add a new comment record
-			newComment, err := TheCommentService.Create(cHex, domain, comment.URL, comment.Markdown, parentHex, comment.State, comment.CreationDate)
+			newComment, err := TheCommentService.Create(cHex, domain, comment.Path, comment.Markdown, parentHex, comment.State, comment.CreationDate)
 			if err != nil {
 				return count, err
 			}

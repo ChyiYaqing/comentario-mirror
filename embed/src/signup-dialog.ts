@@ -1,6 +1,7 @@
 import { Wrap } from './element-wrap';
 import { UIToolkit } from './ui-toolkit';
 import { Dialog, DialogPositioning } from './dialog';
+import { SignupData } from './models';
 
 export class SignupDialog extends Dialog {
 
@@ -24,50 +25,35 @@ export class SignupDialog extends Dialog {
     }
 
     /**
-     * Entered name.
+     * Entered data.
      */
-    get name(): string {
-        return this._name?.val || '';
-    }
-
-    /**
-     * Entered website.
-     */
-    get website(): string {
-        return this._website?.val || '';
-    }
-
-    /**
-     * Entered email.
-     */
-    get email(): string {
-        return this._email?.val || '';
-    }
-
-    /**
-     * Entered password.
-     */
-    get password(): string {
-        return this._pwd?.val || '';
+    get data(): SignupData {
+        return {
+            email:      this._email?.val   || '',
+            name:       this._name?.val    || '',
+            password:   this._pwd?.val     || '',
+            websiteUrl: this._website?.val || '',
+        };
     }
 
     override renderContent(): Wrap<any> {
         // Create inputs
-        this._name    = UIToolkit.input('name',     'text',     'Real name',          'name', true);
-        this._website = UIToolkit.input('website',  'text',     'Website (optional)', 'url');
         this._email   = UIToolkit.input('email',    'email',    'Email address',      'email', true);
+        this._name    = UIToolkit.input('name',     'text',     'Real name',          'name', true);
         this._pwd     = UIToolkit.input('password', 'password', 'Password',           'current-password', true);
+        this._website = UIToolkit.input('website',  'url',      'Website (optional)', 'url');
 
         // Add the inputs to a new form
         return UIToolkit.form(() => this.dismiss(true), () => this.dismiss())
             .append(
-                UIToolkit.div('input-group').append(this._name),
-                UIToolkit.div('input-group').append(this._website),
                 UIToolkit.div('input-group').append(this._email),
-                UIToolkit.div('input-group').append(this._pwd, UIToolkit.submit('Sign up', true)));
+                UIToolkit.div('input-group').append(this._name),
+                UIToolkit.div('input-group').append(this._pwd),
+                UIToolkit.div('input-group').append(this._website),
+                UIToolkit.div('dialog-centered').append(UIToolkit.submit('Sign up', false)));
     }
 
     override onShow(): void {
-        this._name?.focus();
+        this._email?.focus();
     }
 }

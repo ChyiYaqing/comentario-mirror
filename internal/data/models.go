@@ -85,9 +85,9 @@ func (u *UserCommenter) ToCommenter() *models.Commenter {
 		Email:        strfmt.Email(u.Email),
 		IsModerator:  u.IsModerator,
 		JoinDate:     strfmt.DateTime(u.Created),
-		Link:         u.WebsiteURL,
+		WebsiteURL:   strfmt.URI(u.WebsiteURL),
 		Name:         u.Name,
-		Photo:        u.PhotoURL,
+		AvatarURL:    strfmt.URI(u.PhotoURL),
 		Provider:     u.Provider,
 	}
 }

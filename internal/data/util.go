@@ -29,3 +29,11 @@ func TrimmedString(s *string) string {
 	}
 	return strings.TrimSpace(*s)
 }
+
+// URIToString converts a value of *strfmt.URI into a string
+func URIToString(v *strfmt.URI) string {
+	if v == nil {
+		return ""
+	}
+	return string(*v)
+}

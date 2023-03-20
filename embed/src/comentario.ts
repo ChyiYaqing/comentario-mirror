@@ -2,10 +2,10 @@ import { HttpClient, HttpClientError } from './http-client';
 import {
     AnonymousCommenterId,
     Comment,
-    CommenterMap,
-    CommentsGroupedByHex,
+    CommenterMap, CommenterSettings,
+    CommentsGroupedByHex, SignupData,
     SortPolicy,
-    StringBooleanMap
+    StringBooleanMap,
 } from './models';
 import {
     ApiCommentEditResponse,
@@ -142,7 +142,8 @@ export class Comentario {
                     this.root,
                     (email, password) => this.authenticateLocally(email, password),
                     idp => this.openOAuthPopup(idp),
-                    (name, website, email, password) => this.signup(name, website, email, password)),
+                    data => this.signup(data),
+                    data => this.saveSettings(data)),
                 // Main area
                 this.mainArea = UIToolkit.div('main-area'),
                 // Footer
@@ -607,16 +608,13 @@ export class Comentario {
 
     /**
      * Register the user with the given details and log them in.
-     * @param name User's full name.
-     * @param website User's website.
-     * @param email User's email.
-     * @param password User's password.
+     * @param data User's signup data.
      */
-    private async signup(name: string, website: string, email: string, password: string): Promise<void> {
+    private async signup(data: SignupData): Promise<void> {
         // Sign the user up
         try {
             this.setError();
-            await this.apiClient.post<void>('commenter/new', undefined, {name, website, email, password});
+            await this.apiClient.post<void>('commenter/new', undefined, data);
 
         } catch (e) {
             this.setError(e);
@@ -624,7 +622,7 @@ export class Comentario {
         }
 
         // Log the user in
-        return this.authenticateLocally(email, password);
+        return this.authenticateLocally(data.email, data.password);
     }
 
     /**
@@ -918,5 +916,26 @@ export class Comentario {
             onSticky:        card => this.stickyComment(card),
             onVote:          (card, direction) => this.voteComment(card, direction),
         };
+    }
+
+    /**
+     * Save current commenter's profile settings.
+     * @private
+     */
+    private async saveSettings(data: CommenterSettings) {
+        try {
+            this.setError();
+            await this.apiClient.post<void>('commenter/update', this.token, data);
+
+        } catch (e) {
+            this.setError(e);
+            throw e;
+        }
+
+        // Refresh the auth status and update the profile bar
+        await this.getAuthStatus();
+
+        // Reload all comments to reflect new commenter settings
+        await this.reload();
     }
 }

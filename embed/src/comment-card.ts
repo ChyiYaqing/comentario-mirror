@@ -208,9 +208,6 @@ export class CommentCard extends Wrap<HTMLDivElement> {
         const commenter = ctx.commenters[this.comment.commenterHex];
         const anonymous = this.comment.commenterHex === AnonymousCommenterId;
 
-        // Figure out if the commenter has a profile link
-        const commLink = !commenter.link ? undefined : commenter.link;
-
         // Pick a color for the commenter
         const bgColor = anonymous ? 'anonymous' : Utils.colourIndex(`${this.comment.commenterHex}-${commenter.name}`);
 
@@ -225,7 +222,7 @@ export class CommentCard extends Wrap<HTMLDivElement> {
                 this.eHeader = UIToolkit.div('card-header')
                     .append(
                         // Avatar
-                        !anonymous && commenter.photo ?
+                        !anonymous && commenter.avatarUrl ?
                             Wrap.new('img')
                                 .classes('avatar-img')
                                 .attr({
@@ -237,10 +234,13 @@ export class CommentCard extends Wrap<HTMLDivElement> {
                         UIToolkit.div('name-container')
                             .append(
                                 // Name
-                                this.eName = Wrap.new(commLink ? 'a' : 'div')
+                                this.eName = Wrap.new(commenter.websiteUrl ? 'a' : 'div')
                                     .inner(this.comment.deleted ? '[deleted]' : commenter.name!)
                                     .classes('name', commenter.isModerator && 'moderator')
-                                    .attr({href: commLink, rel: commLink && 'nofollow noopener noreferrer'}),
+                                    .attr({
+                                        href: commenter.websiteUrl,
+                                        rel:  commenter.websiteUrl && 'nofollow noopener noreferrer',
+                                    }),
                                 // Subtitle
                                 UIToolkit.div('subtitle')
                                     // Time ago

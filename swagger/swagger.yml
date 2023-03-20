@@ -55,7 +55,7 @@ definitions:
         type: string
       html:
         type: string
-      url:
+      path:
         type: string
 
   commenter:
@@ -68,10 +68,12 @@ definitions:
         format: email
       name:
         type: string
-      link:
+      websiteUrl:
         type: string
-      photo:
+        format: uri
+      avatarUrl:
         type: string
+        format: uri
       provider:
         type: string
       joinDate:
@@ -131,7 +133,7 @@ definitions:
         type: string
       ssoUrl:
         type: string
-        format: url
+        format: uri
       defaultSortPolicy:
         $ref: "#/definitions/sortPolicy"
 
@@ -665,25 +667,24 @@ paths:
           schema:
             type: object
             required:
-              - name
               - email
+              - name
               - password
             properties:
+              email:
+                type: string
+                format: email
               name:
                 type: string
                 minLength: 1
                 maxLength: 63
-              website:
-                type: string
-                minLength: 1
-                maxLength: 2083
-              email:
-                type: string
-                format: email
               password:
                 type: string
                 minLength: 1
                 maxLength: 63
+              websiteUrl:
+                type: string
+                format: uri
       responses:
         204:
           description: Commenter signed up successfully
@@ -751,24 +752,22 @@ paths:
           schema:
             type: object
             required:
-              - name
               - email
+              - name
             properties:
+              email:
+                type: string
+                format: email
               name:
                 type: string
                 minLength: 1
                 maxLength: 63
-              email:
+              websiteUrl:
                 type: string
-                format: email
-              link:
+                format: uri
+              avatarUrl:
                 type: string
-                minLength: 1
-                maxLength: 2083
-              photo:
-                type: string
-                minLength: 1
-                maxLength: 2083
+                format: uri
       responses:
         204:
           description: Commenter details haven been updated
@@ -894,7 +893,7 @@ paths:
                 maxLength: 253
               url:
                 type: string
-                format: url
+                format: uri
       responses:
         200:
           description: Import completed successfully
@@ -929,7 +928,7 @@ paths:
                 maxLength: 253
               url:
                 type: string
-                format: url
+                format: uri
       responses:
         200:
           description: Import completed successfully
