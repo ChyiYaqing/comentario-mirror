@@ -53,7 +53,8 @@ insert into emails(email, unsubscribesecrethex, lastemailnotificationdate, pendi
 
 insert into moderators(domain, email, adddate)
     values
-        ('localhost:8000', 'root@comentario.app', '2023-01-17 17:56:10.968427');
+        ('localhost:8000', 'root@comentario.app', '2023-01-17 17:56:10.968427'),
+        ('localhost:8000', 'ace@comentario.app', '2023-02-21 12:11:33.329872');
 
 insert into pages(domain, path, islocked, commentcount, stickycommenthex, title)
     values

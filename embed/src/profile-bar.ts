@@ -1,6 +1,6 @@
 import { Wrap } from './element-wrap';
 import { UIToolkit } from './ui-toolkit';
-import { Commenter, CommenterSettings, Email, SignupData, StringBooleanMap } from './models';
+import { Commenter, ProfileSettings, Email, SignupData, StringBooleanMap } from './models';
 import { Utils } from './utils';
 import { LoginDialog } from './login-dialog';
 import { SignupDialog } from './signup-dialog';
@@ -10,6 +10,8 @@ export class ProfileBar extends Wrap<HTMLDivElement> {
 
     private btnSettings?: Wrap<HTMLAnchorElement>;
     private btnLogin?: Wrap<HTMLButtonElement>;
+    private commenter?: Commenter;
+    private email?: Email;
     private _authMethods?: StringBooleanMap;
 
     /**
@@ -26,7 +28,7 @@ export class ProfileBar extends Wrap<HTMLDivElement> {
         private readonly onLocalAuth: (email: string, password: string) => Promise<void>,
         private readonly onOAuth: (idp: string) => Promise<void>,
         private readonly onSignup: (data: SignupData) => Promise<void>,
-        private readonly onSaveSettings: (data: CommenterSettings) => Promise<void>,
+        private readonly onSaveSettings: (data: ProfileSettings) => Promise<void>,
     ) {
         super(UIToolkit.div('profile-bar').element);
     }
@@ -41,6 +43,15 @@ export class ProfileBar extends Wrap<HTMLDivElement> {
     }
 
     /**
+     * Sets whether the currently logged-in commenter is a moderator on this page.
+     */
+    set isModerator(b: boolean) {
+        if (this.commenter) {
+            this.commenter.isModerator = b;
+        }
+    }
+
+    /**
      * Called whenever there's an authenticated user. Sets up the controls related to the current user.
      * @param commenter Currently authenticated user.
      * @param email Email of the commenter.
@@ -49,18 +60,20 @@ export class ProfileBar extends Wrap<HTMLDivElement> {
      */
     authenticated(commenter: Commenter, email: Email, token: string, onLogout: () => void): void {
         this.btnLogin = undefined;
+        this.commenter = commenter;
+        this.email     = email;
 
         // Create an avatar element
-        const idxColor = Utils.colourIndex(`${commenter.commenterHex}-${commenter.name}`);
-        const avatar = commenter.avatarUrl ?
+        const idxColor = Utils.colourIndex(`${this.commenter.commenterHex}-${this.commenter.name}`);
+        const avatar = this.commenter.avatarUrl ?
             Wrap.new('img')
                 .classes('avatar-img')
                 .attr({
-                    src: `${this.baseUrl}/api/commenter/photo?commenterHex=${commenter.commenterHex}`,
+                    src: `${this.baseUrl}/api/commenter/photo?commenterHex=${this.commenter.commenterHex}`,
                     loading: 'lazy',
                     alt: '',
                 }) :
-            UIToolkit.div('avatar', `bg-${idxColor}`).html(commenter.name![0].toUpperCase());
+            UIToolkit.div('avatar', `bg-${idxColor}`).html(this.commenter.name![0].toUpperCase());
 
         // Recreate the content
         this.html('')
@@ -71,12 +84,12 @@ export class ProfileBar extends Wrap<HTMLDivElement> {
                         // Avatar
                         avatar,
                         // Name and link
-                        Wrap.new(commenter.websiteUrl ? 'a' : 'div')
+                        Wrap.new(this.commenter.websiteUrl ? 'a' : 'div')
                             .classes('name')
-                            .inner(commenter.name!)
+                            .inner(this.commenter.name!)
                             .attr({
-                                href: commenter.websiteUrl,
-                                rel:  commenter.websiteUrl && 'nofollow noopener noreferrer',
+                                href: this.commenter.websiteUrl,
+                                rel:  this.commenter.websiteUrl && 'nofollow noopener noreferrer',
                             })),
                 // Buttons on the right
                 UIToolkit.div()
@@ -88,7 +101,7 @@ export class ProfileBar extends Wrap<HTMLDivElement> {
                             .click((_, e) => {
                                 // Prevent the page from being reloaded because of the empty href
                                 e.preventDefault();
-                                return this.editSettings(commenter);
+                                return this.editSettings();
                             }),
                         // Logout link
                         Wrap.new('a')
@@ -161,8 +174,8 @@ export class ProfileBar extends Wrap<HTMLDivElement> {
     /**
      * Show the settings dialog and return a promise that's resolved when the dialog is closed.
      */
-    async editSettings(commenter: Commenter): Promise<void> {
-        const dlg = await SettingsDialog.run(this.root, {ref: this.btnSettings!, placement: 'bottom-end'}, commenter);
+    async editSettings(): Promise<void> {
+        const dlg = await SettingsDialog.run(this.root, {ref: this.btnSettings!, placement: 'bottom-end'}, this.commenter!, this.email!);
         if (dlg.confirmed) {
             await this.onSaveSettings(dlg.data);
         }

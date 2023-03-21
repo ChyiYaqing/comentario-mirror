@@ -63,7 +63,7 @@ func (svc *commentService) Create(commenterHex models.HexID, domain, path, markd
 	html := util.MarkdownToHTML(markdown)
 
 	// Persist a new page record (if necessary)
-	if _, err = ThePageService.UpsertByDomainPath(domain, path, false, ""); err != nil {
+	if err = ThePageService.UpsertByDomainPath(&models.Page{Domain: &domain, Path: path}); err != nil {
 		return nil, err
 	}
 

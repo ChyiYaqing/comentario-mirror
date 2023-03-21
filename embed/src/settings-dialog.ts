@@ -1,7 +1,7 @@
 import { Wrap } from './element-wrap';
 import { UIToolkit } from './ui-toolkit';
 import { Dialog, DialogPositioning } from './dialog';
-import { Commenter, CommenterSettings } from './models';
+import { Commenter, ProfileSettings, Email } from './models';
 
 export class SettingsDialog extends Dialog {
 
@@ -9,31 +9,36 @@ export class SettingsDialog extends Dialog {
     private _website?: Wrap<HTMLInputElement>;
     private _email?: Wrap<HTMLInputElement>;
     private _avatar?: Wrap<HTMLInputElement>;
+    private _cbNotifyModerator?: Wrap<HTMLInputElement>;
+    private _cbNotifyReplies?: Wrap<HTMLInputElement>;
 
-    private constructor(parent: Wrap<any>, pos: DialogPositioning, private readonly commenter: Commenter) {
+    private constructor(parent: Wrap<any>, pos: DialogPositioning, private readonly commenter: Commenter, private readonly email: Email) {
         super(parent, 'Profile settings', pos);
     }
 
     /**
      * Instantiate and show the dialog. Return a promise that resolves as soon as the dialog is closed.
      * @param parent Parent element for the dialog.
-     * @param pos Positioning options..
+     * @param pos Positioning options.
      * @param commenter Commenter whose profile settings are being edited.
+     * @param email Email that defines notification settings.
      */
-    static run(parent: Wrap<any>, pos: DialogPositioning, commenter: Commenter): Promise<SettingsDialog> {
-        const dlg = new SettingsDialog(parent, pos, commenter);
+    static run(parent: Wrap<any>, pos: DialogPositioning, commenter: Commenter, email: Email): Promise<SettingsDialog> {
+        const dlg = new SettingsDialog(parent, pos, commenter, email);
         return dlg.run(dlg);
     }
 
     /**
      * Entered settings.
      */
-    get data(): CommenterSettings {
+    get data(): ProfileSettings {
         return {
-            email:      this._email?.val   || '',
-            name:       this._name?.val    || '',
-            websiteUrl: this._website?.val || '',
-            avatarUrl:  this._avatar?.val  || '',
+            email:           this._email?.val   || '',
+            name:            this._name?.val    || '',
+            websiteUrl:      this._website?.val || '',
+            avatarUrl:       this._avatar?.val  || '',
+            notifyModerator: !!this._cbNotifyModerator?.isChecked,
+            notifyReplies:   !!this._cbNotifyReplies?.isChecked,
         };
     }
 
@@ -56,6 +61,25 @@ export class SettingsDialog extends Dialog {
         return UIToolkit.form(() => this.dismiss(true), () => this.dismiss())
             .append(
                 ...inputs,
+                // Checkboxes
+                UIToolkit.div('checkbox-group').append(
+                    // Moderator notifications checkbox (only if the current commenter is a moderator)
+                    this.commenter.isModerator && UIToolkit.div('checkbox-container')
+                        .append(
+                            this._cbNotifyModerator = Wrap.new('input')
+                                .id('cb-notify-moderator')
+                                .attr({type: 'checkbox'})
+                                .checked(!!this.email.sendModeratorNotifications),
+                            Wrap.new('label').attr({for: this._cbNotifyModerator.getAttr('id')}).inner('Moderator notifications')),
+                    // Reply notifications checkbox
+                    UIToolkit.div('checkbox-container')
+                        .append(
+                            this._cbNotifyReplies = Wrap.new('input')
+                                .id('cb-notify-replies')
+                                .attr({type: 'checkbox'})
+                                .checked(!!this.email.sendReplyNotifications),
+                            Wrap.new('label').attr({for: this._cbNotifyReplies.getAttr('id')}).inner('Reply notifications'))),
+                // Submit button
                 UIToolkit.div('dialog-centered').append(UIToolkit.submit('Save', false)));
     }
 

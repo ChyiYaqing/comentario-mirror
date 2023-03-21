@@ -64,6 +64,24 @@ func Test_fixIdP(t *testing.T) {
 	}
 }
 
+func Test_fixNone(t *testing.T) {
+	tests := []struct {
+		name string
+		id   models.HexID
+		want string
+	}{
+		{"empty", "", "none"},
+		{"non-empty", "foo", "foo"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := fixNone(tt.id); got != tt.want {
+				t.Errorf("fixNone() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func Test_fixUndefined(t *testing.T) {
 	tests := []struct {
 		name string
@@ -138,6 +156,24 @@ func Test_unfixIdP(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := unfixIdP(tt.idp); got != tt.want {
 				t.Errorf("unfixIdP() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_unfixNone(t *testing.T) {
+	tests := []struct {
+		name string
+		s    string
+		want models.HexID
+	}{
+		{"undefined", "none", ""},
+		{"non-empty", "foo", "foo"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := unfixNone(tt.s); got != tt.want {
+				t.Errorf("unfixNone() = %v, want %v", got, tt.want)
 			}
 		})
 	}

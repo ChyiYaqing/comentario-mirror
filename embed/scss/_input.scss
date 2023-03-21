@@ -61,6 +61,15 @@ textarea {
     }
 }
 
+.comentario-checkbox-group {
+    margin-left: 8px;
+    margin-right: 8px;
+
+    .comentario-checkbox-container {
+        display: block;
+    }
+}
+
 .comentario-checkbox-container {
     display: inline-block;
     min-height: 22px;

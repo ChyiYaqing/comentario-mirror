@@ -226,6 +226,8 @@ definitions:
   page:
     description: Page hosting comments
     type: object
+    required:
+      - domain
     properties:
       domain:
         type: string
@@ -234,13 +236,15 @@ definitions:
       isLocked:
         type: boolean
         x-omitempty: false
-      commentCount:
-        type: integer
-        x-omitempty: false
       stickyCommentHex:
         $ref: "#/definitions/hexId"
+      commentCount:
+        type: integer
+        readOnly: true
+        x-omitempty: false
       title:
         type: string
+        readOnly: true
 
   parentHexId:
     description: ID similar to HexID, consisting of 64 hex digits, which can also be 'root'
@@ -1375,18 +1379,9 @@ paths:
           schema:
             type: object
             required:
-              - domain
-              - attributes
+              - page
             properties:
-              domain:
-                type: string
-                minLength: 1
-                maxLength: 253
-              path:
-                type: string
-                minLength: 1
-                maxLength: 2083
-              attributes:
+              page:
                 $ref: "#/definitions/page"
       responses:
         204:

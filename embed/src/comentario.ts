@@ -2,8 +2,11 @@ import { HttpClient, HttpClientError } from './http-client';
 import {
     AnonymousCommenterId,
     Comment,
-    CommenterMap, CommenterSettings,
-    CommentsGroupedByHex, SignupData,
+    CommenterMap,
+    CommentsGroupedByHex,
+    Email,
+    ProfileSettings,
+    SignupData,
     SortPolicy,
     StringBooleanMap,
 } from './models';
@@ -81,12 +84,15 @@ export class Comentario {
     private isModerator = false;
     private isFrozen = false;
     private isLocked = false;
-    private stickyCommentHex = 'none';
+    private stickyCommentHex = '';
     private authMethods: StringBooleanMap = {};
     private anonymousOnly = false;
     private sortPolicy: SortPolicy = 'score-desc';
     private selfHex?: string;
     private initialised = false;
+
+    /** The email instance of the currently authenticated user. */
+    private email?: Email;
 
     constructor(
         private readonly doc: Document,
@@ -370,6 +376,7 @@ export class Comentario {
         this.isAuthenticated = false;
         this.isModerator = false;
         this.selfHex = undefined;
+        this.email = undefined;
 
         // If we're not already (knowingly) anonymous
         const token = this.token;
@@ -381,7 +388,10 @@ export class Comentario {
                     // Commenter isn't authenticated
                     this.token = AnonymousCommenterId;
                 } else {
-                    // Commenter is authenticated: update the profile bar
+                    // Commenter is authenticated
+                    this.email = r.email;
+
+                    // Update the profile bar
                     this.profileBar!.authenticated(r.commenter, r.email, token, () => this.logout());
                     this.isAuthenticated = true;
 
@@ -753,8 +763,9 @@ export class Comentario {
         // Check if no auth provider available, but we allow anonymous commenting
         this.anonymousOnly = !this.requireIdentification && !Object.values(this.authMethods).includes(true);
 
-        // Configure methods in the profile bar
+        // Configure methods and moderator status in the profile bar
         this.profileBar!.authMethods = this.authMethods;
+        this.profileBar!.isModerator = this.isModerator;
 
         // Build a map by grouping all comments by their parentHex value
         this.parentHexMap = r.comments?.reduce(
@@ -833,7 +844,7 @@ export class Comentario {
      */
     private async stickyComment(card: CommentCard): Promise<void> {
         // Save the page's sticky comment ID
-        this.stickyCommentHex = this.stickyCommentHex === card.comment.commentHex ? 'none' : card.comment.commentHex;
+        this.stickyCommentHex = this.stickyCommentHex === card.comment.commentHex ? '' : card.comment.commentHex;
         await this.submitPageAttrs();
 
         // Reload all comments
@@ -881,9 +892,12 @@ export class Comentario {
         try {
             this.setError();
             await this.apiClient.post<void>('page/update', this.token, {
-                domain:     parent.location.host,
-                path:       this.pageId,
-                attributes: {isLocked: this.isLocked, stickyCommentHex: this.stickyCommentHex},
+                page: {
+                    domain:           parent.location.host,
+                    path:             this.pageId,
+                    isLocked:         this.isLocked,
+                    stickyCommentHex: this.stickyCommentHex,
+                },
             });
 
         } catch (e) {
@@ -922,10 +936,22 @@ export class Comentario {
      * Save current commenter's profile settings.
      * @private
      */
-    private async saveSettings(data: CommenterSettings) {
+    private async saveSettings(data: ProfileSettings) {
         try {
             this.setError();
-            await this.apiClient.post<void>('commenter/update', this.token, data);
+
+            // Update commenter settings
+            await this.apiClient.post<void>('commenter/update', this.token, {
+                email:      data.email,
+                name:       data.name,
+                websiteUrl: data.websiteUrl,
+                avatarUrl:  data.avatarUrl,
+            });
+
+            // Update email settings
+            this.email!.sendModeratorNotifications = data.notifyModerator;
+            this.email!.sendReplyNotifications     = data.notifyReplies;
+            await this.apiClient.post<void>('email/update', this.token, {email: this.email});
 
         } catch (e) {
             this.setError(e);

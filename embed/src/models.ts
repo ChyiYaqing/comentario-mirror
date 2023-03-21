@@ -26,15 +26,19 @@ export interface Commenter {
     readonly avatarUrl?:    string;
     readonly provider?:     string;
     readonly joinDate?:     string;
-    readonly isModerator?:  boolean;
+
+    // Mutable
+    isModerator?: boolean;
 }
 
 export interface Email {
     readonly email?:                      string;
     readonly unsubscribeSecretHex?:       string;
     readonly lastEmailNotificationDate?:  string;
-    readonly sendReplyNotifications?:     boolean;
-    readonly sendModeratorNotifications?: boolean;
+
+    // Mutable
+    sendReplyNotifications?:     boolean;
+    sendModeratorNotifications?: boolean;
 }
 
 export type CommentsGroupedByHex = { [k: string]: Comment[] };
@@ -57,11 +61,13 @@ export interface SignupData {
     websiteUrl?: string;
 }
 
-export interface CommenterSettings {
-    email:       string;
-    name:        string;
-    websiteUrl?: string;
-    avatarUrl?:  string;
+export interface ProfileSettings {
+    email:           string;  // Commenter's email address
+    name:            string;  // Commenter's name
+    websiteUrl?:     string;  // Optional commenter's website URL
+    avatarUrl?:      string;  // Optional commenter's avatar URL
+    notifyModerator: boolean; // Whether to send moderator notifications to the user
+    notifyReplies:   boolean; // Whether to send reply notifications to the user
 }
 
 export const AnonymousCommenterId = '0000000000000000000000000000000000000000000000000000000000000000';

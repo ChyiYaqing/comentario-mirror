@@ -24,7 +24,7 @@ type PageService interface {
 	// UpdateTitleByDomainPath updates page title for the specified domain and path combination
 	UpdateTitleByDomainPath(domain, path string) (string, error)
 	// UpsertByDomainPath updates or inserts the page for the specified domain and path combination
-	UpsertByDomainPath(domain, path string, isLocked bool, stickyCommentHex models.HexID) (*models.Page, error)
+	UpsertByDomainPath(page *models.Page) error
 }
 
 //----------------------------------------------------------------------------------------------------------------------
@@ -89,19 +89,22 @@ func (svc *pageService) FindByDomainPath(domain, path string) (*models.Page, err
 
 	// Fetch the row
 	var p models.Page
-	if err := row.Scan(&p.Domain, &p.Path, &p.IsLocked, &p.CommentCount, &p.StickyCommentHex, &p.Title); err == sql.ErrNoRows {
+	sch := ""
+	if err := row.Scan(&p.Domain, &p.Path, &p.IsLocked, &p.CommentCount, &sch, &p.Title); err == sql.ErrNoRows {
 		logger.Debug("pageService.FindByDomainPath: no page found, creating a new one")
 
 		// No page in the database means there's no comment created yet for that page: make a default Page instance
-		p.Domain = domain
+		p.Domain = &domain
 		p.Path = path
-		p.StickyCommentHex = "none" // TODO We really need to get rid of this
 
 	} else if err != nil {
 		// Any other database error
 		logger.Errorf("pageService.FindByDomainPath: Scan() failed: %v", err)
 		return nil, translateDBErrors(err)
 	}
+
+	// Perform necessary fixes
+	p.StickyCommentHex = unfixNone(sch)
 
 	// Succeeded
 	return &p, nil
@@ -129,31 +132,22 @@ func (svc *pageService) UpdateTitleByDomainPath(domain, path string) (string, er
 	return title, nil
 }
 
-func (svc *pageService) UpsertByDomainPath(domain, path string, isLocked bool, stickyCommentHex models.HexID) (*models.Page, error) {
-	logger.Debugf("pageService.UpsertByDomainPath(%s, %s, %v, %s)", domain, path, isLocked, stickyCommentHex)
+func (svc *pageService) UpsertByDomainPath(page *models.Page) error {
+	logger.Debugf("pageService.UpsertByDomainPath(%v)", page)
 
 	// Persist a new record, ignoring when it already exists
-	if stickyCommentHex == "" {
-		stickyCommentHex = "none" // TODO ditch this
-	}
-	page := models.Page{
-		Domain:           domain,
-		IsLocked:         isLocked,
-		Path:             path,
-		StickyCommentHex: stickyCommentHex,
-	}
 	err := db.Exec(
 		"insert into pages(domain, path, islocked, stickycommenthex) values($1, $2, $3, $4) "+
 			"on conflict (domain, path) do update set isLocked=$3, stickyCommentHex=$4;",
 		page.Domain,
 		page.Path,
 		page.IsLocked,
-		page.StickyCommentHex)
+		fixNone(page.StickyCommentHex))
 	if err != nil {
 		logger.Errorf("pageService.UpsertByDomainPath: Exec() failed: %v", err)
-		return nil, translateDBErrors(err)
+		return translateDBErrors(err)
 	}
 
 	// Succeeded
-	return &page, nil
+	return nil
 }

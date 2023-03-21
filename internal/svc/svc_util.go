@@ -44,6 +44,14 @@ func fixIdP(idp string) string {
 	return idp
 }
 
+// fixNone returns "none" if s is empty; meant for persisting a database record.
+func fixNone(id models.HexID) string {
+	if id == "" {
+		return "none"
+	}
+	return string(id)
+}
+
 // fixUndefined returns "undefined" if s is empty; meant for persisting a database record.
 func fixUndefined(s string) string {
 	if s == "" {
@@ -81,6 +89,14 @@ func unfixIdP(idp string) string {
 		return ""
 	}
 	return idp
+}
+
+// unfixNone returns an empty string if s is "none"; meant for reading a database record.
+func unfixNone(s string) models.HexID {
+	if s == "none" {
+		return ""
+	}
+	return models.HexID(s)
 }
 
 // unfixUndefined returns an empty string if s is "undefined"; meant for reading a database record.
