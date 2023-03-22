@@ -1,0 +1,13 @@
+.hero-area {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+    align-content: center;
+    padding-top: 4rem;
+    padding-bottom: 4rem;
+
+    @media (min-width: 768px) {
+        min-height: 75vh;
+    }
+}

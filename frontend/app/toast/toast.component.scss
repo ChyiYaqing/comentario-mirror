@@ -1,0 +1,7 @@
+:host {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    z-index: 1090; // Fix the quirk of the element layering, from a certain moment (or Chrome version) the toast close
+                   // button was being covered by the Sign in button. So, there.
+}

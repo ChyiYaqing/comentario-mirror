@@ -1,1 +1,69 @@
-/* You can add global styles to this file, and also import other style files */
+@import url('https://fonts.googleapis.com/css2?family=Volkhov:ital,wght@0,400;0,700;1,400;1,700&display=swap');
+
+// Fonts
+$font-family-sans-serif: Roboto, "Helvetica Neue", "Noto Sans", "Liberation Sans", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+$headings-font-family:   Volkhov, serif;
+
+// Theme palette
+$primary:   #4950d8;
+$secondary: adjust-color($primary, $saturation: -25%, $lightness: +16%);
+$success:   #198754;
+$info:      #6610f2;
+$warning:   #ffc107;
+$danger:    #dc3545;
+$light:     #ffffff;
+$dark:      #212529;
+// -- Theme palette custom extensions
+$cta:       #ec8100;
+
+// Extend the (default) theme color with the cta color
+$theme-colors: (
+        "primary":   $primary,
+        "secondary": $secondary,
+        "success":   $success,
+        "info":      $info,
+        "warning":   $warning,
+        "danger":    $danger,
+        "light":     $light,
+        "dark":      $dark,
+
+    // Custom colours
+        "cta":       $cta
+);
+
+// Remove underlining from all links
+$link-decoration: none;
+
+$navbar-padding-x: 0.5rem;
+$navbar-padding-y: 0.5rem;
+
+// Import Bootstrap
+@import "node_modules/bootstrap/scss/bootstrap";
+
+
+// Override Bootstrap classes
+.btn-primary, .btn-secondary, .btn-cta {
+    --bs-btn-color:        #fff;
+    --bs-btn-hover-color:  #fff;
+    --bs-btn-active-color: #fff;
+}
+.btn-outline-primary, .btn-outline-secondary, .btn-outline-cta {
+    --bs-btn-hover-color:  #fff;
+    --bs-btn-active-color: #fff;
+}
+
+// Animations
+.fade-in {
+    animation: fade-in-animation 0.5s ease forwards 1;
+}
+.fade-in-1s {
+    animation: fade-in-animation 1s ease forwards 1;
+}
+.fade-in-3s {
+    animation: fade-in-animation 3s ease forwards 1;
+}
+@keyframes fade-in-animation {
+    0%   { opacity: 0; }
+    50%  { opacity: 0; }
+    100% { opacity: 1; }
+}

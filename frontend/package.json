@@ -9,6 +9,7 @@
         "lint": "ng lint",
         "start": "ng build --watch --configuration development",
         "test": "ng test",
+        "test:ci": "ng test --browsers=ChromeHeadlessCI --watch=false --progress=false",
         "copy-assets": "cp ../build/frontend/en/*.ico ../build/frontend/",
         "cleanup-assets": "rm -f ../build/frontend/*/*.ico",
         "postbuild": "npm run copy-assets && npm run cleanup-assets",
@@ -24,6 +25,15 @@
         "@angular/platform-browser": "^15.2.2",
         "@angular/platform-browser-dynamic": "^15.2.2",
         "@angular/router": "^15.2.2",
+        "@fortawesome/angular-fontawesome": "^0.12.1",
+        "@fortawesome/fontawesome-svg-core": "^6.3.0",
+        "@fortawesome/free-brands-svg-icons": "^6.3.0",
+        "@fortawesome/free-regular-svg-icons": "^6.3.0",
+        "@fortawesome/free-solid-svg-icons": "^6.3.0",
+        "@ng-bootstrap/ng-bootstrap": "^14.0.1",
+        "@ngneat/until-destroy": "^9.2.3",
+        "@popperjs/core": "^2.11.6",
+        "bootstrap": "^5.2.3",
         "rxjs": "^7.8.0",
         "tslib": "^2.5.0",
         "zone.js": "^0.13.0"
@@ -45,6 +55,7 @@
         "karma-chrome-launcher": "^3.1.1",
         "karma-coverage": "^2.2.0",
         "karma-jasmine": "^5.1.0",
-        "karma-jasmine-html-reporter": "^2.0.0"
+        "karma-jasmine-html-reporter": "^2.0.0",
+        "ng-mocks": "^14.7.1"
     }
 }

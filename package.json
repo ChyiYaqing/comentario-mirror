@@ -13,7 +13,8 @@
         "lint": "npm run -w frontend lint && npm run -w embed lint",
         "ng": "npm run -w frontend ng",
         "start": "npm run -w frontend start",
-        "test": "npm run -w frontend test"
+        "test": "npm run -w frontend test",
+        "test:ci": "npm run -w frontend test:ci"
     },
     "workspaces": [
         "embed",

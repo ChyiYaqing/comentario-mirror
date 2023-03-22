@@ -1,0 +1,31 @@
+<ngb-toast *ngFor="let t of toasts; index as idx" [class]="t.className"
+           [id]="'toast-' + idx" [autohide]="autohide"
+           (mouseenter)="autohide = false" (mouseleave)="autohide = true" (hidden)="remove(t)">
+
+    <!-- Optional heading -->
+    <ng-template ngbToastHeader>
+        <strong class="me-auto" [ngSwitch]="t.alertType">
+            <ng-container *ngSwitchCase="'info'"    i18n>Psst, here it comes</ng-container>
+            <ng-container *ngSwitchCase="'success'" i18n>Yes!</ng-container>
+            <ng-container *ngSwitchCase="'warning'" i18n>Ouch, that was close!</ng-container>
+            <ng-container *ngSwitchCase="'danger'"  i18n>Blimey, that's gone sour!</ng-container>
+        </strong>
+    </ng-template>
+
+    <!-- Toast icon -->
+    <fa-icon [icon]="t.icon" size="3x" class="mx-1"></fa-icon>
+
+    <!-- Toast text -->
+    <div class="ms-3">
+        <!-- The main message -->
+        <div>{{ t.message }}</div>
+
+        <!-- Additional details, if any -->
+        <div *ngIf="t.details" class="toast-details small mt-2">({{ t.details }})</div>
+
+        <!-- "401 Unauthorized: show a login button -->
+        <div *ngIf="t.errorCode === 401" class="mt-3">
+            <button type="button" (click)="goLogin()" class="btn btn-primary w-100" i18n>Log in</button>
+        </div>
+    </div>
+</ngb-toast>

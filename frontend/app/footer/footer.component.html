@@ -1,0 +1,17 @@
+<footer class="container-fluid py-3">
+    <div class="row">
+        <div class="col-md">
+            <ul class="list-unstyled">
+                <li><a [routerLink]="Paths.home">Comentario</a></li>
+                <li><a [href]="docsSvc.urlAbout" target="_blank" rel="noopener" i18n>About</a></li>
+            </ul>
+        </div>
+
+        <div class="col-md">
+            <!-- Copyright -->
+            <ul class="list-unstyled">
+                <li class="copyright" i18n>Copyright ©{{ year }} Comentario</li>
+            </ul>
+        </div>
+    </div>
+</footer>

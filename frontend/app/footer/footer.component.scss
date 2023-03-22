@@ -1,0 +1,23 @@
+$primary:      #4950d8;
+$footer-color: adjust-color($primary, $saturation: -33%, $lightness: 0%);
+
+:host {
+    margin-top: auto;
+}
+
+footer {
+    background-color: $footer-color;
+    color: #ced1e1;
+    padding-top: 2rem;
+    padding-bottom: 2rem;
+    font-size: 0.875rem;
+}
+
+a {
+    color: inherit;
+    transition: color 0.1s linear;
+
+    &:hover, &:active {
+        color: #ffffff;
+    }
+}

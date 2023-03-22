@@ -1,0 +1,28 @@
+<section class="container">
+    <!-- Hero area -->
+    <div class="row">
+        <div class="col-md-6 hero-area">
+            <!-- Slogan -->
+            <div class="display-4 fw-bold">
+                <span class="fade-in-1s" i18n>Comments.</span>&ngsp;
+                <span class="fade-in-3s" i18n>Easy.</span>
+            </div>
+            <!-- Subslogan -->
+            <div class="lead text-muted" i18n>Add comments to your web page or blog in a matter of minutes.</div>
+            <!-- Buttons -->
+            <div class="mt-3">
+                <a href="https://demo.comentario.app/" class="btn btn-primary mb-2" target="_blank" rel="noopener">
+                    <ng-container i18n>View Demo</ng-container>
+                    <fa-icon [icon]="faExternalLink" class="ms-2"></fa-icon>
+                </a>
+                <a [href]="docGetStartedUrl" class="btn btn-cta ms-2 mb-2" target="_blank" rel="noopener" i18n>Get Started</a>
+            </div>
+        </div>
+        <div class="col-md-6 hero-area">
+            <img src="images/worker.svg" class="img-fluid" alt="">
+        </div>
+    </div>
+</section>
+
+<!-- Embed the doc front page -->
+<section docEmbed="front-page"></section>

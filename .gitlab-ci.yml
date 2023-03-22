@@ -64,25 +64,33 @@ build:
     #-------------------------------------------------------------------------------------------------------------------
     # Build the app
     #-------------------------------------------------------------------------------------------------------------------
-    # Generate code
+    # Backend: generate code
     - go generate
 
-    # Fetch the dependencies explicitly (not exactly necessary, but it's easier to spot problems if we do)
+    # Backend: fetch the dependencies explicitly (not exactly necessary, but it's easier to spot problems if we do)
     - go mod download
 
-    # Make sure there are no formatting issues
+    # Backend: make sure there are no formatting issues
     - test -z "$(go fmt ./...)"
 
-    # Run backend tests
+    # Backend: run unit tests
     - go test -v ./...
 
     # Build the backend and the e2e plugin
     - go build -v -o "./build/comentario" -ldflags "-X main.version=$(git describe --tags) -X main.date=$(date --iso-8601=seconds)"
     - go build -buildmode=plugin -o "./build/comentario-e2e.so" "./e2e/plugin/"
 
-    # Build the frontend
+    # Frontend: fetch the dependencies
     - yarn install --frozen-lockfile --no-progress --cache-folder .yarn-cache
+
+    # Frontend: build
     - yarn run build:prod
+
+    # Frontend: lint
+    - yarn run lint
+
+    # Frontend: unit tests
+    - yarn run test:ci
 
     # Copy static assets
     - cp -r db/ templates/ build/

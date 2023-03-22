@@ -1,0 +1,14 @@
+<!-- App content -->
+<main role="main" class="d-flex flex-column h-100">
+    <!-- Navbar -->
+    <app-navbar *ngIf="!hasSidebar"></app-navbar>
+
+    <!-- Toasts -->
+    <app-toast></app-toast>
+
+    <!-- Router outlet -->
+    <router-outlet></router-outlet>
+
+    <!-- Footer -->
+    <app-footer></app-footer>
+</main>

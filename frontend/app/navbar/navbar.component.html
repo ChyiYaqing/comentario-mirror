@@ -1,0 +1,27 @@
+<nav id="app-navbar" class="navbar navbar-expand flex-wrap flex-md-nowrap" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">
+    <!-- Logo -->
+    <div class="nav-row">
+        <a [routerLink]="Paths.home" id="navbarLogo"><img src="images/navbar-logo.png" width="192" height="48" alt="Logo"></a>
+    </div>
+
+    <!-- Navbar content -->
+    <div class="nav-row flex-md-grow-1 flex-wrap flex-md-nowrap" id="navbar-content">
+        <ul class="navbar-nav ms-md-auto">
+            <!-- About -->
+            <li class="nav-item"><a class="nav-link" [href]="docsSvc.urlAbout" target="_blank" rel="noopener" i18n="menu item">About</a></li>
+        </ul>
+
+        <ul class="navbar-nav">
+            <!-- User button -->
+            <li class="nav-item" *ngIf="loggedIn else signin" routerLink="TODO">
+                <a class="nav-link btn btn-outline-secondary d-flex align-items-center" id="userMenu">
+                    USER NAME
+                </a>
+            </li>
+            <!-- Sign in -->
+            <ng-template #signin>
+                <li class="nav-item"><a class="btn btn-primary" [routerLink]="Paths.auth.login" i18n>Sign in</a></li>
+            </ng-template>
+        </ul>
+    </div>
+</nav>
